@@ -99,7 +99,7 @@
     <div class="loginBg"></div>
     <div class="loginCard">
       <div class="loginBrand">
-        <div class="logoBubble">⚡</div>
+        <div class="logoBubble">✦</div>
         <div>
           <div class="loginTitle">Panel de Control</div>
           <div class="loginSub">Acceso seguro · Coordinador / Técnico</div>
@@ -163,7 +163,7 @@
       <button id="btnPagePlanner" class="btn btn-primary">📋 Planificación</button>
       <button id="btnPageIncidents" class="btn">🚨 Incidencias</button>
       <button id="btnPageOT" class="btn">🛠️ OT</button>
-      <button id="btnRosters" class="btn">📆 Cuadrantes</button>
+      <button id="btnRosters" class="btn btn-upload-highlight">📆 Subir cuadrante</button>
       <button id="btnUsers" class="btn">👥 Usuarios</button>
       <button id="btnLogout" class="btn">🔒 Cerrar sesión</button>
       <button id="btnAuto" class="btn">🤖 Auto</button>
@@ -229,7 +229,7 @@
       <aside class="tray">
         <div class="trayHead">
           <h3>Bandeja</h3>
-          <button id="btnImport" class="btn btn-small">Importar cuadrante</button>
+          <button id="btnImport" class="btn btn-small btn-upload-highlight">Importar cuadrante</button>
         </div>
 
         <div class="trayGroup">
@@ -351,15 +351,15 @@
   <div id="modalImport" class="modal hidden">
     <div class="modalCard">
       <div class="modalHead">
-        <h3>Importar cuadrante (CSV formato A)</h3>
+        <h3>Importar cuadrante (Excel/CSV formato A)</h3>
         <button id="btnCloseImport" class="btn btn-small">Cerrar</button>
       </div>
       <p class="muted">
-        Pega el CSV: primera columna <b>Nombre</b>, columnas 1..28 con M/T/N/D (o combinados tipo M/T).
+        Pega el CSV o sube un Excel: primera columna <b>Nombre</b>, columnas 1..28 con M/T/N/D (o combinados tipo M/T).
       </p>
       <div class="toolButtons" style="margin-bottom:10px;">
-        <label class="btn btn-small btn-outline" for="csvFileInput" style="cursor:pointer;">📂 Cargar archivo desde PC/móvil</label>
-        <input id="csvFileInput" type="file" accept=".csv,text/csv" hidden />
+        <label class="btn btn-small btn-outline" for="csvFileInput" style="cursor:pointer;">📂 Cargar Excel/CSV desde PC/móvil</label>
+        <input id="csvFileInput" type="file" accept=".xlsx,.xls,.csv,text/csv" hidden />
       </div>
       <textarea id="csvInput" class="textarea" rows="10"></textarea>
       <div class="modalActions">

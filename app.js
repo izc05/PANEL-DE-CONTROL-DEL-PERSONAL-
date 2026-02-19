@@ -2259,11 +2259,26 @@ function bootstrap(){
     const file = e.currentTarget.files?.[0];
     if(!file) return;
     try{
-      const text = await file.text();
-      $("csvInput").value = text;
+      const ext = (file.name.split(".").pop() || "").toLowerCase();
+      if(ext === "csv"){
+        const text = await file.text();
+        $("csvInput").value = text;
+      }else if(["xlsx","xls"].includes(ext)){
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf, { type:"array" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { header:1, raw:false });
+        const csv = rows
+          .map((row)=> (row || []).map((cell)=> String(cell ?? "").replaceAll(",", " ").trim()).join(","))
+          .join("\n");
+        $("csvInput").value = csv;
+      }else{
+        throw new Error("Formato no compatible");
+      }
       toast?.("Archivo cargado. Pulsa Procesar y guardar.");
     }catch(err){
-      alert("No se pudo leer el archivo CSV");
+      console.error(err);
+      alert("No se pudo leer el archivo. Usa CSV o Excel (.xlsx/.xls).");
     }finally{
       e.currentTarget.value = "";
     }
@@ -2985,7 +3000,6 @@ window.addEventListener("DOMContentLoaded", ()=>{
     if(!BLOCK_CTX) return;
     if(isTech()){
     // hide coordinator-only controls
-    document.querySelectorAll('#btnUsers,#btnRosters').forEach(el=>el?.classList.add('hiddenRole'));
     document.querySelectorAll('#incAssignee,#otAssignee').forEach(el=>el?.classList.add('hiddenRole'));
  toast?.("Solo coordinador puede quitar bloques"); return; }
     if(!confirm("⚠️ Quitar bloque del técnico (no borra la OT/INC principal). ¿Seguro?")) return;
@@ -3403,14 +3417,13 @@ function applyRoleUI(){
   const btnLogout = document.getElementById("btnLogout");
   const meSel = document.getElementById("meSelect");
 
-  if(btnUsers) btnUsers.classList.toggle("hiddenRole", !canManageUsers());
-  if(btnRosters) btnRosters.classList.toggle("hiddenRole", !canImportRosters());
+  if(btnUsers) btnUsers.classList.toggle("hiddenRole", !currentUser());
+  if(btnRosters) btnRosters.classList.toggle("hiddenRole", !currentUser());
   if(btnLogout) btnLogout.classList.toggle("hiddenRole", !currentUser());
 
   // force filters to "Me" for tech
   if(isTech()){
     // hide coordinator-only controls
-    document.querySelectorAll('#btnUsers,#btnRosters').forEach(el=>el?.classList.add('hiddenRole'));
     document.querySelectorAll('#incAssignee,#otAssignee').forEach(el=>el?.classList.add('hiddenRole'));
 
     if(meSel){
