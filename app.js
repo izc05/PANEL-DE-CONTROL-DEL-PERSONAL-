@@ -14,6 +14,7 @@ const LS = {
   CHANGES: "panel_shift_changes_v1", // [{...registro de cambios...}]
   INCIDENTS: "panel_incidents_v1",
   OTS: "panel_ots_v1",
+  CUSTOM_TYPES: "panel_custom_types_v1",
 };
 
 const SHIFT = {
@@ -69,6 +70,7 @@ function getState(){
     changes: JSON.parse(localStorage.getItem(LS.CHANGES) || "[]"),
     incidents: JSON.parse(localStorage.getItem(LS.INCIDENTS) || "[]"),
     ots: JSON.parse(localStorage.getItem(LS.OTS) || "[]"),
+    customTypes: JSON.parse(localStorage.getItem(LS.CUSTOM_TYPES) || "[]"),
   };
 }
 
@@ -95,6 +97,15 @@ function setIncidents(incidents){
 function setOTs(ots){
   localStorage.setItem(LS.OTS, JSON.stringify(ots));
 }
+
+function setCustomTypes(customTypes){
+  localStorage.setItem(LS.CUSTOM_TYPES, JSON.stringify(customTypes));
+}
+
+const mediaState = {
+  incidentPhotos: [],
+  otPhotos: [],
+};
 
 function dateKey(dateISO){
   return dateISO;
@@ -1013,6 +1024,7 @@ function createIncident(){
     priority: $("incPriority").value,
     owner: $("incOwner").value.trim(),
     notes: $("incNotes").value.trim(),
+    photos: [...mediaState.incidentPhotos],
     status: "Pendiente",
   });
   setIncidents(state.incidents);
@@ -1020,6 +1032,9 @@ function createIncident(){
   $("incLocation").value = "";
   $("incOwner").value = "";
   $("incNotes").value = "";
+  mediaState.incidentPhotos = [];
+  renderPhotoPreview("incident");
+  $("incQrStatus").textContent = "";
   renderIncidents();
 }
 
@@ -1041,6 +1056,7 @@ function renderIncidents(){
       <div><b>${escapeHtml(item.title)}</b> <span class="badge">${escapeHtml(item.priority)}</span> <span class="badge">${escapeHtml(item.status)}</span></div>
       <div class="muted">${escapeHtml(item.dateISO)} · ${escapeHtml(item.sector)} · ${escapeHtml(item.location || "Sin ubicación")}</div>
       <div>${escapeHtml(item.notes || "Sin detalle")}</div>
+      <div class="miniPhotos">${(item.photos || []).slice(0,4).map((src) => `<img src="${escapeHtmlAttr(src)}" alt="Foto incidencia" />`).join("")}</div>
       <div class="stackActions">
         <button class="btn btn-small incidentStatus" data-id="${item.id}">Cambiar estado</button>
       </div>
@@ -1056,6 +1072,11 @@ function createOT(){
   const title = $("otTitle").value.trim();
   if(!title){ alert("Indica el defecto para crear OT."); return; }
   const state = getState();
+  const textPhotos = $("otPhotos").value.trim();
+  const mergedPhotos = [
+    ...mediaState.otPhotos,
+    ...textPhotos.split(",").map((x) => x.trim()).filter(Boolean),
+  ];
   state.ots.unshift({
     id: uid(),
     createdAt: new Date().toISOString(),
@@ -1065,7 +1086,7 @@ function createOT(){
     area: $("otArea").value.trim(),
     reportedBy: $("otReportedBy").value.trim(),
     data: $("otData").value.trim(),
-    photos: $("otPhotos").value.trim(),
+    photos: mergedPhotos,
     step: 0,
     reports: [
       { step: "Inicial", date: new Date().toISOString(), note: "OT creada" }
@@ -1077,6 +1098,9 @@ function createOT(){
   $("otReportedBy").value = "";
   $("otData").value = "";
   $("otPhotos").value = "";
+  mediaState.otPhotos = [];
+  renderPhotoPreview("ot");
+  $("otQrStatus").textContent = "";
   renderOTs();
 }
 
@@ -1105,7 +1129,8 @@ function renderOTs(){
         <div><b>OT:</b> ${escapeHtml(item.title)} <span class="badge guard">${labels[item.step]}</span></div>
         <div class="muted">${escapeHtml(item.area || "Sin área")} · ${escapeHtml(item.reportedBy || "Sin reporte")} · ${escapeHtml(item.dateISO)}</div>
         <div>${escapeHtml(item.data || "Sin datos técnicos")}</div>
-        <div class="muted">Fotos: ${escapeHtml(item.photos || "Sin fotos")}</div>
+        <div class="muted">Fotos: ${(item.photos || []).length || 0}</div>
+        <div class="miniPhotos">${(item.photos || []).slice(0,4).map((src) => `<img src="${escapeHtmlAttr(src)}" alt="Foto OT" />`).join("")}</div>
         <ul>${reports}</ul>
         <div class="stackActions">
           <button class="btn btn-small otAdvance" data-id="${item.id}" ${item.step >= 2 ? "disabled" : ""}>Avanzar etapa</button>
@@ -1379,11 +1404,41 @@ function openQuick(){
   $("quickTitle").value = "";
   $("quickDur").value = "1";
   $("quickType").value = "Preventivo";
+  ensureQuickTypeOptions();
   openModal($("modalQuick"));
+}
+
+function ensureQuickTypeOptions(){
+  const state = getState();
+  const select = $("quickType");
+  for(const oldOpt of [...select.querySelectorAll("option[data-custom='1']")]) oldOpt.remove();
+  const newOpt = select.querySelector("option[value='__new']");
+  for(const type of state.customTypes){
+    const opt = document.createElement("option");
+    opt.value = type;
+    opt.textContent = type;
+    opt.dataset.custom = "1";
+    select.insertBefore(opt, newOpt);
+  }
+}
+
+function onQuickTypeChange(){
+  if($("quickType").value !== "__new") return;
+  const nextType = prompt("Escribe el nuevo tipo (ej: Permiso de horas, Médico)", "Permiso de horas");
+  if(!nextType){ $("quickType").value = "Preventivo"; return; }
+  const clean = nextType.trim();
+  if(!clean){ $("quickType").value = "Preventivo"; return; }
+  const state = getState();
+  if(!state.customTypes.includes(clean)){
+    state.customTypes.push(clean);
+    setCustomTypes(state.customTypes);
+  }
+  ensureQuickTypeOptions();
+  $("quickType").value = clean;
 }
 function createQuickCard(){
   const type = $("quickType").value;
-  const title = $("quickTitle").value.trim() || (type==="Correctivo" ? "INC-____ | Ubicación" : (type==="Guardia móvil" ? "Guardia móvil — incidencia" : "PM — Preventivo"));
+  const title = $("quickTitle").value.trim() || (type==="Correctivo" ? "INC-____ | Ubicación" : (type==="Guardia móvil" ? "Guardia móvil — incidencia" : `${type} — tarea`));
   const dur = Math.max(1, Number($("quickDur").value || 1));
 
   const dateISO = $("datePicker").value;
@@ -1396,6 +1451,66 @@ function createQuickCard(){
 
   closeModal($("modalQuick"));
   rerenderAll();
+}
+
+async function filesToDataUrls(fileList){
+  const files = [...(fileList || [])];
+  const reads = files.map((file) => new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => resolve("");
+    reader.readAsDataURL(file);
+  }));
+  return (await Promise.all(reads)).filter(Boolean);
+}
+
+function renderPhotoPreview(kind){
+  const photos = kind === "incident" ? mediaState.incidentPhotos : mediaState.otPhotos;
+  const previewEl = kind === "incident" ? $("incPhotoPreview") : $("otPhotoPreview");
+  const countEl = kind === "incident" ? $("incPhotoCount") : $("otPhotoCount");
+  countEl.textContent = photos.length ? `${photos.length} foto(s) adjuntas` : "Sin fotos adjuntas";
+  previewEl.innerHTML = photos.slice(0, 6).map((src) => `<img src="${escapeHtmlAttr(src)}" alt="preview" />`).join("");
+}
+
+async function scanQRCodeToInput(targetInputId, statusId){
+  const target = $(targetInputId);
+  const status = $(statusId);
+  if(!navigator.mediaDevices?.getUserMedia){
+    const manual = prompt("No se pudo abrir la cámara. Introduce el código QR manualmente:", "");
+    if(manual) target.value = manual.trim();
+    return;
+  }
+
+  status.textContent = "Abriendo cámara para escanear QR...";
+  if(!("BarcodeDetector" in window)){
+    const manual = prompt("Tu navegador no soporta escaneo automático. Pega el código QR:", target.value || "");
+    if(manual) target.value = manual.trim();
+    status.textContent = manual ? "Código QR cargado manualmente." : "Escaneo cancelado.";
+    return;
+  }
+
+  const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+  const video = document.createElement("video");
+  video.srcObject = stream;
+  video.setAttribute("playsinline", "true");
+  await video.play();
+  const detector = new BarcodeDetector({ formats: ["qr_code"] });
+  const endAt = Date.now() + 10000;
+  let found = "";
+  while(Date.now() < endAt && !found){
+    const results = await detector.detect(video);
+    if(results[0]?.rawValue) found = results[0].rawValue;
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  stream.getTracks().forEach((t) => t.stop());
+  if(found){
+    target.value = found;
+    status.textContent = `QR detectado: ${found}`;
+  }else{
+    const manual = prompt("No se detectó QR a tiempo. Introduce código manual:", target.value || "");
+    if(manual) target.value = manual.trim();
+    status.textContent = manual ? "Código QR cargado manualmente." : "No se detectó QR.";
+  }
 }
 
 // ---------- Phones ----------
@@ -1562,6 +1677,7 @@ function bootstrap(){
   $("btnQuick").addEventListener("click", openQuick);
   $("btnCloseQuick").addEventListener("click", () => closeModal($("modalQuick")));
   $("btnCreateCard").addEventListener("click", createQuickCard);
+  $("quickType").addEventListener("change", onQuickTypeChange);
 
   $("btnGuardPhones").addEventListener("click", () => {
     renderGuardPhonesModal();
@@ -1588,6 +1704,20 @@ function bootstrap(){
 
   $("btnCreateIncident").addEventListener("click", createIncident);
   $("btnCreateOT").addEventListener("click", createOT);
+  $("btnIncPhoto").addEventListener("click", () => $("incPhotoInput").click());
+  $("btnOtPhoto").addEventListener("click", () => $("otPhotoInput").click());
+  $("incPhotoInput").addEventListener("change", async (e) => {
+    mediaState.incidentPhotos.push(...await filesToDataUrls(e.currentTarget.files));
+    e.currentTarget.value = "";
+    renderPhotoPreview("incident");
+  });
+  $("otPhotoInput").addEventListener("change", async (e) => {
+    mediaState.otPhotos.push(...await filesToDataUrls(e.currentTarget.files));
+    e.currentTarget.value = "";
+    renderPhotoPreview("ot");
+  });
+  $("btnIncScanQR").addEventListener("click", () => scanQRCodeToInput("incLocation", "incQrStatus"));
+  $("btnOtScanQR").addEventListener("click", () => scanQRCodeToInput("otArea", "otQrStatus"));
 
   $("btnAuto").addEventListener("click", autoAssignPreventivos);
   $("btnCloseDay").addEventListener("click", closeDay);
@@ -1606,6 +1736,9 @@ function bootstrap(){
 
   // Render inicial
   setActivePage("planner");
+  ensureQuickTypeOptions();
+  renderPhotoPreview("incident");
+  renderPhotoPreview("ot");
   rerenderAll();
 }
 
