@@ -163,6 +163,9 @@
       <button id="btnPagePlanner" class="btn btn-primary">📋 Planificación</button>
       <button id="btnPageIncidents" class="btn">🚨 Incidencias</button>
       <button id="btnPageOT" class="btn">🛠️ OT</button>
+      <button id="btnRosters" class="btn">📆 Cuadrantes</button>
+      <button id="btnUsers" class="btn">👥 Usuarios</button>
+      <button id="btnLogout" class="btn">🔒 Cerrar sesión</button>
       <button id="btnAuto" class="btn">🤖 Auto</button>
       <button id="btnCloseDay" class="btn btn-danger">Cerrar día</button>
     </div>
@@ -170,6 +173,9 @@
 
   <main class="layout">
     <section id="pagePlanner" class="pageSection">
+    <section class="selectedMonthBar">
+      <div id="selectedMonthLabel" class="selectedMonthLabel">Mes seleccionado: —</div>
+    </section>
     <!-- Resumen de sectores -->
     <section class="sectorRow">
       <div id="cardElec" class="sectorCard">
@@ -351,6 +357,10 @@
       <p class="muted">
         Pega el CSV: primera columna <b>Nombre</b>, columnas 1..28 con M/T/N/D (o combinados tipo M/T).
       </p>
+      <div class="toolButtons" style="margin-bottom:10px;">
+        <label class="btn btn-small btn-outline" for="csvFileInput" style="cursor:pointer;">📂 Cargar archivo desde PC/móvil</label>
+        <input id="csvFileInput" type="file" accept=".csv,text/csv" hidden />
+      </div>
       <textarea id="csvInput" class="textarea" rows="10"></textarea>
       <div class="modalActions">
         <button id="btnLoadDefault" class="btn">Cargar ejemplo (Fontanería Feb 2026)</button>

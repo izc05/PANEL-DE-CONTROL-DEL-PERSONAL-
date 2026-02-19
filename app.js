@@ -55,6 +55,20 @@ function formatCurrentTime(){
   return new Date().toLocaleTimeString("es-ES", { hour12:false });
 }
 
+function formatMonthLabel(dateISO){
+  const d = new Date(`${dateISO || todayISO()}T00:00:00`);
+  const month = d.toLocaleDateString("es-ES", { month:"long" });
+  const year = d.getFullYear();
+  return `${month.charAt(0).toUpperCase()}${month.slice(1)} ${year}`;
+}
+
+function updateSelectedMonthLabel(){
+  const el = document.getElementById("selectedMonthLabel");
+  if(!el) return;
+  const dateISO = document.getElementById("datePicker")?.value || todayISO();
+  el.textContent = `Mes seleccionado: ${formatMonthLabel(dateISO)}`;
+}
+
 function parseCSV(text){
   // CSV simple: separador coma, sin comillas complejas
   const lines = text.trim().split(/\r?\n/).filter(Boolean);
@@ -1261,6 +1275,15 @@ function cycleIncidentStatus(id){
   renderIncidents();
 }
 
+function deleteIncident(id){
+  if(!confirm("¿Borrar esta incidencia?")) return;
+  const state = getState();
+  state.incidents = (state.incidents || []).filter((x) => x.id !== id);
+  setIncidents(state.incidents);
+  renderIncidents();
+  renderFilterChips();
+}
+
 function renderIncidents(){
   const state = getState();
   const statusClass = {
@@ -1286,6 +1309,7 @@ function renderIncidents(){
       <div class="miniPhotos">${(item.photos || []).slice(0,4).map((src) => `<img src="${escapeHtmlAttr(src)}" alt="Foto incidencia" />`).join("")}</div>
       <div class="stackActions">
         <button class="btn btn-small incidentStatus" data-id="${item.id}">Cambiar estado</button>
+        <button class="btn btn-small btn-danger incidentDelete" data-id="${item.id}">Borrar</button>
       </div>
     </div>
   `;
@@ -1293,6 +1317,9 @@ function renderIncidents(){
   $("incidentList").innerHTML = html;
   for(const btn of document.querySelectorAll(".incidentStatus")){
     btn.addEventListener("click", () => cycleIncidentStatus(btn.dataset.id));
+  }
+  for(const btn of document.querySelectorAll(".incidentDelete")){
+    btn.addEventListener("click", () => deleteIncident(btn.dataset.id));
   }
 }
 
@@ -1329,6 +1356,15 @@ function createOT(){
   mediaState.otPhotos = [];
   renderPhotoPreview("ot");
   $("otQrStatus").textContent = "";
+  renderOTs();
+  renderFilterChips();
+}
+
+function deleteOT(id){
+  if(!confirm("¿Borrar esta OT?")) return;
+  const state = getState();
+  state.ots = (state.ots || []).filter((x) => x.id !== id);
+  setOTs(state.ots);
   renderOTs();
   renderFilterChips();
 }
@@ -1372,6 +1408,7 @@ function renderOTs(){
         <ul>${reports}</ul>
         <div class="stackActions">
           <button class="btn btn-small otAdvance" data-id="${item.id}" ${item.step >= 2 ? "disabled" : ""}>Avanzar etapa</button>
+          <button class="btn btn-small btn-danger otDelete" data-id="${item.id}">Borrar</button>
         </div>
       </div>
     `;
@@ -1380,6 +1417,9 @@ function renderOTs(){
   $("otList").innerHTML = html;
   for(const btn of document.querySelectorAll(".otAdvance")){
     btn.addEventListener("click", () => advanceOT(btn.dataset.id));
+  }
+  for(const btn of document.querySelectorAll(".otDelete")){
+    btn.addEventListener("click", () => deleteOT(btn.dataset.id));
   }
 }
 
@@ -1506,6 +1546,7 @@ function rerenderAll(){
   setupTouchDragAndDrop();
   renderTechGrid(state, dateISO, sector);
   renderShiftChangeLog();
+  updateSelectedMonthLabel();
   renderIncidents();
   renderOTs();
   renderFilterChips();
@@ -2214,6 +2255,19 @@ function bootstrap(){
   });
   $("btnCloseImport").addEventListener("click", () => closeModal($("modalImport")));
   $("btnLoadDefault").addEventListener("click", () => { $("csvInput").value = DEFAULT_FONT_CSV; });
+  $("csvFileInput").addEventListener("change", async (e) => {
+    const file = e.currentTarget.files?.[0];
+    if(!file) return;
+    try{
+      const text = await file.text();
+      $("csvInput").value = text;
+      toast?.("Archivo cargado. Pulsa Procesar y guardar.");
+    }catch(err){
+      alert("No se pudo leer el archivo CSV");
+    }finally{
+      e.currentTarget.value = "";
+    }
+  });
   $("btnProcessCsv").addEventListener("click", processCsv);
   $("btnResetAll").addEventListener("click", resetAll);
 
