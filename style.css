@@ -435,3 +435,10 @@ body{
 .overflowItem{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:6px 8px;background:rgba(15,23,48,.55);font-size:12px}
 .overflowItem small{color:var(--muted)}
 .overflowRemove{width:18px;height:18px;border-radius:999px;border:1px solid rgba(255,255,255,.35);background:rgba(11,18,32,.75);color:#fff;cursor:pointer}
+
+.pageSection.hidden{display:none}
+.formGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;align-items:start}
+.formGrid .textarea{min-height:80px}
+.stackList{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.stackItem{border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px;background:rgba(15,23,48,.65)}
+.stackActions{margin-top:8px;display:flex;gap:8px}
