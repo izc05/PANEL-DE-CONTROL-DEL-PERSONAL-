@@ -1,0 +1,26 @@
+{
+  "name": "Panel Central — Hospital",
+  "short_name": "Panel Central",
+  "description": "Panel de despacho y gestión de turnos para mantenimiento hospitalario",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#05080f",
+  "theme_color": "#05080f",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%2305080f'/><text y='130' x='96' text-anchor='middle' font-size='120'>⚡</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%2305080f'/><text y='360' x='256' text-anchor='middle' font-size='320'>⚡</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "lang": "es"
+}
