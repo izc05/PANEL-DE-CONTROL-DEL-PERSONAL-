@@ -59,6 +59,13 @@ body{
   padding:8px 10px;
   min-width:160px;
 }
+.clockPill{min-width:150px}
+.clockValue{
+  font-weight:800;
+  letter-spacing:.6px;
+  font-variant-numeric: tabular-nums;
+  color:#cde1ff;
+}
 
 .btn{
   border:1px solid var(--line);
@@ -76,7 +83,8 @@ body{
 
 .layout{max-width:1300px;margin:14px auto;padding:0 14px;display:flex;flex-direction:column;gap:14px}
 
-.monthBoard{
+.monthBoard,
+.weekBoard{
   background: rgba(9,14,26,.92);
   border:1px solid var(--line);
   border-radius: var(--r);
@@ -95,6 +103,21 @@ body{
 .mday.N{background: rgba(185,79,255,.24)}
 .mday.D{background: rgba(127,138,166,.2)}
 .mday.none{background: rgba(58,160,255,.1); color:var(--muted)}
+
+.weeklyCalendars{display:grid;grid-template-columns:1fr;gap:10px}
+.weekSector{border:1px solid rgba(58,160,255,.24); background: rgba(11,18,32,.45); border-radius:14px; padding:10px}
+.weekSectorTitle{font-weight:800;margin-bottom:8px;color:#dbe8ff}
+.calTable{display:flex;flex-direction:column;gap:6px;overflow:auto}
+.calHeader,.calRow{display:grid;grid-template-columns:minmax(190px, 1.8fr) repeat(7, minmax(70px, 1fr));gap:6px;align-items:center}
+.calTechHead,.calTech{padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:rgba(15,23,48,.82)}
+.calTech{font-size:12px}
+.calHeadCell,.calCell{padding:8px 6px;border-radius:10px;border:1px solid rgba(255,255,255,.08);text-align:center;font-size:12px}
+.calHeadCell{background:rgba(15,23,48,.82);color:#d4e6ff;font-weight:700;text-transform:capitalize}
+.calCell.shift-M{background: rgba(29,215,95,.22)}
+.calCell.shift-T{background: rgba(255,211,77,.22)}
+.calCell.shift-N{background: rgba(185,79,255,.24)}
+.calCell.shift-D{background: rgba(127,138,166,.2)}
+.calCell.out{color:var(--muted);background:rgba(58,160,255,.08)}
 
 .sectorRow{
   display:grid;
@@ -158,6 +181,15 @@ body{
   border:1px solid var(--line);
   color:var(--muted);
   background: rgba(18,28,51,.65);
+}
+.durControl{display:flex;align-items:center;gap:6px}
+.durInput{
+  width:64px;
+  border-radius:10px;
+  border:1px solid var(--line);
+  background:#0f1730;
+  color:var(--text);
+  padding:6px 8px;
 }
 
 .legend{display:flex;gap:8px;flex-wrap:wrap; margin-top:auto}
