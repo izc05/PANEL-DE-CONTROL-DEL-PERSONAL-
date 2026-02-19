@@ -1,0 +1,784 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Panel Central ✨ — Hospital (v1)</title>
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- ✅ Motion / micro-animaciones (sin mareo, respeta accesibilidad) -->
+  <style>
+    :root{
+      --ease-out: cubic-bezier(.2,.8,.2,1);
+      --dur-1: 140ms;
+      --dur-2: 220ms;
+      --dur-3: 420ms;
+    }
+    @media (prefers-reduced-motion: reduce){
+      *{ animation:none !important; transition:none !important; scroll-behavior:auto !important; }
+    }
+    @keyframes riseIn{
+      from{ opacity:0; transform: translateY(10px) scale(.99); filter: blur(2px); }
+      to  { opacity:1; transform: translateY(0) scale(1); filter: blur(0); }
+    }
+    .panel-animate-in{ animation: riseIn var(--dur-3) var(--ease-out) both; }
+
+    /* Hover premium */
+    .sectorCard, .trayGroup, .changeBoard, .glassBoard{
+      transition: transform var(--dur-2) var(--ease-out),
+                  box-shadow var(--dur-2) var(--ease-out),
+                  border-color var(--dur-2) var(--ease-out);
+    }
+    .sectorCard:hover, .trayGroup:hover, .changeBoard:hover, .glassBoard:hover{
+      transform: translateY(-2px);
+    }
+
+    /* KPIs: shimmer al actualizar (aplícalo 1 vez con JS) */
+    @keyframes shimmer{
+      0%{ background-position: 200% 0; }
+      100%{ background-position: -200% 0; }
+    }
+    .kpi-updating{
+      background: linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.18), rgba(255,255,255,.05));
+      background-size: 200% 100%;
+      animation: shimmer 900ms var(--ease-out) 1;
+      border-radius: 10px;
+      padding: 2px 6px;
+      display:inline-block;
+    }
+
+    /* Modal: backdrop + entrada suave */
+    #modalBackdrop{
+      position:fixed; inset:0; z-index: 50;
+      background: rgba(0,0,0,.45);
+      opacity:0; pointer-events:none;
+      transition: opacity var(--dur-2) var(--ease-out);
+    }
+    #modalBackdrop.open{ opacity:1; pointer-events:auto; }
+
+    .modal{ z-index: 60; }
+    .modal .modalCard{
+      opacity:0;
+      transform: translateY(10px) scale(.99);
+      transition: opacity var(--dur-2) var(--ease-out),
+                  transform var(--dur-2) var(--ease-out);
+      will-change: transform, opacity;
+    }
+    .modal.open .modalCard{
+      opacity:1;
+      transform: translateY(0) scale(1);
+    }
+
+    /* Toast */
+    .toast{
+      position: fixed; left: 50%; bottom: 18px;
+      transform: translateX(-50%) translateY(8px);
+      opacity:0;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.65);
+      color: #fff;
+      font: 600 13px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      transition: opacity var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out);
+      z-index: 9999;
+      max-width: min(92vw, 520px);
+      text-align:center;
+      pointer-events:none;
+    }
+    .toast.show{ opacity:1; transform: translateX(-50%) translateY(0); }
+
+    /* Drag/Drop feedback (si ya lo usas en app.js) */
+    .dragging{ opacity:.6; transform: rotate(-1deg) scale(1.01); }
+    .drop-target{ outline: 2px dashed rgba(255,255,255,.25); outline-offset: 8px; border-radius: 14px; }
+  </style>
+
+</head>
+<body>
+  <!-- LOGIN OVERLAY -->
+  <div id="loginOverlay" class="loginOverlay hidden">
+    <div class="loginBg"></div>
+    <div class="loginCard">
+      <div class="loginBrand">
+        <div class="logoBubble">⚡</div>
+        <div>
+          <div class="loginTitle">Panel de Control</div>
+          <div class="loginSub">Acceso seguro · Coordinador / Técnico</div>
+        </div>
+      </div>
+
+      <div class="loginTabs">
+        <button class="loginTab on" id="tabTech" type="button">👷 Técnico</button>
+        <button class="loginTab" id="tabCoord" type="button">👑 Coordinador</button>
+      </div>
+
+      <div class="loginForm">
+        <select id="loginUser" class="input">
+          <option value="">Selecciona tu nombre…</option>
+        </select>
+
+        <input id="loginPass" class="input" type="password" placeholder="Contraseña" />
+
+        <button id="btnLogin" class="btn btn-primary btn-block" type="button">Entrar</button>
+
+        <div class="loginHint" id="loginHint"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="bgSky" aria-hidden="true"></div>
+  <div id="bgParticles" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="logoDot"></div>
+      <div>
+        <div class="title">Panel Central ✨</div>
+        <div class="subtitle">Dispatch Board • Turnos + Guardia + Timeline</div>
+      </div>
+    </div>
+
+    <div class="searchWrap">
+      <input id="globalSearch" class="input searchInput" type="search" placeholder="🔍 Buscar… (/) " autocomplete="off" />
+      <button id="btnClearSearch" class="btn btn-small" type="button" title="Limpiar búsqueda">✕</button>
+    </div>
+
+    <div class="toolbar">
+      <div class="pill clockPill">
+        <label>Hora actual</label>
+        <div id="currentTime" class="clockValue">--:--:--</div>
+      </div>
+
+      <div class="pill">
+        <label>Fecha</label>
+        <input id="datePicker" type="date">
+      </div>
+
+      <div class="pill">
+        <label>Sector</label>
+        <select id="sectorSelect">
+          <option value="Electricidad">Electricidad</option>
+          <option value="Fontanería" selected>Fontanería</option>
+        </select>
+      </div>
+
+      <div class="pill">
+        <label>Yo</label>
+        <select id="meSelect" style="min-width:140px">
+          <option value="">— Filtro personal —</option>
+        </select>
+      </div>
+
+      <button id="btnQuick" class="btn btn-primary">+ Crear tarjeta</button>
+      <button id="btnGuardPhones" class="btn">📞 Guardias</button>
+      <button id="btnWeekEdit" class="btn">✏️ Semana</button>
+      <button id="btnShiftRequest" class="btn">🔁 Cambio turno</button>
+      <button id="btnPagePlanner" class="btn btn-primary">📋 Planificación</button>
+      <button id="btnPageIncidents" class="btn">🚨 Incidencias</button>
+      <button id="btnPageOT" class="btn">🛠️ OT</button>
+      <button id="btnAuto" class="btn">🤖 Auto</button>
+      <button id="btnRosters" class="btn hiddenRole">📆 Cuadrantes</button>
+      <button id="btnUsers" class="btn hiddenRole">👥 Usuarios</button>
+      <button id="btnLogout" class="btn btn-small hiddenRole">🚪 Salir</button>
+      <button id="btnCloseDay" class="btn btn-danger">Cerrar día</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section id="pagePlanner" class="pageSection">
+    <!-- Resumen de sectores -->
+    <section class="sectorRow">
+      <div id="cardElec" class="sectorCard">
+        <div class="sectorName">Electricidad</div>
+        <div class="sectorMeta">
+          <div><span class="k">Guardia</span> <span id="elecGuard">—</span></div>
+          <div><span class="k">Disponibles</span> <span id="elecFree">0</span></div>
+          <div><span class="k">Correctivos</span> <span id="elecInc">0</span></div>
+          <div><span class="k">Carga media</span> <span id="elecLoad">0%</span></div>
+        </div>
+      </div>
+
+      <div id="cardFont" class="sectorCard active">
+        <div class="sectorName">Fontanería</div>
+        <div class="sectorMeta">
+          <div><span class="k">Guardia</span> <span id="fontGuard">—</span></div>
+          <div><span class="k">Disponibles</span> <span id="fontFree">0</span></div>
+          <div><span class="k">Correctivos</span> <span id="fontInc">0</span></div>
+          <div><span class="k">Carga media</span> <span id="fontLoad">0%</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="weekBoard">
+      <div class="monthHead">Calendario semanal de turnos por grupo de trabajo (clic para editar M/T/N/D)</div>
+      <div id="weeklyCalendars" class="weeklyCalendars"></div>
+    </section>
+
+    <section class="changeBoard">
+      <div class="monthHead">Registro de solicitudes de cambio de turno</div>
+      <div class="changeTableWrap">
+        <table class="changeTable">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Sale</th>
+              <th>Cubre</th>
+              <th>Solicita</th>
+              <th>Aprueba</th>
+              <th>Notas</th>
+            </tr>
+          </thead>
+          <tbody id="shiftChangeLog"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Cuerpo -->
+    <section class="board">
+      <!-- Bandeja -->
+      <aside class="tray">
+        <div class="trayHead">
+          <h3>Bandeja</h3>
+          <button id="btnImport" class="btn btn-small">Importar cuadrante</button>
+        </div>
+
+        <div class="trayGroup">
+          <div class="trayTitle red">🔴 Correctivos</div>
+          <div id="trayCorrectivos" class="trayList"></div>
+          <button id="btnNewCorrectivo" class="btn btn-small btn-outline">+ Correctivo</button>
+        </div>
+
+        <div class="trayGroup">
+          <div class="trayTitle yellow">🟡 Preventivos</div>
+          <div id="trayPreventivos" class="trayList"></div>
+          <button id="btnNewPreventivo" class="btn btn-small btn-outline">+ Preventivo</button>
+        </div>
+
+        <div class="trayGroup">
+          <div class="trayTitle blue">🔵 Guardia móvil</div>
+          <div id="trayGuardia" class="trayList"></div>
+          <button id="btnNewGuardia" class="btn btn-small btn-outline">+ Guardia móvil</button>
+        </div>
+
+        <div class="legend">
+          <div class="chip"><span class="sq free"></span> Libre</div>
+          <div class="chip"><span class="sq prev"></span> Preventivo</div>
+          <div class="chip"><span class="sq corr"></span> Correctivo</div>
+          <div class="chip"><span class="sq off"></span> Descanso</div>
+          <div class="chip"><span class="sq guard"></span> Guardia</div>
+        </div>
+      </aside>
+
+      <!-- Técnicos -->
+      <section class="techArea">
+        <div id="shiftFocus" class="shiftFocus"></div>
+        <div id="techGrid" class="techGrid"></div>
+      </section>
+    </section>
+    </section>
+
+    <section id="pageIncidents" class="pageSection pageGlow pageIncidents hidden">
+      <div class="changeBoard glassBoard">
+        <div class="monthHead">Subpágina de incidencias (seguimiento y revisión)</div>
+        <p class="pageIntro">Las capturas y escaneos puedes completarlos más tarde desde el móvil. La tarjeta mostrará visualmente lo pendiente y lo ya cargado.</p>
+        <div class="formGrid">
+          <input id="incTitle" class="input" placeholder="Título incidencia" />
+          <input id="incLocation" class="input" placeholder="Ubicación" />
+          <select id="incPriority" class="input">
+            <option>Alta</option>
+            <option selected>Media</option>
+            <option>Baja</option>
+          </select>
+          <input id="incOwner" class="input" placeholder="Responsable revisión" />
+          <select id="incAssignee" class="input" title="Asignar a técnico">
+            <option value="">Asignar a… (opcional)</option>
+          </select>
+          <textarea id="incNotes" class="textarea" rows="3" placeholder="Detalle"></textarea>
+          <div class="mediaTools">
+            <input id="incPhotoInput" type="file" accept="image/*" capture="environment" multiple class="hiddenInput" / capture="environment">
+            <div class="toolButtons">
+              <button id="btnIncPhoto" class="btn btn-small" type="button">📷 Añadir foto</button>
+              <button id="btnIncScanQR" class="btn btn-small" type="button">📍 Escanear QR ubicación</button>
+            <button id="btnIncOpenLocations" class="btn btn-small btn-outline" type="button" title="Abrir diccionario QR">📍 Diccionario</button>
+            </div>
+            <div id="incPhotoCount" class="muted">Sin fotos adjuntas</div>
+            <div id="incPhotoPreview" class="photoPreview"></div>
+            <div id="incQrStatus" class="muted"></div>
+          </div>
+          <button id="btnCreateIncident" class="btn btn-primary">Crear incidencia</button>
+        </div>
+        <div class="filterRow" id="incFilters"></div>
+        <div id="incidentKanban" class="kanban"></div>
+        <div id="incidentList" class="stackList hidden"></div>
+      </div>
+    </section>
+
+    <section id="pageOT" class="pageSection pageGlow pageOT hidden">
+      <div class="changeBoard glassBoard">
+        <div class="monthHead">Órdenes de trabajo (OT) con informe y seguimiento</div>
+        <p class="pageIntro">Si ahora no haces foto o escaneo, se marca como pendiente en la OT para terminarlo luego con el móvil.</p>
+        <div class="toolButtons">
+          <button id="btnGenerateReport" class="btn btn-small" type="button">🧾 Generar informe del día</button>
+          <button id="btnShareReportWA" class="btn btn-small" type="button">🟢 WA</button>
+          <button id="btnShareReportMail" class="btn btn-small" type="button">✉️ Mail</button>
+          <button id="btnCopyReport" class="btn btn-small" type="button">📋 Copiar</button>
+          <button id="btnPdfReport" class="btn btn-small" type="button">📄 PDF</button>
+        </div>
+        <pre id="autoReportOutput" class="autoReportOutput">Todavía no se ha generado ningún informe.</pre>
+        <div class="formGrid">
+          <input id="otTitle" class="input" placeholder="Defecto / avería" />
+          <input id="otArea" class="input" placeholder="Área / ubicación" />
+          <input id="otReportedBy" class="input" placeholder="Reportado por" />
+          <select id="otAssignee" class="input" title="Asignar a técnico">
+            <option value="">Asignar a… (opcional)</option>
+          </select>
+          <textarea id="otData" class="textarea" rows="2" placeholder="Datos técnicos iniciales"></textarea>
+          <textarea id="otPhotos" class="textarea" rows="2" placeholder="Fotos (URLs separadas por coma)"></textarea>
+          <div class="mediaTools">
+            <input id="otPhotoInput" type="file" accept="image/*" capture="environment" multiple class="hiddenInput" / capture="environment">
+            <div class="toolButtons">
+              <button id="btnOtPhoto" class="btn btn-small" type="button">📷 Añadir foto</button>
+              <button id="btnOtScanQR" class="btn btn-small" type="button">📍 Escanear QR ubicación</button>
+            <button id="btnOtOpenLocations" class="btn btn-small btn-outline" type="button" title="Abrir diccionario QR">📍 Diccionario</button>
+            </div>
+            <div id="otPhotoCount" class="muted">Sin fotos adjuntas</div>
+            <div id="otPhotoPreview" class="photoPreview"></div>
+            <div id="otQrStatus" class="muted"></div>
+          </div>
+          <button id="btnCreateOT" class="btn btn-primary">Crear OT</button>
+        </div>
+        <div class="filterRow" id="otFilters"></div>
+        <div id="otKanban" class="kanban"></div>
+        <div id="otList" class="stackList hidden"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Tabs móviles -->
+  <div class="pageTabs" aria-label="Navegación">
+    <button id="tabPlanner" class="btn btn-small">📅 Panel</button>
+    <button id="tabInc" class="btn btn-small">🚨 Incidencias</button>
+    <button id="tabOT" class="btn btn-small">🛠️ OT</button>
+  </div>
+
+
+  <!-- Backdrop + Toast (para micro-animaciones) -->
+  <div id="modalBackdrop" aria-hidden="true"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+
+  <!-- Modal: Import -->
+  <div id="modalImport" class="modal hidden">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h3>Importar cuadrante (CSV formato A)</h3>
+        <button id="btnCloseImport" class="btn btn-small">Cerrar</button>
+      </div>
+      <p class="muted">
+        Pega el CSV: primera columna <b>Nombre</b>, columnas 1..28 con M/T/N/D (o combinados tipo M/T).
+      </p>
+      <textarea id="csvInput" class="textarea" rows="10"></textarea>
+      <div class="modalActions">
+        <button id="btnLoadDefault" class="btn">Cargar ejemplo (Fontanería Feb 2026)</button>
+        <button id="btnProcessCsv" class="btn btn-primary">Procesar y guardar</button>
+        <button id="btnResetAll" class="btn btn-danger">Reset total</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Quick -->
+  <div id="modalQuick" class="modal hidden">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h3>+ Rápido (crear tarjeta)</h3>
+        <button id="btnCloseQuick" class="btn btn-small">Cerrar</button>
+      </div>
+
+      <div class="formRow">
+        <label>Tipo</label>
+        <select id="quickType" class="input">
+          <option value="Correctivo">Correctivo</option>
+          <option value="Preventivo" selected>Preventivo</option>
+          <option value="Guardia móvil">Guardia móvil</option>
+          <option value="__new">+ Crear nuevo tipo...</option>
+        </select>
+      </div>
+
+      <div class="formRow">
+        <label>Título</label>
+        <input id="quickTitle" class="input" placeholder="Ej: INC-3456 | UCI | fuga" />
+      </div>
+
+      <div class="formRow">
+        <label>Duración (h)</label>
+        <input id="quickDur" class="input" type="number" min="1" step="1" value="1" />
+      </div>
+
+      <div class="modalActions">
+        <button id="btnCreateCard" class="btn btn-primary">Crear en bandeja</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalGuardPhones" class="modal hidden">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h3>📞 Teléfonos de guardia por sectores</h3>
+        <button id="btnCloseGuardPhones" class="btn btn-small">Cerrar</button>
+      </div>
+      <p class="muted">Edita y guarda una vez. Se mantiene por técnico/sector en este navegador.</p>
+      <div id="guardPhonesContent" class="phoneTableWrap"></div>
+      <div class="modalActions">
+        <button id="btnSavePhones" class="btn btn-primary">Guardar teléfonos</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalWeekEdit" class="modal hidden">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h3>✏️ Edición semanal masiva</h3>
+        <button id="btnCloseWeekEdit" class="btn btn-small">Cerrar</button>
+      </div>
+      <p class="muted">Formato: <b>NOMBRE,M,M,M,M,D,D,T</b> (7 códigos desde lunes a domingo).</p>
+      <textarea id="weekBulkInput" class="textarea" rows="12"></textarea>
+      <div class="modalActions">
+        <button id="btnFillWeekTemplate" class="btn">Cargar semana actual</button>
+        <button id="btnApplyWeekBulk" class="btn btn-primary">Aplicar cambios</button>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="modalShiftRequest" class="modal hidden">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h3>🔁 Solicitud de cambio de turno</h3>
+        <button id="btnCloseShiftRequest" class="btn btn-small">Cerrar</button>
+      </div>
+      <div class="formRow">
+        <label>Fecha</label>
+        <input id="shiftReqDate" class="input" type="date" />
+      </div>
+      <div class="formRow">
+        <label>Técnico que cede turno</label>
+        <select id="shiftReqFrom" class="input"></select>
+      </div>
+      <div class="formRow">
+        <label>Técnico que cubre</label>
+        <select id="shiftReqTo" class="input"></select>
+      </div>
+      <div class="formRow">
+        <label>Solicitante</label>
+        <input id="shiftReqBy" class="input" placeholder="Nombre de quien solicita" />
+      </div>
+      <div class="formRow">
+        <label>Conforme / aprobado por</label>
+        <input id="shiftReqApproved" class="input" placeholder="Jefe de grupo / responsable" />
+      </div>
+      <div class="formRow">
+        <label>Observaciones</label>
+        <textarea id="shiftReqNotes" class="textarea" rows="3" placeholder="Motivo o detalle"></textarea>
+      </div>
+      <div class="modalActions">
+        <button id="btnApplyShiftRequest" class="btn btn-primary">Aplicar cambio y registrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Imagen (lightbox) -->
+  <div id="modalImage" class="modal hidden">
+    <div class="modalCard imageCard">
+      <div class="modalHead">
+        <h3>🖼️ Foto</h3>
+        <button id="btnCloseImage" class="btn btn-small" type="button">Cerrar</button>
+      </div>
+      <div class="imageBody">
+        <img id="modalImageImg" alt="Foto" />
+      </div>
+    </div>
+  </div>
+
+  
+  <!-- Modal: Diccionario de ubicaciones QR -->
+  <div id="modalLocations" class="modal hidden">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h3>📍 Ubicaciones (QR → Nombre)</h3>
+        <button id="btnCloseLocations" class="btn btn-small" type="button">Cerrar</button>
+      </div>
+
+      <div class="formGrid">
+        <input id="locCode" class="input" placeholder="Código QR (ej: 0E036)" />
+        <input id="locName" class="input" placeholder="Nombre ubicación (ej: Torre B · Sala bombas)" />
+        <textarea id="locNotes" class="textarea" rows="2" placeholder="Notas (opcional)"></textarea>
+        <button id="btnSaveLocation" class="btn btn-primary" type="button">Guardar / Actualizar</button>
+        <button id="btnDeleteLocation" class="btn btn-danger" type="button">Borrar</button>
+      </div>
+
+      <div class="monthHead" style="margin-top:10px;">Listado</div>
+      <div class="toolButtons" style="margin-bottom:8px;">
+        <button id="btnExportLocations" class="btn btn-small" type="button">⬇️ Exportar ubicaciones</button>
+        <label class="btn btn-small btn-outline" for="importLocationsFile" style="cursor:pointer;">⬆️ Importar ubicaciones</label>
+        <input id="importLocationsFile" type="file" accept="application/json" hidden />
+      </div>
+      <div id="locationsList" class="stackList"></div>
+    </div>
+  </div>
+
+
+  
+  <!-- Modal: Actualización rápida (desde tarjeta asignada) -->
+  <div id="modalQuickUpdate" class="modal hidden">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h3 id="quickTitle">🧩 Actualización</h3>
+        <button id="btnCloseQuick" class="btn btn-small" type="button">Cerrar</button>
+      </div>
+
+      <div class="formGrid">
+        <div class="muted" id="quickMeta"></div>
+        <select id="quickStatus" class="input">
+          <option value="Pendiente">Pendiente</option>
+          <option value="En curso">En curso</option>
+          <option value="Cerrada">Cerrada</option>
+        </select>
+
+        <textarea id="quickComment" class="textarea" rows="2" placeholder="Comentario / actualización..."></textarea>
+
+        <label class="btn btn-outline" for="quickPhotos" style="cursor:pointer;">📷 Añadir fotos</label>
+        <input id="quickPhotos" type="file" accept="image/*" capture="environment" multiple hidden />
+
+        <div class="toolButtons">
+          <button id="btnSaveQuick" class="btn btn-primary" type="button">Guardar</button>
+          <button id="btnUnassignQuick" class="btn btn-danger" type="button">Desasignar</button>
+        </div>
+
+        <div id="quickPhotosPreview" class="photosRow"></div>
+        <div id="quickHistory" class="stackList"></div>
+      </div>
+    </div>
+  </div>
+
+
+  
+  <!-- Modal: Bloque (tarea/OT/INC) -->
+  <div id="modalBlockUpdate" class="modal hidden">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h3 id="blockTitle">🧩 Bloque</h3>
+        <button id="btnCloseBlock" class="btn btn-small" type="button">Cerrar</button>
+      </div>
+
+      <div class="formGrid">
+        <div class="muted" id="blockMeta"></div>
+
+        <div class="formRow">
+          <input id="blockStart" class="input" type="time" />
+          <input id="blockEnd" class="input" type="time" />
+          <select id="blockStatus" class="input">
+            <option value="Pendiente">Pendiente</option>
+            <option value="En curso">En curso</option>
+            <option value="Cerrada">Cerrada</option>
+          </select>
+        </div>
+
+        <textarea id="blockNote" class="textarea" rows="2" placeholder="Añadir nota (se guarda en historial)"></textarea>
+
+        <label class="btn btn-outline" for="blockPhotos" style="cursor:pointer;">📷 Añadir fotos</label>
+        <input id="blockPhotos" type="file" accept="image/*" capture="environment" multiple hidden />
+
+        <div class="toolButtons">
+          <button id="btnSaveBlock" class="btn btn-primary" type="button">Guardar</button>
+          <button id="btnRemoveBlock" class="btn btn-danger" type="button">Quitar bloque</button>
+        </div>
+
+        <div id="blockPhotosPreview" class="photosRow"></div>
+        <div id="blockHistory" class="stackList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Timeline del técnico -->
+  <div id="modalTechTimeline" class="modal hidden">
+    <div class="modalCard" style="max-width:980px;">
+      <div class="modalHead">
+        <h3 id="techTimelineTitle">📊 Timeline</h3>
+        <button id="btnCloseTechTimeline" class="btn btn-small" type="button">Cerrar</button>
+      </div>
+      <div class="formGrid">
+        <div class="muted" id="techTimelineMeta"></div>
+        <div id="techTimelineCanvas" class="timeline bigTimeline"></div>
+        <div id="techTimelineList" class="stackList"></div>
+      </div>
+    </div>
+  </div>
+
+
+  
+  <!-- Modal: Gestión de cuadrantes (mes a mes) -->
+  <div id="modalRosters" class="modal hidden">
+    <div class="modalCard" style="max-width:980px;">
+      <div class="modalHead">
+        <h3>📆 Cuadrantes (mes a mes)</h3>
+        <button id="btnCloseRosters" class="btn btn-small" type="button">Cerrar</button>
+      </div>
+
+      <div class="formGrid">
+        <div class="muted">
+          Importa un <b>Excel (.xlsx)</b> o <b>CSV</b> del cuadrante del mes. El panel lo guarda por <b>sector + mes</b> y lo carga solo al cambiar la fecha.
+        </div>
+
+        <div class="formRow">
+          <select id="rosterMonth" class="input" title="Mes del cuadrante"></select>
+          <button id="btnExportRosters" class="btn btn-outline" type="button">⬇️ Exportar (JSON)</button>
+          <label class="btn btn-outline" for="rosterImportFile" style="cursor:pointer;">📥 Importar Excel/CSV</label>
+          <input id="rosterImportFile" type="file" accept=".xlsx,.xls,.csv" hidden />
+        </div>
+
+        <div class="muted">
+          💡 Formato recomendado: una fila de cabecera con días 1..31, una columna con nombres, y en cada celda el turno (M/T/N/MT…).
+        </div>
+
+        <div class="formRow">
+          <label class="btn btn-outline" for="rosterPhoto" style="cursor:pointer;">🖼️ Adjuntar foto del cuadrante</label>
+          <input id="rosterPhoto" type="file" accept="image/*" capture="environment" hidden />
+          <button id="btnOpenRosterPhoto" class="btn" type="button">👁️ Ver foto</button>
+          <button id="btnDeleteRosterMonth" class="btn btn-danger" type="button">🗑️ Borrar mes</button>
+        </div>
+
+        <div id="rosterMonthsList" class="stackList"></div>
+      </div>
+    </div>
+  </div>
+
+
+  
+  <!-- Modal: Usuarios y contraseñas (solo coordinador) -->
+  <div id="modalUsers" class="modal hidden">
+    <div class="modalCard" style="max-width:980px;">
+      <div class="modalHead">
+        <h3>👥 Usuarios y contraseñas</h3>
+        <button id="btnCloseUsers" class="btn btn-small" type="button">Cerrar</button>
+      </div>
+
+      <div class="formGrid">
+        <div class="muted">
+          Aquí defines la contraseña del <b>Coordinador</b> y de cada <b>Técnico</b>. Se guarda en el navegador (localStorage).
+        </div>
+
+        <div class="monthCard">
+          <div>
+            <b>👑 Coordinador</b>
+            <div class="muted">Acceso total</div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <input id="coordPass" class="input" type="password" placeholder="Nueva contraseña" style="min-width:220px;" />
+            <button id="btnSaveCoordPass" class="btn btn-primary" type="button">Guardar</button>
+          </div>
+        </div>
+
+        <div class="muted">👷 Técnicos (contraseña por usuario)</div>
+        <div id="techUsersList" class="stackList"></div>
+
+        <div class="toolButtons">
+          <button id="btnExportBackup" class="btn btn-outline" type="button">⬇️ Backup completo</button>
+          <label class="btn btn-outline" for="backupImportFile" style="cursor:pointer;">📥 Restaurar backup</label>
+          <input id="backupImportFile" type="file" accept=".json" hidden />
+        </div>
+
+        <div class="muted">
+          ⚠️ Restaurar backup sobrescribe todo el panel.
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qr-scanner@1.4.2/qr-scanner.umd.min.js"></script>
+  <script src="app.js"></script>
+
+  <!-- ✅ Enhancements: contador KPI, toast, modales suaves, animación de entrada -->
+  <script>
+    // Toast sencillo
+    window.toast = function(msg, ms=1500){
+      const t = document.getElementById('toast');
+      if(!t) return;
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(t._timer);
+      t._timer = setTimeout(()=>t.classList.remove('show'), ms);
+    };
+
+    // Contador animado para KPIs
+    window.animateNumber = function(el, to, duration = 450){
+      if(!el) return;
+      const from = Number(String(el.textContent).replace(/[^\d.-]/g,'')) || 0;
+      const start = performance.now();
+      const step = (t) => {
+        const p = Math.min((t - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
+        const val = Math.round(from + (to - from) * eased);
+        el.textContent = String(val);
+        if(p < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    };
+
+    // Shimmer 1 vez en un KPI (útil cuando cambian valores)
+    window.kpiFlash = function(el){
+      if(!el) return;
+      el.classList.add('kpi-updating');
+      setTimeout(()=>el.classList.remove('kpi-updating'), 950);
+    };
+
+    // Modales: detectar hidden <-> abierto y activar backdrop + animación
+    (function(){
+      const backdrop = document.getElementById('modalBackdrop');
+      const modals = Array.from(document.querySelectorAll('.modal'));
+
+      const anyOpen = () => modals.some(m => !m.classList.contains('hidden'));
+      const sync = () => {
+        modals.forEach(m => {
+          const open = !m.classList.contains('hidden');
+          m.classList.toggle('open', open);
+        });
+        if(backdrop) backdrop.classList.toggle('open', anyOpen());
+      };
+
+      // Click en backdrop cierra el modal abierto (dispara clicks en botones "Cerrar" si existen)
+      if(backdrop){
+        backdrop.addEventListener('click', () => {
+          const m = modals.find(x => !x.classList.contains('hidden'));
+          if(!m) return;
+          const closeBtn = m.querySelector('button[id^="btnClose"]');
+          if(closeBtn) closeBtn.click();
+          else m.classList.add('hidden'); // fallback
+          toast('Cerrado');
+          sync();
+        });
+      }
+
+      // Observa cambios de class en modales
+      const obs = new MutationObserver(sync);
+      modals.forEach(m => obs.observe(m, { attributes:true, attributeFilter:['class'] }));
+      sync();
+    })();
+
+    // Animación de entrada a secciones principales
+    window.addEventListener('DOMContentLoaded', () => {
+      [
+        document.querySelector('.sectorRow'),
+        document.querySelector('.weekBoard'),
+        document.querySelector('.changeBoard'),
+        document.querySelector('.board'),
+      ].filter(Boolean).forEach((el, i) => {
+        el.classList.add('panel-animate-in');
+        el.style.animationDelay = (i * 60) + 'ms';
+      });
+    });
+  </script>
+
+</body>
+</html>
