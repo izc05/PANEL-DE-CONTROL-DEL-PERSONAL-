@@ -221,6 +221,25 @@ function computeGuardForWeek(roster, dateISO){
   return { week: wk, guard: candidates[0], status: "multi", candidates };
 }
 
+function findAssignedMobileGuard(daySector){
+  const mobileGuards = daySector.blocks.filter((b) => b.type === "Guardia móvil");
+  if(mobileGuards.length === 0) return null;
+  return mobileGuards[mobileGuards.length - 1].name || null;
+}
+
+function weekShiftSequence(roster, name, dateISO){
+  if(!roster || !rosterHasDate(roster, dateISO)) return "";
+  const mon = mondayOfWeek(dateISO);
+  const labels = ["L","M","X","J","V","S","D"];
+  const seq = Array.from({length: 7}).map((_, i) => {
+    const dayIso = addDays(mon, i);
+    if(!rosterHasDate(roster, dayIso)) return `${labels[i]}:-`;
+    const { d } = isoToYMD(dayIso);
+    return `${labels[i]}:${getTurnCode(roster, name, d) || "D"}`;
+  });
+  return seq.join(" · ");
+}
+
 // ---------- Tasks model ----------
 /*
 tasks[date][sector] = {
@@ -261,10 +280,13 @@ function renderSectorSummaries(state, dateISO){
     const roster = rosters[sector];
     const daySector = ensureDaySector(tasks, dateISO, sector);
     const incCount = daySector.tray.filter(t=>t.type==="Correctivo").length;
+    const assignedMobileGuard = findAssignedMobileGuard(daySector);
 
     // Guardia
     let guardLabel = "—";
-    if(rosterHasDate(roster, dateISO)){
+    if(assignedMobileGuard){
+      guardLabel = assignedMobileGuard;
+    } else if(rosterHasDate(roster, dateISO)){
       const g = computeGuardForWeek(roster, dateISO);
       if(g?.guard) guardLabel = g.guard;
       else if(g?.status==="multi") guardLabel = "⚠️ múltiple";
@@ -480,7 +502,8 @@ function renderTechGrid(state, dateISO, sector){
 
   const {d} = isoToYMD(dateISO);
   const guardInfo = computeGuardForWeek(roster, dateISO);
-  const guardName = guardInfo?.guard || null;
+  const assignedMobileGuard = findAssignedMobileGuard(daySector);
+  const guardName = assignedMobileGuard || guardInfo?.guard || null;
   const shiftPriority = ["M","T","N","D"];
   $("shiftFocus").textContent = "Orden visual por turnos: Mañana → Tarde → Noche → Descanso. Dentro de cada turno se ordena por la primera hora con tarea.";
 
@@ -514,6 +537,7 @@ function renderTechGrid(state, dateISO, sector){
     const isOff = (turno==="D");
     const isGuard = guardName && name === guardName;
     const phone = phones?.[sector]?.[name] || "";
+    const shiftSeq = weekShiftSequence(roster, name, dateISO);
 
     const load = computeLoadForTech(daySector, name);
     const pct = loadPercent(turno, load);
@@ -526,7 +550,7 @@ function renderTechGrid(state, dateISO, sector){
 
     const badges = `
       ${isGuard ? `<span class="badge guard">📱 GUARDIA MÓVIL</span>`:``}
-      ${phone ? `<span class="badge phone">☎ ${escapeHtml(phone)}</span>` : `<span class="badge phone mutedPhone">☎ Sin teléfono</span>`}
+      ${phone ? `<a class="badge phone callLink" href="tel:${escapeHtmlAttr(phone)}" title="Llamar a ${escapeHtmlAttr(name)}">📞 ${escapeHtml(phone)}</a>` : `<span class="badge phone mutedPhone">☎ Sin teléfono</span>`}
       <span class="badge ${isOff ? "off":""}">${turno} · ${SHIFT[turno]?.label || turno}</span>
       ${code && !["M","T","N","D"].includes(code) ? `<span class="badge">${escapeHtml(code)}</span>` : ``}
     `;
@@ -540,6 +564,7 @@ function renderTechGrid(state, dateISO, sector){
           <div>
             <div class="techName">${escapeHtml(name)}</div>
             <div class="techSub">${sector}</div>
+            <div class="weekSeq">${escapeHtml(shiftSeq)}</div>
           </div>
           <div class="badges">${badges}</div>
         </div>
@@ -1012,10 +1037,13 @@ function renderGuardPhonesModal(){
     const names = roster?.names || [];
     const rows = names.map((name) => {
       const val = state.phones?.[sector]?.[name] || "";
+      const callDisabled = val ? "" : " disabled";
+      const callHref = val ? `tel:${escapeHtmlAttr(val)}` : "#";
       return `
         <div class="phoneRow">
           <div class="phoneName">${escapeHtml(name)}</div>
           <input class="input phoneInput" data-sector="${escapeHtmlAttr(sector)}" data-name="${escapeHtmlAttr(name)}" value="${escapeHtmlAttr(val)}" placeholder="Ej: 600123123" />
+          <a class="btn btn-small phoneCallBtn${callDisabled}" href="${callHref}" ${callDisabled ? "tabindex=\"-1\" aria-disabled=\"true\"" : ""}>📞 Llamar</a>
         </div>
       `;
     }).join("") || `<div class="muted">Sin cuadrante cargado para ${sector}.</div>`;
@@ -1029,6 +1057,26 @@ function renderGuardPhonesModal(){
   }).join("");
 
   $("guardPhonesContent").innerHTML = html;
+
+  for(const input of document.querySelectorAll(".phoneInput")){
+    input.addEventListener("input", (e) => {
+      const value = e.currentTarget.value.trim();
+      const row = e.currentTarget.closest(".phoneRow");
+      const callBtn = row?.querySelector(".phoneCallBtn");
+      if(!callBtn) return;
+      if(value){
+        callBtn.classList.remove("disabled");
+        callBtn.removeAttribute("aria-disabled");
+        callBtn.removeAttribute("tabindex");
+        callBtn.setAttribute("href", `tel:${value}`);
+      }else{
+        callBtn.classList.add("disabled");
+        callBtn.setAttribute("aria-disabled", "true");
+        callBtn.setAttribute("tabindex", "-1");
+        callBtn.setAttribute("href", "#");
+      }
+    });
+  }
 }
 
 function savePhones(){

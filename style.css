@@ -105,7 +105,7 @@ body{
 .mday.none{background: rgba(58,160,255,.1); color:var(--muted)}
 
 .weeklyCalendars{display:grid;grid-template-columns:1fr;gap:10px}
-.weekSector{border:1px solid rgba(58,160,255,.24); background: rgba(11,18,32,.45); border-radius:14px; padding:10px}
+.weekSector{border:1px solid rgba(58,160,255,.36); background: rgba(11,18,32,.6); border-radius:14px; padding:10px}
 .weekSectorTitle{font-weight:800;margin-bottom:8px;color:#dbe8ff}
 .calTable{display:flex;flex-direction:column;gap:6px;overflow:auto}
 .calHeader,.calRow{display:grid;grid-template-columns:minmax(190px, 1.8fr) repeat(7, minmax(70px, 1fr));gap:6px;align-items:center}
@@ -119,7 +119,7 @@ body{
 .calCell.shift-N{background: rgba(185,79,255,.34)}
 .calCell.shift-D{background: rgba(127,138,166,.28)}
 .calCell.out{color:var(--muted);background:rgba(58,160,255,.08)}
-.todayCol{border-color:rgba(255,166,0,.7)!important;box-shadow:0 0 0 1px rgba(255,166,0,.35) inset}
+.todayCol{border-color:rgba(255,166,0,.95)!important;box-shadow:0 0 0 2px rgba(255,166,0,.48) inset,0 0 14px rgba(255,166,0,.28)}
 
 .sectorRow{
   display:grid;
@@ -133,7 +133,7 @@ body{
   padding:14px;
   box-shadow: var(--shadow);
 }
-.sectorCard.active{outline:2px solid rgba(58,160,255,.35)}
+.sectorCard.active{outline:3px solid rgba(58,160,255,.9);box-shadow:0 0 0 2px rgba(58,160,255,.45) inset,0 0 28px rgba(58,160,255,.35),var(--shadow);background:linear-gradient(180deg, rgba(58,160,255,.22), rgba(18,28,51,.95));}
 .sectorName{font-weight:900;font-size:16px;margin-bottom:8px}
 .sectorMeta{display:grid;grid-template-columns:1fr 1fr; gap:6px 12px; color:var(--muted); font-size:13px}
 .sectorMeta .k{opacity:.9}
@@ -145,7 +145,7 @@ body{
 
 .board{display:grid;grid-template-columns: 320px 1fr; gap:12px}
 .tray{
-  background: rgba(18,28,51,.92);
+  background: rgba(18,28,51,.96);
   border:1px solid var(--line);
   border-radius: var(--r);
   padding:12px;
@@ -212,7 +212,7 @@ body{
 .sq.guard{background:rgba(58,160,255,.9)}
 
 .techArea{
-  background: rgba(18,28,51,.92);
+  background: rgba(18,28,51,.96);
   border:1px solid var(--line);
   border-radius: var(--r);
   padding:12px;
@@ -266,6 +266,27 @@ body{
 .badge.guard{background: rgba(255,123,0,.2); color: #ffe3c2; border-color: rgba(255,123,0,.55); font-weight:900}
 .badge.phone{background: rgba(90,148,255,.18); color:#d7e7ff; border-color:rgba(90,148,255,.5)}
 .mutedPhone{opacity:.75}
+
+.weekSeq{
+  margin-top:4px;
+  font-size:11px;
+  color:#c8dbff;
+  opacity:.95;
+}
+
+.callLink{
+  text-decoration:none;
+  font-weight:800;
+}
+.callLink:hover{filter:brightness(1.12)}
+
+.phoneCallBtn{
+  text-decoration:none;
+}
+.phoneCallBtn.disabled{
+  pointer-events:none;
+  opacity:.45;
+}
 
 .loadRow{display:flex;justify-content:space-between;align-items:center;color:var(--muted); font-size:12px;margin:6px 0 10px}
 .bar{
@@ -375,7 +396,7 @@ body{
 .phoneSector{border:1px solid var(--line);border-radius:14px;padding:10px;background:rgba(15,23,48,.5)}
 .phoneSector h4{margin:0 0 8px 0}
 .phoneRows{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow:auto;padding-right:4px}
-.phoneRow{display:grid;grid-template-columns:1.2fr 1fr;gap:8px;align-items:center}
+.phoneRow{display:grid;grid-template-columns:1.2fr 1fr auto;gap:8px;align-items:center}
 .phoneName{font-size:12px;color:#d5e6ff}
 
 @media (max-width: 980px){
