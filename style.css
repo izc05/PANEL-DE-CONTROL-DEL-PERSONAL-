@@ -405,3 +405,33 @@ body{
   .monthHeatmap{grid-template-columns:1fr}
   .phoneTableWrap{grid-template-columns:1fr}
 }
+
+
+.mobileRow .calTech{font-weight:800;color:#ffe7bf;background:rgba(58,160,255,.18)}
+.mobileCell{padding:6px 4px;text-align:left;line-height:1.2}
+.mShift{font-size:11px;opacity:.8}
+.mShift.active{opacity:1;font-weight:800;color:#ffd34d}
+
+.changeBoard{
+  background: rgba(9,14,26,.92);
+  border:1px solid var(--line);
+  border-radius: var(--r);
+  padding:12px;
+  box-shadow: var(--shadow);
+}
+.changeTableWrap{overflow:auto}
+.changeTable{width:100%;border-collapse:collapse;font-size:12px}
+.changeTable th,.changeTable td{border:1px solid rgba(255,255,255,.1);padding:8px 6px;text-align:left}
+.changeTable th{background:rgba(15,23,48,.9);color:#cfe2ff}
+
+.weekSeq{display:flex;gap:6px;flex-wrap:wrap}
+.seqTag{font-size:10px;padding:3px 6px;border-radius:999px;border:1px solid var(--line);background:rgba(18,28,51,.5)}
+.seqTag.M{background:rgba(29,215,95,.2)}
+.seqTag.T{background:rgba(255,211,77,.18)}
+.seqTag.N{background:rgba(185,79,255,.22)}
+.seqTag.D{background:rgba(127,138,166,.2)}
+
+.overflowWrap{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.overflowItem{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:6px 8px;background:rgba(15,23,48,.55);font-size:12px}
+.overflowItem small{color:var(--muted)}
+.overflowRemove{width:18px;height:18px;border-radius:999px;border:1px solid rgba(255,255,255,.35);background:rgba(11,18,32,.75);color:#fff;cursor:pointer}
