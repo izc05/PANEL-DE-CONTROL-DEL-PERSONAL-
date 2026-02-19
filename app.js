@@ -333,19 +333,22 @@ function renderMonthHeatmap(state, dateISO){
   $("monthHeatmap").innerHTML = sectorHtml;
 }
 
-function renderWeeklyCalendars(state, dateISO){
+function renderWeeklyCalendars(state, dateISO, selectedSector){
   const { rosters } = state;
   const monday = mondayOfWeek(dateISO);
   const days = Array.from({length:7}).map((_,i)=> addDays(monday, i));
+  const today = todayISO();
 
   const dayHeader = days.map((day) => {
     const dt = new Date(day+"T00:00:00");
     const name = dt.toLocaleDateString("es-ES", { weekday:"short" });
     const n = String(dt.getDate()).padStart(2, "0");
-    return `<div class="calHeadCell">${escapeHtml(name)} ${n}</div>`;
+    const todayClass = day === today ? "todayCol" : "";
+    return `<div class="calHeadCell ${todayClass}">${escapeHtml(name)} ${n}</div>`;
   }).join("");
 
-  const sectorHtml = ["Electricidad","Fontanería"].map((sector) => {
+  const sectors = [selectedSector || "Fontanería"];
+  const sectorHtml = sectors.map((sector) => {
     const roster = rosters[sector];
     if(!roster){
       return `<div class="weekSector"><div class="weekSectorTitle">${sector}</div><div class="muted">Sin cuadrante cargado.</div></div>`;
@@ -353,13 +356,14 @@ function renderWeeklyCalendars(state, dateISO){
 
     const rows = roster.names.map((name) => {
       const cells = days.map((day) => {
+        const todayClass = day === today ? "todayCol" : "";
         if(!rosterHasDate(roster, day)){
-          return `<div class="calCell out">—</div>`;
+          return `<div class="calCell out ${todayClass}">—</div>`;
         }
         const {d} = isoToYMD(day);
         const code = getTurnCode(roster, name, d) || "D";
         const shift = primaryShift(code);
-        return `<div class="calCell shift-${shift}" title="${escapeHtml(day)}">${escapeHtml(code)}</div>`;
+        return `<button class="calCell shift-${shift} ${todayClass}" title="${escapeHtml(day)}" data-sector="${escapeHtmlAttr(sector)}" data-name="${escapeHtmlAttr(name)}" data-date="${escapeHtmlAttr(day)}" data-day="${d}" data-code="${escapeHtmlAttr(code)}">${escapeHtml(code)}</button>`;
       }).join("");
       return `<div class="calRow"><div class="calTech">${escapeHtml(name)}</div>${cells}</div>`;
     }).join("");
@@ -376,6 +380,43 @@ function renderWeeklyCalendars(state, dateISO){
   }).join("");
 
   $("weeklyCalendars").innerHTML = sectorHtml;
+
+  for(const cell of document.querySelectorAll(".calCell[data-day]")){
+    cell.addEventListener("click", onWeeklyCellEdit);
+  }
+}
+
+function onWeeklyCellEdit(e){
+  const cell = e.currentTarget;
+  const currentCode = (cell.dataset.code || "D").toUpperCase();
+  const message = `Turno actual: ${currentCode}.\nEscribe nuevo turno (M/T/N/D):`;
+  const next = prompt(message, currentCode);
+  if(next === null) return;
+
+  const nextCode = next.trim().toUpperCase();
+  if(!["M","T","N","D"].includes(nextCode)){
+    alert("Solo se permite M, T, N o D.");
+    return;
+  }
+  if(nextCode === currentCode) return;
+
+  if(!confirm(`¿Cambiar turno de ${cell.dataset.name} en ${cell.dataset.date} de ${currentCode} a ${nextCode}?`)) return;
+
+  updateRosterShift(cell.dataset.sector, cell.dataset.name, Number(cell.dataset.day), nextCode);
+}
+
+function updateRosterShift(sector, techName, day, nextCode){
+  const state = getState();
+  const roster = state.rosters[sector];
+  if(!roster) return;
+  const techIndex = roster.names.indexOf(techName);
+  if(techIndex < 0) return;
+  if(day < 1 || day > roster.days) return;
+
+  roster.matrix[techIndex][day - 1] = nextCode;
+  state.rosters[sector] = roster;
+  setRosters(state.rosters);
+  rerenderAll();
 }
 
 function renderTray(state, dateISO, sector){
@@ -887,8 +928,7 @@ function rerenderAll(){
 
   setActiveSectorCard(sector);
   renderSectorSummaries(state, dateISO);
-  renderMonthHeatmap(state, dateISO);
-  renderWeeklyCalendars(state, dateISO);
+  renderWeeklyCalendars(state, dateISO, sector);
   renderTray(state, dateISO, sector);
   renderTechGrid(state, dateISO, sector);
 }
