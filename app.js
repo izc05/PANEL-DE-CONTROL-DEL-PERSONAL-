@@ -42,6 +42,10 @@ function todayISO(){
   return new Date(Date.now() - tz).toISOString().slice(0,10);
 }
 
+function tomorrowISO(){
+  return addDays(todayISO(), 1);
+}
+
 function parseCSV(text){
   // CSV simple: separador coma, sin comillas complejas
   const lines = text.trim().split(/\r?\n/).filter(Boolean);
@@ -120,6 +124,23 @@ function primaryShift(code){
   if(c.includes("D")) return "D";
   // especiales: EF1, OT, etc -> consideramos D visual (sin timeline), pero lo mostramos en badge
   return "D";
+}
+
+function currentShiftByHour(hour = new Date().getHours()){
+  if(hour >= 8 && hour <= 14) return "M";
+  if(hour >= 15 && hour <= 21) return "T";
+  return "N";
+}
+
+function shiftPriorityForDate(dateISO){
+  const now = todayISO();
+  const active = (dateISO === now) ? currentShiftByHour() : "M";
+  const orderMap = {
+    M: ["M","T","N","D"],
+    T: ["T","N","M","D"],
+    N: ["N","M","T","D"],
+  };
+  return { active, order: orderMap[active] || ["M","T","N","D"] };
 }
 
 function uid(){
@@ -322,13 +343,26 @@ function renderTechGrid(state, dateISO, sector){
   const {d} = isoToYMD(dateISO);
   const guardInfo = computeGuardForWeek(roster, dateISO);
   const guardName = guardInfo?.guard || null;
+  const shiftFocus = shiftPriorityForDate(dateISO);
+
+  const shiftLabel = SHIFT[shiftFocus.active]?.label || shiftFocus.active;
+  $("shiftFocus").textContent = `Vista priorizada por turno ${shiftLabel}. El orden evoluciona con la hora del día para la fecha actual.`;
 
   const blocksByTech = new Map();
   for(const b of daySector.blocks){
     blocksByTech.set(b.name, (blocksByTech.get(b.name)||[]).concat([b]));
   }
 
-  const techCards = roster.names.map(name => {
+  const orderedNames = [...roster.names].sort((a,b) => {
+    const aShift = primaryShift(getTurnCode(roster, a, d));
+    const bShift = primaryShift(getTurnCode(roster, b, d));
+    const aRank = shiftFocus.order.indexOf(aShift);
+    const bRank = shiftFocus.order.indexOf(bShift);
+    if(aRank !== bRank) return aRank - bRank;
+    return a.localeCompare(b, "es");
+  });
+
+  const techCards = orderedNames.map(name => {
     const code = getTurnCode(roster, name, d);
     const turno = primaryShift(code);
     const isOff = (turno==="D");
@@ -344,7 +378,7 @@ function renderTechGrid(state, dateISO, sector){
     const barHtml = `<div class="bar"><div style="width:${pct}%;background:${barColor}"></div></div>`;
 
     const badges = `
-      ${isGuard ? `<span class="badge guard">GUARDIA</span>`:``}
+      ${isGuard ? `<span class="badge guard">📱 GUARDIA MÓVIL</span>`:``}
       <span class="badge ${isOff ? "off":""}">${turno} · ${SHIFT[turno]?.label || turno}</span>
       ${code && !["M","T","N","D"].includes(code) ? `<span class="badge">${escapeHtml(code)}</span>` : ``}
     `;
@@ -772,7 +806,7 @@ function createQuickCard(){
 
 // ---------- Bootstrap ----------
 function bootstrap(){
-  $("datePicker").value = todayISO();
+  $("datePicker").value = tomorrowISO();
 
   // Activar por defecto Fontanería y cargar roster default si no hay
   const state = getState();
