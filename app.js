@@ -17,6 +17,11 @@ const LS = {
   CUSTOM_TYPES: "panel_custom_types_v1",
 };
 
+const UI_V5_KEY = "panel_ui_v5";
+function loadUIv5(){ try{return JSON.parse(localStorage.getItem(UI_V5_KEY)||"{}");}catch{return {};} }
+function saveUIv5(v){ localStorage.setItem(UI_V5_KEY, JSON.stringify(v||{})); }
+const UIv5 = loadUIv5();
+
 // ---------- Global mutable state ----------
 function loadFullState(){
   return {
@@ -2729,11 +2734,6 @@ document.addEventListener("click", (e)=>{
 
 
 // ===== UI_FILTERS_V5 =====
-const UI_V5_KEY = "panel_ui_v5";
-function loadUIv5(){ try{return JSON.parse(localStorage.getItem(UI_V5_KEY)||"{}");}catch{return {};} }
-function saveUIv5(v){ localStorage.setItem(UI_V5_KEY, JSON.stringify(v||{})); }
-const UIv5 = loadUIv5();
-
 
 function toggleFlag(key){
   UIv5[key] = !UIv5[key];
