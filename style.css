@@ -442,3 +442,10 @@ body{
 .stackList{display:flex;flex-direction:column;gap:10px;margin-top:12px}
 .stackItem{border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px;background:rgba(15,23,48,.65)}
 .stackActions{margin-top:8px;display:flex;gap:8px}
+
+.hiddenInput{display:none}
+.mediaTools{grid-column:1/-1;border:1px dashed rgba(90,148,255,.45);border-radius:12px;padding:10px;background:rgba(58,160,255,.08)}
+.toolButtons{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.photoPreview{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.photoPreview img,.miniPhotos img{width:54px;height:54px;object-fit:cover;border-radius:8px;border:1px solid rgba(255,255,255,.2)}
+.miniPhotos{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}

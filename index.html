@@ -153,6 +153,16 @@
           </select>
           <input id="incOwner" class="input" placeholder="Responsable revisión" />
           <textarea id="incNotes" class="textarea" rows="3" placeholder="Detalle"></textarea>
+          <div class="mediaTools">
+            <input id="incPhotoInput" type="file" accept="image/*" capture="environment" multiple class="hiddenInput" />
+            <div class="toolButtons">
+              <button id="btnIncPhoto" class="btn btn-small" type="button">📷 Añadir foto</button>
+              <button id="btnIncScanQR" class="btn btn-small" type="button">📍 Escanear QR ubicación</button>
+            </div>
+            <div id="incPhotoCount" class="muted">Sin fotos adjuntas</div>
+            <div id="incPhotoPreview" class="photoPreview"></div>
+            <div id="incQrStatus" class="muted"></div>
+          </div>
           <button id="btnCreateIncident" class="btn btn-primary">Crear incidencia</button>
         </div>
         <div id="incidentList" class="stackList"></div>
@@ -168,6 +178,16 @@
           <input id="otReportedBy" class="input" placeholder="Reportado por" />
           <textarea id="otData" class="textarea" rows="2" placeholder="Datos técnicos iniciales"></textarea>
           <textarea id="otPhotos" class="textarea" rows="2" placeholder="Fotos (URLs separadas por coma)"></textarea>
+          <div class="mediaTools">
+            <input id="otPhotoInput" type="file" accept="image/*" capture="environment" multiple class="hiddenInput" />
+            <div class="toolButtons">
+              <button id="btnOtPhoto" class="btn btn-small" type="button">📷 Añadir foto</button>
+              <button id="btnOtScanQR" class="btn btn-small" type="button">📍 Escanear QR ubicación</button>
+            </div>
+            <div id="otPhotoCount" class="muted">Sin fotos adjuntas</div>
+            <div id="otPhotoPreview" class="photoPreview"></div>
+            <div id="otQrStatus" class="muted"></div>
+          </div>
           <button id="btnCreateOT" class="btn btn-primary">Crear OT</button>
         </div>
         <div id="otList" class="stackList"></div>
@@ -208,6 +228,7 @@
           <option value="Correctivo">Correctivo</option>
           <option value="Preventivo" selected>Preventivo</option>
           <option value="Guardia móvil">Guardia móvil</option>
+          <option value="__new">+ Crear nuevo tipo...</option>
         </select>
       </div>
 
