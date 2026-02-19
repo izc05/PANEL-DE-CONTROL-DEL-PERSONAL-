@@ -205,7 +205,11 @@ body{
   border-radius: var(--r);
   padding:12px;
 }
+.techCard.shift-M{border-color: rgba(29,215,95,.45); background: linear-gradient(180deg, rgba(29,215,95,.12), rgba(15,23,48,.92));}
+.techCard.shift-T{border-color: rgba(255,211,77,.45); background: linear-gradient(180deg, rgba(255,211,77,.1), rgba(15,23,48,.92));}
+.techCard.shift-N{border-color: rgba(185,79,255,.45); background: linear-gradient(180deg, rgba(185,79,255,.12), rgba(15,23,48,.92));}
 .techCard.guard{outline:2px solid rgba(255,123,0,.45); box-shadow: 0 0 0 1px rgba(255,123,0,.2) inset}
+.techCard.phone-owner{box-shadow: 0 0 0 2px rgba(255,140,66,.35), 0 0 30px rgba(255,140,66,.18)}
 .techHead{
   display:flex;justify-content:space-between;align-items:flex-start;gap:10px;
   margin-bottom:10px;
@@ -263,11 +267,31 @@ body{
   font-size:12px;
   cursor:grab;
   user-select:none;
+  position:relative;
+  padding-right:22px;
 }
 .block:active{cursor:grabbing}
 .block.prev{background: rgba(255,211,77,.25); border-color: rgba(255,211,77,.35)}
 .block.corr{background: rgba(255,77,77,.22); border-color: rgba(255,77,77,.35)}
 .block .mini{font-weight:700;color:rgba(234,241,255,.9)}
+.blockRemove{
+  position:absolute;
+  right:5px;
+  top:5px;
+  width:16px;
+  height:16px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.35);
+  background: rgba(11,18,32,.75);
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  line-height:1;
+  cursor:pointer;
+}
+.blockRemove:hover{background: rgba(255,77,77,.8)}
 .muted{color:var(--muted)}
 
 .modal{

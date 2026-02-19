@@ -377,10 +377,8 @@ function renderTechGrid(state, dateISO, sector){
   const {d} = isoToYMD(dateISO);
   const guardInfo = computeGuardForWeek(roster, dateISO);
   const guardName = guardInfo?.guard || null;
-  const shiftFocus = shiftPriorityForDate(dateISO);
-
-  const shiftLabel = SHIFT[shiftFocus.active]?.label || shiftFocus.active;
-  $("shiftFocus").textContent = `Vista priorizada por turno ${shiftLabel}. El orden evoluciona con la hora del día para la fecha actual.`;
+  const shiftPriority = ["M","T","N","D"];
+  $("shiftFocus").textContent = "Orden visual por turnos: Mañana → Tarde → Noche → Descanso. Dentro de cada turno se ordena por la primera hora con tarea.";
 
   const blocksByTech = new Map();
   for(const b of daySector.blocks){
@@ -390,9 +388,14 @@ function renderTechGrid(state, dateISO, sector){
   const orderedNames = [...roster.names].sort((a,b) => {
     const aShift = primaryShift(getTurnCode(roster, a, d));
     const bShift = primaryShift(getTurnCode(roster, b, d));
-    const aRank = shiftFocus.order.indexOf(aShift);
-    const bRank = shiftFocus.order.indexOf(bShift);
+    const aRank = shiftPriority.indexOf(aShift);
+    const bRank = shiftPriority.indexOf(bShift);
     if(aRank !== bRank) return aRank - bRank;
+
+    const aFirstHour = firstAssignedHour(daySector, a, aShift);
+    const bFirstHour = firstAssignedHour(daySector, b, bShift);
+    if(aFirstHour !== bFirstHour) return aFirstHour - bFirstHour;
+
     return a.localeCompare(b, "es");
   });
 
@@ -421,7 +424,7 @@ function renderTechGrid(state, dateISO, sector){
     const slotHtml = buildTimelineSlots(daySector, name, turno);
 
     return `
-      <div class="techCard ${isGuard ? "guard":""}">
+      <div class="techCard shift-${turno} ${isGuard ? "guard phone-owner":""}">
         <div class="techHead">
           <div>
             <div class="techName">${escapeHtml(name)}</div>
@@ -455,6 +458,12 @@ function renderTechGrid(state, dateISO, sector){
     block.addEventListener("dragstart", onDragStartBlock);
     block.addEventListener("dblclick", () => markBlockDone(state, dateISO, sector, block.dataset.blockid));
   }
+  for(const removeBtn of document.querySelectorAll(".blockRemove")){
+    removeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      removeBlockFromTech(state, dateISO, sector, removeBtn.dataset.blockid);
+    });
+  }
 
   // Persist tasks
   setTasks(tasks);
@@ -473,7 +482,7 @@ function buildTimelineSlots(daySector, name, turno){
     const block = blocks.find(b => occupiesHour(b, h, turno));
     if(block && block.startHour === h){
       const cls = block.type==="Correctivo" ? "corr" : "prev";
-      return `<div class="block ${cls}" draggable="true" data-blockid="${block.id}" title="${escapeHtml(block.title)}">${shortTitle(block.title)}</div>`;
+      return `<div class="block ${cls}" draggable="true" data-blockid="${block.id}" title="${escapeHtml(block.title)}">${shortTitle(block.title)}<button class="blockRemove" data-blockid="${block.id}" title="Quitar tarea">×</button></div>`;
     }
     if(block){
       // hour inside a block but not start => render as filled placeholder
@@ -495,6 +504,16 @@ function buildTimelineSlots(daySector, name, turno){
     <div class="timeRow nightA">${rowA}</div>
     <div class="timeRow nightB">${rowB}</div>
   `;
+}
+
+function firstAssignedHour(daySector, techName, turno){
+  const hours = timelineHours(turno);
+  const starts = daySector.blocks
+    .filter(b => b.name===techName)
+    .map(b => hours.indexOf(b.startHour))
+    .filter(x => x >= 0)
+    .sort((a,b)=>a-b);
+  return starts.length ? starts[0] : Number.POSITIVE_INFINITY;
 }
 
 function occupiesHour(block, hour, turno){
@@ -656,6 +675,22 @@ function markBlockDone(state, dateISO, sector, blockId){
     id: uid(),
     type: b.type,
     title: `${b.type === "Guardia móvil" ? "📱" : "✅"} ` + b.title,
+    dur: b.dur
+  });
+  setTasks(state.tasks);
+  rerenderAll();
+}
+
+function removeBlockFromTech(state, dateISO, sector, blockId){
+  const daySector = ensureDaySector(state.tasks, dateISO, sector);
+  const b = daySector.blocks.find(x => x.id===blockId);
+  if(!b) return;
+
+  daySector.blocks = daySector.blocks.filter(x => x.id !== blockId);
+  daySector.tray.push({
+    id: uid(),
+    type: b.type,
+    title: b.title,
     dur: b.dur
   });
   setTasks(state.tasks);
