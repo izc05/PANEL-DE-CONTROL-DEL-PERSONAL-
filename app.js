@@ -11,6 +11,7 @@ const LS = {
   ROSTERS: "panel_rosters_v1",   // { sector: { year, month, days, names, matrix } }
   TASKS:   "panel_tasks_v1",     // { dateKey: { sector: { tray:[], blocks:[] } } }
   PHONES:  "panel_phones_v1",    // { sector: { techName: phone } }
+  CHANGES: "panel_shift_changes_v1", // [{...registro de cambios...}]
 };
 
 const SHIFT = {
@@ -63,6 +64,7 @@ function getState(){
     rosters: JSON.parse(localStorage.getItem(LS.ROSTERS) || "{}"),
     tasks: JSON.parse(localStorage.getItem(LS.TASKS) || "{}"),
     phones: JSON.parse(localStorage.getItem(LS.PHONES) || "{}"),
+    changes: JSON.parse(localStorage.getItem(LS.CHANGES) || "[]"),
   };
 }
 
@@ -76,6 +78,10 @@ function setTasks(tasks){
 
 function setPhones(phones){
   localStorage.setItem(LS.PHONES, JSON.stringify(phones));
+}
+
+function setChanges(changes){
+  localStorage.setItem(LS.CHANGES, JSON.stringify(changes));
 }
 
 function dateKey(dateISO){
@@ -123,6 +129,10 @@ function normalizeSector(s){ return s; }
 function codeHasMorning(code){
   // M, M/T, M/N, etc. cuenta como mañana para guardia
   return (code || "").includes("M");
+}
+
+function codeHasShift(code, shift){
+  return String(code || "").toUpperCase().includes(shift);
 }
 
 function primaryShift(code){
@@ -227,6 +237,34 @@ function findAssignedMobileGuard(daySector){
   return mobileGuards[mobileGuards.length - 1].name || null;
 }
 
+function findMobileGuardByShift(roster, dateISO, shift){
+  if(!rosterHasDate(roster, dateISO)) return null;
+  const { d } = isoToYMD(dateISO);
+  for(const name of roster.names){
+    const code = getTurnCode(roster, name, d);
+    if(codeHasShift(code, shift)) return name;
+  }
+  return null;
+}
+
+function findAutoMobileGuard(roster, dateISO, hour = new Date().getHours()){
+  const shift = currentShiftByHour(hour);
+  return { shift, name: findMobileGuardByShift(roster, dateISO, shift) };
+}
+
+function buildWeekSequenceBadges(roster, name, dateISO){
+  if(!roster || !rosterHasDate(roster, dateISO)) return "";
+  const mon = mondayOfWeek(dateISO);
+  const labels = ["L","M","X","J","V","S","D"];
+  return Array.from({length: 7}).map((_, i) => {
+    const dayIso = addDays(mon, i);
+    if(!rosterHasDate(roster, dayIso)) return `<span class="seqTag D">${labels[i]}:-</span>`;
+    const { d } = isoToYMD(dayIso);
+    const code = getTurnCode(roster, name, d) || "D";
+    return `<span class="seqTag ${primaryShift(code)}">${labels[i]}:${escapeHtml(code)}</span>`;
+  }).join("");
+}
+
 function weekShiftSequence(roster, name, dateISO){
   if(!roster || !rosterHasDate(roster, dateISO)) return "";
   const mon = mondayOfWeek(dateISO);
@@ -250,13 +288,15 @@ tasks[date][sector] = {
 function ensureDaySector(tasks, dateISO, sector){
   const dk = dateKey(dateISO);
   tasks[dk] ||= {};
-  tasks[dk][sector] ||= { tray: [], blocks: [] };
+  tasks[dk][sector] ||= { tray: [], blocks: [], overflow: [] };
+  tasks[dk][sector].overflow ||= [];
   return tasks[dk][sector];
 }
 
 function computeLoadForTech(daySector, name){
   const blocks = daySector.blocks.filter(b => b.name === name);
-  const hours = blocks.reduce((acc,b)=>acc + Number(b.dur||0),0);
+  const overflow = (daySector.overflow || []).filter((b) => b.name === name);
+  const hours = blocks.reduce((acc,b)=>acc + Number(b.dur||0),0) + overflow.reduce((acc,b)=>acc + Number(b.dur||0),0);
   return hours;
 }
 
@@ -287,10 +327,14 @@ function renderSectorSummaries(state, dateISO){
     if(assignedMobileGuard){
       guardLabel = assignedMobileGuard;
     } else if(rosterHasDate(roster, dateISO)){
-      const g = computeGuardForWeek(roster, dateISO);
-      if(g?.guard) guardLabel = g.guard;
-      else if(g?.status==="multi") guardLabel = "⚠️ múltiple";
-      else guardLabel = "—";
+      const autoGuard = findAutoMobileGuard(roster, dateISO);
+      if(autoGuard.name) guardLabel = `${autoGuard.name} (${autoGuard.shift})`;
+      else {
+        const g = computeGuardForWeek(roster, dateISO);
+        if(g?.guard) guardLabel = g.guard;
+        else if(g?.status==="multi") guardLabel = "⚠️ múltiple";
+        else guardLabel = "—";
+      }
     }
 
     // Disponibles: en turno (no D) y carga < cap
@@ -382,6 +426,20 @@ function renderWeeklyCalendars(state, dateISO, selectedSector){
       return `<div class="weekSector"><div class="weekSectorTitle">${sector}</div><div class="muted">Sin cuadrante cargado.</div></div>`;
     }
 
+    const guardRow = days.map((day) => {
+      const todayClass = day === today ? "todayCol" : "";
+      if(!rosterHasDate(roster, day)) return `<div class="calCell out ${todayClass}">—</div>`;
+      const autoM = findMobileGuardByShift(roster, day, "M") || "—";
+      const autoT = findMobileGuardByShift(roster, day, "T") || "—";
+      const autoN = findMobileGuardByShift(roster, day, "N") || "—";
+      const activeShift = day === today ? currentShiftByHour() : "M";
+      return `<div class="calCell mobileCell ${todayClass}">
+        <div class="mShift ${activeShift === "M" ? "active" : ""}">M: ${escapeHtml(shortTitle(autoM))}</div>
+        <div class="mShift ${activeShift === "T" ? "active" : ""}">T: ${escapeHtml(shortTitle(autoT))}</div>
+        <div class="mShift ${activeShift === "N" ? "active" : ""}">N: ${escapeHtml(shortTitle(autoN))}</div>
+      </div>`;
+    }).join("");
+
     const rows = roster.names.map((name) => {
       const cells = days.map((day) => {
         const todayClass = day === today ? "todayCol" : "";
@@ -401,6 +459,7 @@ function renderWeeklyCalendars(state, dateISO, selectedSector){
         <div class="weekSectorTitle">${sector}</div>
         <div class="calTable">
           <div class="calHeader"><div class="calTechHead">Técnico</div>${dayHeader}</div>
+          <div class="calRow mobileRow"><div class="calTech">📱 Guardia móvil (automática por hora)</div>${guardRow}</div>
           <div class="calBody">${rows}</div>
         </div>
       </div>
@@ -537,7 +596,7 @@ function renderTechGrid(state, dateISO, sector){
     const isOff = (turno==="D");
     const isGuard = guardName && name === guardName;
     const phone = phones?.[sector]?.[name] || "";
-    const shiftSeq = weekShiftSequence(roster, name, dateISO);
+    const shiftSeq = buildWeekSequenceBadges(roster, name, dateISO);
 
     const load = computeLoadForTech(daySector, name);
     const pct = loadPercent(turno, load);
@@ -564,7 +623,7 @@ function renderTechGrid(state, dateISO, sector){
           <div>
             <div class="techName">${escapeHtml(name)}</div>
             <div class="techSub">${sector}</div>
-            <div class="weekSeq">${escapeHtml(shiftSeq)}</div>
+            <div class="weekSeq">${shiftSeq}</div>
           </div>
           <div class="badges">${badges}</div>
         </div>
@@ -578,6 +637,8 @@ function renderTechGrid(state, dateISO, sector){
         <div class="timeline">
           ${slotHtml}
         </div>
+        <button class="btn btn-small btn-outline addExtraTask" data-tech="${escapeHtmlAttr(name)}">+ Añadir tarea extra</button>
+        <div class="overflowWrap">${renderOverflowTasks(daySector, name)}</div>
       </div>
     `;
   });
@@ -599,6 +660,12 @@ function renderTechGrid(state, dateISO, sector){
       e.stopPropagation();
       removeBlockFromTech(state, dateISO, sector, removeBtn.dataset.blockid);
     });
+  }
+  for(const addBtn of document.querySelectorAll(".addExtraTask")){
+    addBtn.addEventListener("click", () => createOverflowTask(addBtn.dataset.tech));
+  }
+  for(const removeBtn of document.querySelectorAll(".overflowRemove")){
+    removeBtn.addEventListener("click", () => removeOverflowTask(dateISO, sector, removeBtn.dataset.overflowid));
   }
 
   // Persist tasks
@@ -640,6 +707,49 @@ function buildTimelineSlots(daySector, name, turno){
     <div class="timeRow nightA">${rowA}</div>
     <div class="timeRow nightB">${rowB}</div>
   `;
+}
+
+function renderOverflowTasks(daySector, name){
+  const extra = (daySector.overflow || []).filter((item) => item.name === name);
+  if(extra.length === 0) return `<div class="muted">Sin tareas extra</div>`;
+  return extra.map((item) => `
+    <div class="overflowItem">
+      <div><b>${escapeHtml(item.title)}</b> <small>${item.type} · ${item.dur}h</small></div>
+      <button class="overflowRemove" data-overflowid="${item.id}" title="Quitar">×</button>
+    </div>
+  `).join("");
+}
+
+function createOverflowTask(techName){
+  const type = prompt("Tipo de tarea extra (Correctivo / Preventivo / Guardia móvil):", "Preventivo");
+  if(type === null) return;
+  const title = prompt("Título de la tarea extra:", "Tarea adicional");
+  if(title === null) return;
+  const dur = Math.max(1, Number(prompt("Duración en horas:", "1") || 1));
+
+  const dateISO = $("datePicker").value;
+  const sector = $("sectorSelect").value;
+  const state = getState();
+  const daySector = ensureDaySector(state.tasks, dateISO, sector);
+
+  daySector.overflow.push({
+    id: uid(),
+    name: techName,
+    type: String(type).trim() || "Preventivo",
+    title: String(title).trim() || "Tarea adicional",
+    dur
+  });
+
+  setTasks(state.tasks);
+  rerenderAll();
+}
+
+function removeOverflowTask(dateISO, sector, overflowId){
+  const state = getState();
+  const daySector = ensureDaySector(state.tasks, dateISO, sector);
+  daySector.overflow = (daySector.overflow || []).filter((item) => item.id !== overflowId);
+  setTasks(state.tasks);
+  rerenderAll();
 }
 
 function firstAssignedHour(daySector, techName, turno){
@@ -740,7 +850,18 @@ function onDropSlot(e){
 
     const dur = Number(t.dur||1);
     if(!canPlace(daySector, tech, turno, hour, dur)) {
-      alert("Hueco ocupado o fuera de rango.");
+      if(confirm("No hay hueco en la línea horaria. ¿Quieres asignarla como tarea extra para este técnico?")){
+        daySector.overflow.push({
+          id: uid(),
+          name: tech,
+          type: t.type,
+          title: t.title,
+          dur
+        });
+        daySector.tray = daySector.tray.filter(x => x.id !== t.id);
+        setTasks(state.tasks);
+        rerenderAll();
+      }
       return;
     }
 
@@ -969,6 +1090,7 @@ function rerenderAll(){
   renderWeeklyCalendars(state, dateISO, sector);
   renderTray(state, dateISO, sector);
   renderTechGrid(state, dateISO, sector);
+  renderShiftChangeLog();
 }
 
 // ---------- Import modal actions ----------
@@ -1000,8 +1122,102 @@ function resetAll(){
   if(!confirm("¿Reset TOTAL? Borrará cuadrantes y tareas guardadas en este navegador.")) return;
   localStorage.removeItem(LS.ROSTERS);
   localStorage.removeItem(LS.TASKS);
+  localStorage.removeItem(LS.CHANGES);
   $("csvInput").value = "";
   rerenderAll();
+}
+
+function openShiftRequest(){
+  const state = getState();
+  const sector = $("sectorSelect").value;
+  const roster = state.rosters[sector];
+  const dateISO = $("datePicker").value;
+  const options = (roster?.names || []).map((name) => `<option value="${escapeHtmlAttr(name)}">${escapeHtml(name)}</option>`).join("");
+
+  $("shiftReqDate").value = dateISO;
+  $("shiftReqFrom").innerHTML = `<option value="">Selecciona técnico</option>${options}`;
+  $("shiftReqTo").innerHTML = `<option value="">Selecciona cobertura</option>${options}`;
+  $("shiftReqBy").value = "";
+  $("shiftReqApproved").value = "";
+  $("shiftReqNotes").value = "";
+  openModal($("modalShiftRequest"));
+}
+
+function applyShiftRequest(){
+  const state = getState();
+  const sector = $("sectorSelect").value;
+  const roster = state.rosters[sector];
+  const dateISO = $("shiftReqDate").value;
+  if(!roster || !rosterHasDate(roster, dateISO)){
+    alert("No hay cuadrante para ese día/sector.");
+    return;
+  }
+
+  const fromTech = $("shiftReqFrom").value;
+  const toTech = $("shiftReqTo").value;
+  const requestedBy = $("shiftReqBy").value.trim();
+  const approvedBy = $("shiftReqApproved").value.trim();
+  const notes = $("shiftReqNotes").value.trim();
+
+  if(!fromTech || !toTech || fromTech === toTech){
+    alert("Selecciona dos técnicos distintos.");
+    return;
+  }
+  if(!requestedBy || !approvedBy){
+    alert("Debes indicar solicitante y quien aprueba.");
+    return;
+  }
+
+  const { d } = isoToYMD(dateISO);
+  const fromIdx = roster.names.indexOf(fromTech);
+  const toIdx = roster.names.indexOf(toTech);
+  if(fromIdx < 0 || toIdx < 0) return;
+
+  const fromCode = roster.matrix[fromIdx][d - 1] || "D";
+  const toCode = roster.matrix[toIdx][d - 1] || "D";
+
+  roster.matrix[fromIdx][d - 1] = toCode;
+  roster.matrix[toIdx][d - 1] = fromCode;
+  state.rosters[sector] = roster;
+
+  state.changes.unshift({
+    id: uid(),
+    createdAt: new Date().toISOString(),
+    sector,
+    dateISO,
+    fromTech,
+    toTech,
+    fromCode,
+    toCode,
+    requestedBy,
+    approvedBy,
+    notes,
+  });
+
+  setRosters(state.rosters);
+  setChanges(state.changes);
+  closeModal($("modalShiftRequest"));
+  rerenderAll();
+}
+
+function renderShiftChangeLog(){
+  const state = getState();
+  const sector = $("sectorSelect").value;
+  const rows = state.changes
+    .filter((item) => item.sector === sector)
+    .slice(0, 12)
+    .map((item) => `
+      <tr>
+        <td>${escapeHtml(item.dateISO)}</td>
+        <td>${escapeHtml(item.fromTech)} (${escapeHtml(item.fromCode)})</td>
+        <td>${escapeHtml(item.toTech)} (${escapeHtml(item.toCode)})</td>
+        <td>${escapeHtml(item.requestedBy)}</td>
+        <td>${escapeHtml(item.approvedBy)}</td>
+        <td>${escapeHtml(item.notes || "—")}</td>
+      </tr>
+    `).join("");
+
+  $("shiftChangeLog").innerHTML = rows || `<tr><td colspan="6" class="muted">Sin solicitudes registradas.</td></tr>`;
 }
 
 // ---------- Quick modal ----------
@@ -1208,6 +1424,10 @@ function bootstrap(){
   $("btnCloseWeekEdit").addEventListener("click", () => closeModal($("modalWeekEdit")));
   $("btnFillWeekTemplate").addEventListener("click", fillWeekTemplate);
   $("btnApplyWeekBulk").addEventListener("click", applyWeekBulk);
+
+  $("btnShiftRequest").addEventListener("click", openShiftRequest);
+  $("btnCloseShiftRequest").addEventListener("click", () => closeModal($("modalShiftRequest")));
+  $("btnApplyShiftRequest").addEventListener("click", applyShiftRequest);
 
   $("btnAuto").addEventListener("click", autoAssignPreventivos);
   $("btnCloseDay").addEventListener("click", closeDay);

@@ -39,6 +39,7 @@
       <button id="btnCustomCard" class="btn">➕ Tarjeta propia</button>
       <button id="btnGuardPhones" class="btn">📞 Guardias</button>
       <button id="btnWeekEdit" class="btn">✏️ Semana</button>
+      <button id="btnShiftRequest" class="btn">🔁 Cambio turno</button>
       <button id="btnAuto" class="btn">🤖 Auto</button>
       <button id="btnCloseDay" class="btn btn-danger">Cerrar día</button>
     </div>
@@ -71,6 +72,25 @@
     <section class="weekBoard">
       <div class="monthHead">Calendario semanal de turnos por grupo de trabajo (clic para editar M/T/N/D)</div>
       <div id="weeklyCalendars" class="weeklyCalendars"></div>
+    </section>
+
+    <section class="changeBoard">
+      <div class="monthHead">Registro de solicitudes de cambio de turno</div>
+      <div class="changeTableWrap">
+        <table class="changeTable">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Sale</th>
+              <th>Cubre</th>
+              <th>Solicita</th>
+              <th>Aprueba</th>
+              <th>Notas</th>
+            </tr>
+          </thead>
+          <tbody id="shiftChangeLog"></tbody>
+        </table>
+      </div>
     </section>
 
     <!-- Cuerpo -->
@@ -197,6 +217,44 @@
       </div>
     </div>
   </div>
+
+
+  <div id="modalShiftRequest" class="modal hidden">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h3>🔁 Solicitud de cambio de turno</h3>
+        <button id="btnCloseShiftRequest" class="btn btn-small">Cerrar</button>
+      </div>
+      <div class="formRow">
+        <label>Fecha</label>
+        <input id="shiftReqDate" class="input" type="date" />
+      </div>
+      <div class="formRow">
+        <label>Técnico que cede turno</label>
+        <select id="shiftReqFrom" class="input"></select>
+      </div>
+      <div class="formRow">
+        <label>Técnico que cubre</label>
+        <select id="shiftReqTo" class="input"></select>
+      </div>
+      <div class="formRow">
+        <label>Solicitante</label>
+        <input id="shiftReqBy" class="input" placeholder="Nombre de quien solicita" />
+      </div>
+      <div class="formRow">
+        <label>Conforme / aprobado por</label>
+        <input id="shiftReqApproved" class="input" placeholder="Jefe de grupo / responsable" />
+      </div>
+      <div class="formRow">
+        <label>Observaciones</label>
+        <textarea id="shiftReqNotes" class="textarea" rows="3" placeholder="Motivo o detalle"></textarea>
+      </div>
+      <div class="modalActions">
+        <button id="btnApplyShiftRequest" class="btn btn-primary">Aplicar cambio y registrar</button>
+      </div>
+    </div>
+  </div>
+
 
   <script src="app.js"></script>
 </body>
