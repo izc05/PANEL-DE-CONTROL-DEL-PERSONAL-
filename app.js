@@ -1051,17 +1051,32 @@ function cycleIncidentStatus(id){
 
 function renderIncidents(){
   const state = getState();
-  const html = state.incidents.map((item) => `
+  const statusClass = {
+    "Pendiente": "pending",
+    "Revisando": "review",
+    "Cerrada": "closed",
+  };
+  const html = state.incidents.map((item) => {
+    const hasPhoto = (item.photos || []).length > 0;
+    const hasQR = Boolean(item.location || "");
+    const pendingMedia = !hasPhoto || !hasQR;
+    return `
     <div class="stackItem">
-      <div><b>${escapeHtml(item.title)}</b> <span class="badge">${escapeHtml(item.priority)}</span> <span class="badge">${escapeHtml(item.status)}</span></div>
+      <div class="cardTitleRow"><b>${escapeHtml(item.title)}</b> <span class="metaPill">${escapeHtml(item.priority)}</span> <span class="statusPill ${statusClass[item.status] || "pending"}">${escapeHtml(item.status)}</span></div>
       <div class="muted">${escapeHtml(item.dateISO)} · ${escapeHtml(item.sector)} · ${escapeHtml(item.location || "Sin ubicación")}</div>
+      <div class="cardMetaRow">
+        <span class="metaPill">📷 ${hasPhoto ? `${(item.photos || []).length} adjunta(s)` : "Pendiente"}</span>
+        <span class="metaPill">📍 ${hasQR ? "QR/ubicación OK" : "Escaneo pendiente"}</span>
+        ${pendingMedia ? `<span class="statusPill missing">Completar luego en móvil</span>` : ""}
+      </div>
       <div>${escapeHtml(item.notes || "Sin detalle")}</div>
       <div class="miniPhotos">${(item.photos || []).slice(0,4).map((src) => `<img src="${escapeHtmlAttr(src)}" alt="Foto incidencia" />`).join("")}</div>
       <div class="stackActions">
         <button class="btn btn-small incidentStatus" data-id="${item.id}">Cambiar estado</button>
       </div>
     </div>
-  `).join("") || `<div class="muted">Sin incidencias.</div>`;
+  `;
+  }).join("") || `<div class="muted">Sin incidencias.</div>`;
   $("incidentList").innerHTML = html;
   for(const btn of document.querySelectorAll(".incidentStatus")){
     btn.addEventListener("click", () => cycleIncidentStatus(btn.dataset.id));
@@ -1121,15 +1136,23 @@ function advanceOT(id){
 
 function renderOTs(){
   const labels = ["Inicial", "Procesado", "Finalizado"];
+  const labelClass = ["initial", "processing", "finalized"];
   const state = getState();
   const html = state.ots.map((item) => {
     const reports = item.reports.map((r) => `<li><b>${escapeHtml(r.step)}</b> · ${escapeHtml(r.date.slice(0,10))} · ${escapeHtml(r.note)}</li>`).join("");
+    const hasPhoto = (item.photos || []).length > 0;
+    const hasQR = Boolean(item.area || "");
+    const pendingMedia = !hasPhoto || !hasQR;
     return `
       <div class="stackItem">
-        <div><b>OT:</b> ${escapeHtml(item.title)} <span class="badge guard">${labels[item.step]}</span></div>
+        <div class="cardTitleRow"><b>OT:</b> ${escapeHtml(item.title)} <span class="statusPill ${labelClass[item.step] || "initial"}">${labels[item.step]}</span></div>
         <div class="muted">${escapeHtml(item.area || "Sin área")} · ${escapeHtml(item.reportedBy || "Sin reporte")} · ${escapeHtml(item.dateISO)}</div>
+        <div class="cardMetaRow">
+          <span class="metaPill">📷 ${hasPhoto ? `${(item.photos || []).length} adjunta(s)` : "Pendiente"}</span>
+          <span class="metaPill">📍 ${hasQR ? "QR/ubicación OK" : "Escaneo pendiente"}</span>
+          ${pendingMedia ? `<span class="statusPill missing">Completar luego en móvil</span>` : ""}
+        </div>
         <div>${escapeHtml(item.data || "Sin datos técnicos")}</div>
-        <div class="muted">Fotos: ${(item.photos || []).length || 0}</div>
         <div class="miniPhotos">${(item.photos || []).slice(0,4).map((src) => `<img src="${escapeHtmlAttr(src)}" alt="Foto OT" />`).join("")}</div>
         <ul>${reports}</ul>
         <div class="stackActions">
