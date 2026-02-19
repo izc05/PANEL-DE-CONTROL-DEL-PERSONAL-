@@ -1153,7 +1153,7 @@ function createIncident(){
   const title = $("incTitle").value.trim();
   if(!title){ alert("Indica título de incidencia"); return; }
   const state = getState();
-  state.incidents.unshift({
+  const incident = {
     id: uid(),
     createdAt: new Date().toISOString(),
     sector: $("sectorSelect").value,
@@ -1165,8 +1165,14 @@ function createIncident(){
     notes: $("incNotes").value.trim(),
     photos: [...mediaState.incidentPhotos],
     status: "Pendiente",
-  });
+  };
+  const linkedOT = buildOTFromIncident(incident);
+  incident.linkedOtId = linkedOT.id;
+
+  state.incidents.unshift(incident);
+  state.ots.unshift(linkedOT);
   setIncidents(state.incidents);
+  setOTs(state.ots);
   $("incTitle").value = "";
   $("incLocation").value = "";
   $("incOwner").value = "";
@@ -1175,6 +1181,26 @@ function createIncident(){
   renderPhotoPreview("incident");
   $("incQrStatus").textContent = "";
   renderIncidents();
+  renderOTs();
+}
+
+function buildOTFromIncident(incident){
+  const now = new Date().toISOString();
+  return {
+    id: uid(),
+    createdAt: now,
+    sector: incident.sector,
+    dateISO: incident.dateISO,
+    title: incident.title,
+    area: incident.location,
+    reportedBy: incident.owner,
+    data: incident.notes,
+    photos: [...(incident.photos || [])],
+    step: 0,
+    reports: [
+      { step: "Inicial", date: now, note: `OT creada automáticamente desde incidencia ${incident.title}` }
+    ],
+  };
 }
 
 function cycleIncidentStatus(id){
@@ -1206,6 +1232,7 @@ function renderIncidents(){
       <div class="cardMetaRow">
         <span class="metaPill">📷 ${hasPhoto ? `${(item.photos || []).length} adjunta(s)` : "Pendiente"}</span>
         <span class="metaPill">📍 ${hasQR ? "QR/ubicación OK" : "Escaneo pendiente"}</span>
+        ${item.linkedOtId ? `<span class="metaPill">🛠️ OT auto-creada</span>` : ""}
         ${pendingMedia ? `<span class="statusPill missing">Completar luego en móvil</span>` : ""}
       </div>
       <div>${escapeHtml(item.notes || "Sin detalle")}</div>
