@@ -612,12 +612,27 @@ body.bg-night #bgSky{background: radial-gradient(1000px 650px at 20% 0%, rgba(18
 
 /* Título con gradiente animado */
 .title{
-  background: linear-gradient(90deg, rgba(234,241,255,1), rgba(127,198,255,1), rgba(255,211,77,1), rgba(234,241,255,1));
+  font-size: clamp(26px, 3.6vw, 46px);
+  line-height: 1;
+  font-weight: 1000;
+  letter-spacing: .8px;
+  background: linear-gradient(90deg, #f8fcff 0%, #93d5ff 35%, #7fb8ff 65%, #f8fcff 100%);
   background-size: 240% 100%;
   -webkit-background-clip: text; background-clip:text; color: transparent;
-  animation: titleGlow 7s cubic-bezier(.2,.8,.2,1) infinite;
+  text-shadow: 0 0 8px rgba(114,210,255,.55), 0 0 18px rgba(58,160,255,.45), 0 0 32px rgba(83,113,255,.3);
+  animation: titleGlow 6s cubic-bezier(.2,.8,.2,1) infinite;
+}
+.electricTitle{
+  filter: drop-shadow(0 0 4px rgba(152,227,255,.75));
+  animation: titleGlow 6s cubic-bezier(.2,.8,.2,1) infinite, electricFlicker 2.8s steps(1,end) infinite;
 }
 @keyframes titleGlow{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
+@keyframes electricFlicker{
+  0%, 8%, 10%, 14%, 16%, 70%, 100%{ opacity:1; }
+  9%, 15%{ opacity:.72; }
+  11%{ opacity:.92; }
+  71%{ opacity:.86; }
+}
 
 
 /* ===== MOBILE RESPONSIVE PACK ===== */
