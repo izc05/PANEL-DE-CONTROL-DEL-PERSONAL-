@@ -17,6 +17,11 @@
     </div>
 
     <div class="toolbar">
+      <div class="pill clockPill">
+        <label>Hora actual</label>
+        <div id="currentTime" class="clockValue">--:--:--</div>
+      </div>
+
       <div class="pill">
         <label>Fecha</label>
         <input id="datePicker" type="date">
@@ -63,6 +68,11 @@
     <section class="monthBoard">
       <div class="monthHead">Calentador mensual por turnos (M/T/N/D) por sector</div>
       <div id="monthHeatmap" class="monthHeatmap"></div>
+    </section>
+
+    <section class="weekBoard">
+      <div class="monthHead">Calendario semanal de turnos por grupo de trabajo</div>
+      <div id="weeklyCalendars" class="weeklyCalendars"></div>
     </section>
 
     <!-- Cuerpo -->

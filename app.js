@@ -46,6 +46,10 @@ function tomorrowISO(){
   return addDays(todayISO(), 1);
 }
 
+function formatCurrentTime(){
+  return new Date().toLocaleTimeString("es-ES", { hour12:false });
+}
+
 function parseCSV(text){
   // CSV simple: separador coma, sin comillas complejas
   const lines = text.trim().split(/\r?\n/).filter(Boolean);
@@ -329,6 +333,51 @@ function renderMonthHeatmap(state, dateISO){
   $("monthHeatmap").innerHTML = sectorHtml;
 }
 
+function renderWeeklyCalendars(state, dateISO){
+  const { rosters } = state;
+  const monday = mondayOfWeek(dateISO);
+  const days = Array.from({length:7}).map((_,i)=> addDays(monday, i));
+
+  const dayHeader = days.map((day) => {
+    const dt = new Date(day+"T00:00:00");
+    const name = dt.toLocaleDateString("es-ES", { weekday:"short" });
+    const n = String(dt.getDate()).padStart(2, "0");
+    return `<div class="calHeadCell">${escapeHtml(name)} ${n}</div>`;
+  }).join("");
+
+  const sectorHtml = ["Electricidad","Fontanería"].map((sector) => {
+    const roster = rosters[sector];
+    if(!roster){
+      return `<div class="weekSector"><div class="weekSectorTitle">${sector}</div><div class="muted">Sin cuadrante cargado.</div></div>`;
+    }
+
+    const rows = roster.names.map((name) => {
+      const cells = days.map((day) => {
+        if(!rosterHasDate(roster, day)){
+          return `<div class="calCell out">—</div>`;
+        }
+        const {d} = isoToYMD(day);
+        const code = getTurnCode(roster, name, d) || "D";
+        const shift = primaryShift(code);
+        return `<div class="calCell shift-${shift}" title="${escapeHtml(day)}">${escapeHtml(code)}</div>`;
+      }).join("");
+      return `<div class="calRow"><div class="calTech">${escapeHtml(name)}</div>${cells}</div>`;
+    }).join("");
+
+    return `
+      <div class="weekSector">
+        <div class="weekSectorTitle">${sector}</div>
+        <div class="calTable">
+          <div class="calHeader"><div class="calTechHead">Técnico</div>${dayHeader}</div>
+          <div class="calBody">${rows}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  $("weeklyCalendars").innerHTML = sectorHtml;
+}
+
 function renderTray(state, dateISO, sector){
   const { tasks } = state;
   const daySector = ensureDaySector(tasks, dateISO, sector);
@@ -345,7 +394,10 @@ function renderTray(state, dateISO, sector){
           <div class="t">${escapeHtml(t.title)}</div>
           <div class="d">${t.type}</div>
         </div>
-        <div class="pillDur">${t.dur}h</div>
+        <div class="durControl">
+          <input class="durInput" type="number" min="1" step="1" value="${Number(t.dur||1)}" data-traydurid="${t.id}" aria-label="Duración en horas" />
+          <span class="pillDur">h</span>
+        </div>
       </div>
     `;
   };
@@ -356,6 +408,11 @@ function renderTray(state, dateISO, sector){
 
   for(const el of document.querySelectorAll(".cardTask")){
     el.addEventListener("dragstart", onDragStartTray);
+  }
+  for(const input of document.querySelectorAll(".durInput")){
+    input.addEventListener("click", (e) => e.stopPropagation());
+    input.addEventListener("dragstart", (e) => e.preventDefault());
+    input.addEventListener("change", onTrayDurationChange);
   }
 }
 
@@ -697,6 +754,22 @@ function removeBlockFromTech(state, dateISO, sector, blockId){
   rerenderAll();
 }
 
+function onTrayDurationChange(e){
+  const trayId = e.currentTarget.dataset.traydurid;
+  const nextDur = Math.max(1, Number(e.currentTarget.value || 1));
+  const dateISO = $("datePicker").value;
+  const sector = $("sectorSelect").value;
+
+  const state = getState();
+  const daySector = ensureDaySector(state.tasks, dateISO, sector);
+  const task = daySector.tray.find((x) => x.id === trayId);
+  if(!task) return;
+
+  task.dur = nextDur;
+  setTasks(state.tasks);
+  rerenderAll();
+}
+
 // ---------- Buttons ----------
 function openModal(el){ el.classList.remove("hidden"); }
 function closeModal(el){ el.classList.add("hidden"); }
@@ -815,6 +888,7 @@ function rerenderAll(){
   setActiveSectorCard(sector);
   renderSectorSummaries(state, dateISO);
   renderMonthHeatmap(state, dateISO);
+  renderWeeklyCalendars(state, dateISO);
   renderTray(state, dateISO, sector);
   renderTechGrid(state, dateISO, sector);
 }
@@ -916,6 +990,14 @@ function bootstrap(){
   // Click en tarjetas de sector arriba para seleccionar
   $("cardElec").addEventListener("click", () => { $("sectorSelect").value="Electricidad"; rerenderAll(); });
   $("cardFont").addEventListener("click", () => { $("sectorSelect").value="Fontanería"; rerenderAll(); });
+
+  // Reloj en cabecera
+  const updateClock = () => {
+    const el = $("currentTime");
+    if(el) el.textContent = formatCurrentTime();
+  };
+  updateClock();
+  setInterval(updateClock, 1000);
 
   // Render inicial
   rerenderAll();
