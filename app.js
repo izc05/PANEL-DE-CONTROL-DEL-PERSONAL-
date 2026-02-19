@@ -52,6 +52,11 @@ function loadFullState(){
 }
 const state = loadFullState();
 
+const UI_V5_KEY = "panel_ui_v5";
+function loadUIv5(){ try{return JSON.parse(localStorage.getItem(UI_V5_KEY)||"{}");}catch{return {};} }
+function saveUIv5(v){ localStorage.setItem(UI_V5_KEY, JSON.stringify(v||{})); }
+const UIv5 = loadUIv5();
+
 function saveState(){
   localStorage.setItem(LS.ROSTERS, JSON.stringify(state.rosters || {}));
   localStorage.setItem(LS.TASKS,   JSON.stringify(state.tasks || {}));
@@ -2845,13 +2850,6 @@ document.addEventListener("click", (e)=>{
   const id = btn.getAttribute("data-workopen");
   openQuickUpdate(kind, id);
 });
-
-
-// ===== UI_FILTERS_V5 =====
-const UI_V5_KEY = "panel_ui_v5";
-function loadUIv5(){ try{return JSON.parse(localStorage.getItem(UI_V5_KEY)||"{}");}catch{return {};} }
-function saveUIv5(v){ localStorage.setItem(UI_V5_KEY, JSON.stringify(v||{})); }
-const UIv5 = loadUIv5();
 
 
 function toggleFlag(key){
