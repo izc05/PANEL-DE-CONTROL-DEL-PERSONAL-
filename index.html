@@ -36,6 +36,9 @@
       </div>
 
       <button id="btnQuick" class="btn btn-primary">+ Rápido</button>
+      <button id="btnCustomCard" class="btn">➕ Tarjeta propia</button>
+      <button id="btnGuardPhones" class="btn">📞 Guardias</button>
+      <button id="btnWeekEdit" class="btn">✏️ Semana</button>
       <button id="btnAuto" class="btn">🤖 Auto</button>
       <button id="btnCloseDay" class="btn btn-danger">Cerrar día</button>
     </div>
@@ -162,6 +165,35 @@
 
       <div class="modalActions">
         <button id="btnCreateCard" class="btn btn-primary">Crear en bandeja</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalGuardPhones" class="modal hidden">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h3>📞 Teléfonos de guardia por sectores</h3>
+        <button id="btnCloseGuardPhones" class="btn btn-small">Cerrar</button>
+      </div>
+      <p class="muted">Edita y guarda una vez. Se mantiene por técnico/sector en este navegador.</p>
+      <div id="guardPhonesContent" class="phoneTableWrap"></div>
+      <div class="modalActions">
+        <button id="btnSavePhones" class="btn btn-primary">Guardar teléfonos</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalWeekEdit" class="modal hidden">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h3>✏️ Edición semanal masiva</h3>
+        <button id="btnCloseWeekEdit" class="btn btn-small">Cerrar</button>
+      </div>
+      <p class="muted">Formato: <b>NOMBRE,M,M,M,M,D,D,T</b> (7 códigos desde lunes a domingo).</p>
+      <textarea id="weekBulkInput" class="textarea" rows="12"></textarea>
+      <div class="modalActions">
+        <button id="btnFillWeekTemplate" class="btn">Cargar semana actual</button>
+        <button id="btnApplyWeekBulk" class="btn btn-primary">Aplicar cambios</button>
       </div>
     </div>
   </div>
