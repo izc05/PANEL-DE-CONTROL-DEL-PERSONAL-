@@ -1045,9 +1045,6 @@ function onDropSlot(e){
   const turno = e.currentTarget.dataset.turn;
   const hour = Number(e.currentTarget.dataset.hour);
 
-  const dateISO = $("datePicker").value;
-  const sector = $("sectorSelect").value;
-
   const state = getState();
   const daySector = ensureDaySector(state.tasks, dateISO, sector);
 
@@ -1212,7 +1209,7 @@ function createIncident(){
     priority: $("incPriority").value,
     owner: $("incOwner").value.trim(),
     notes: $("incNotes").value.trim(),
-    photos: [..mediaState.incidentPhotos],
+    photos: [...mediaState.incidentPhotos],
     status: "Pendiente",
   };
   const linkedOT = buildOTFromIncident(incident);
@@ -1304,17 +1301,9 @@ function createOT(){
   if(!title){ alert("Indica el defecto para crear OT."); return; }
   const state = getState();
   const textPhotos = $("otPhotos").value.trim();
-  ot.id ||= uid('ot');
-    ot.assignedTo ||= '';
-    ot.assignedDate ||= '';
-    ensureCommentsArray(ot);
-    inc.id ||= uid('inc');
-    inc.assignedTo ||= '';
-    inc.assignedDate ||= '';
-    ensureCommentsArray(inc);
-    const mergedPhotos = [
-    ..mediaState.otPhotos,
-    ..textPhotos.split(",").map((x) => x.trim()).filter(Boolean),
+  const mergedPhotos = [
+    ...mediaState.otPhotos,
+    ...textPhotos.split(",").map((x) => x.trim()).filter(Boolean),
   ];
   state.ots.unshift({
     id: uid(),
@@ -2276,12 +2265,12 @@ function bootstrap(){
   $("btnIncPhoto").addEventListener("click", () => $("incPhotoInput").click());
   $("btnOtPhoto").addEventListener("click", () => $("otPhotoInput").click());
   $("incPhotoInput").addEventListener("change", async (e) => {
-    mediaState.incidentPhotos.push(..await filesToDataUrls(e.currentTarget.files));
+    mediaState.incidentPhotos.push(...await filesToDataUrls(e.currentTarget.files));
     e.currentTarget.value = "";
     renderPhotoPreview("incident");
   });
   $("otPhotoInput").addEventListener("change", async (e) => {
-    mediaState.otPhotos.push(..await filesToDataUrls(e.currentTarget.files));
+    mediaState.otPhotos.push(...await filesToDataUrls(e.currentTarget.files));
     e.currentTarget.value = "";
     renderPhotoPreview("ot");
   });
