@@ -42,6 +42,10 @@ function todayISO(){
   return new Date(Date.now() - tz).toISOString().slice(0,10);
 }
 
+function tomorrowISO(){
+  return addDays(todayISO(), 1);
+}
+
 function parseCSV(text){
   // CSV simple: separador coma, sin comillas complejas
   const lines = text.trim().split(/\r?\n/).filter(Boolean);
@@ -120,6 +124,23 @@ function primaryShift(code){
   if(c.includes("D")) return "D";
   // especiales: EF1, OT, etc -> consideramos D visual (sin timeline), pero lo mostramos en badge
   return "D";
+}
+
+function currentShiftByHour(hour = new Date().getHours()){
+  if(hour >= 8 && hour <= 14) return "M";
+  if(hour >= 15 && hour <= 21) return "T";
+  return "N";
+}
+
+function shiftPriorityForDate(dateISO){
+  const now = todayISO();
+  const active = (dateISO === now) ? currentShiftByHour() : "M";
+  const orderMap = {
+    M: ["M","T","N","D"],
+    T: ["T","N","M","D"],
+    N: ["N","M","T","D"],
+  };
+  return { active, order: orderMap[active] || ["M","T","N","D"] };
 }
 
 function uid(){
@@ -260,20 +281,52 @@ function renderSectorSummaries(state, dateISO){
     }
     const avg = count ? Math.round(avgLoad/count) : 0;
 
+    const guardHtml = `<b class="guardLabel">${escapeHtml(guardLabel)}</b>`;
+    const freeHtml = `<b class="freeLabel">${free}</b>`;
+    const incHtml = `<b class="incLabel">${incCount}</b>`;
+    const loadHtml = `<b class="loadLabel">${avg}%</b>`;
+
     if(sector==="Electricidad"){
-      $("elecGuard").textContent = guardLabel;
-      $("elecFree").textContent = String(free);
-      $("elecInc").textContent = String(incCount);
-      $("elecLoad").textContent = `${avg}%`;
+      $("elecGuard").innerHTML = guardHtml;
+      $("elecFree").innerHTML = freeHtml;
+      $("elecInc").innerHTML = incHtml;
+      $("elecLoad").innerHTML = loadHtml;
     }else{
-      $("fontGuard").textContent = guardLabel;
-      $("fontFree").textContent = String(free);
-      $("fontInc").textContent = String(incCount);
-      $("fontLoad").textContent = `${avg}%`;
+      $("fontGuard").innerHTML = guardHtml;
+      $("fontFree").innerHTML = freeHtml;
+      $("fontInc").innerHTML = incHtml;
+      $("fontLoad").innerHTML = loadHtml;
     }
   }
 
   setTasks(tasks); // persist
+}
+
+function renderMonthHeatmap(state, dateISO){
+  const { rosters } = state;
+  const { y, m } = isoToYMD(dateISO);
+
+  const sectorHtml = ["Electricidad","Fontanería"].map((sector) => {
+    const roster = rosters[sector];
+    if(!roster || roster.year !== y || roster.month !== m){
+      return `<div class="monthSector"><div class="monthSectorTitle">${sector}</div><div class="mday none">Sin cuadrante del mes</div></div>`;
+    }
+
+    const days = Array.from({length: roster.days}).map((_, i) => {
+      const day = i + 1;
+      const counts = { M:0, T:0, N:0, D:0 };
+      for(const name of roster.names){
+        const shift = primaryShift(getTurnCode(roster, name, day));
+        counts[shift] = (counts[shift] || 0) + 1;
+      }
+      const mainShift = ["M","T","N","D"].sort((a,b) => counts[b]-counts[a])[0] || "D";
+      return `<div class="mday ${mainShift}" title="M:${counts.M} T:${counts.T} N:${counts.N} D:${counts.D}"><b>${day}</b><small>${mainShift}</small></div>`;
+    }).join("");
+
+    return `<div class="monthSector"><div class="monthSectorTitle">${sector}</div><div class="monthGrid">${days}</div></div>`;
+  }).join("");
+
+  $("monthHeatmap").innerHTML = sectorHtml;
 }
 
 function renderTray(state, dateISO, sector){
@@ -282,9 +335,10 @@ function renderTray(state, dateISO, sector){
 
   const corr = daySector.tray.filter(t=>t.type==="Correctivo");
   const prev = daySector.tray.filter(t=>t.type==="Preventivo");
+  const guard = daySector.tray.filter(t=>t.type==="Guardia móvil");
 
   const makeCard = (t) => {
-    const cls = t.type==="Correctivo" ? "red" : "yellow";
+    const cls = t.type==="Correctivo" ? "red" : (t.type==="Guardia móvil" ? "blue" : "yellow");
     return `
       <div class="cardTask ${cls}" draggable="true" data-trayid="${t.id}">
         <div>
@@ -298,6 +352,7 @@ function renderTray(state, dateISO, sector){
 
   $("trayCorrectivos").innerHTML = corr.map(makeCard).join("") || `<div class="muted">Sin correctivos</div>`;
   $("trayPreventivos").innerHTML = prev.map(makeCard).join("") || `<div class="muted">Sin preventivos</div>`;
+  $("trayGuardia").innerHTML = guard.map(makeCard).join("") || `<div class="muted">Sin guardia móvil</div>`;
 
   for(const el of document.querySelectorAll(".cardTask")){
     el.addEventListener("dragstart", onDragStartTray);
@@ -322,13 +377,26 @@ function renderTechGrid(state, dateISO, sector){
   const {d} = isoToYMD(dateISO);
   const guardInfo = computeGuardForWeek(roster, dateISO);
   const guardName = guardInfo?.guard || null;
+  const shiftFocus = shiftPriorityForDate(dateISO);
+
+  const shiftLabel = SHIFT[shiftFocus.active]?.label || shiftFocus.active;
+  $("shiftFocus").textContent = `Vista priorizada por turno ${shiftLabel}. El orden evoluciona con la hora del día para la fecha actual.`;
 
   const blocksByTech = new Map();
   for(const b of daySector.blocks){
     blocksByTech.set(b.name, (blocksByTech.get(b.name)||[]).concat([b]));
   }
 
-  const techCards = roster.names.map(name => {
+  const orderedNames = [...roster.names].sort((a,b) => {
+    const aShift = primaryShift(getTurnCode(roster, a, d));
+    const bShift = primaryShift(getTurnCode(roster, b, d));
+    const aRank = shiftFocus.order.indexOf(aShift);
+    const bRank = shiftFocus.order.indexOf(bShift);
+    if(aRank !== bRank) return aRank - bRank;
+    return a.localeCompare(b, "es");
+  });
+
+  const techCards = orderedNames.map(name => {
     const code = getTurnCode(roster, name, d);
     const turno = primaryShift(code);
     const isOff = (turno==="D");
@@ -344,7 +412,7 @@ function renderTechGrid(state, dateISO, sector){
     const barHtml = `<div class="bar"><div style="width:${pct}%;background:${barColor}"></div></div>`;
 
     const badges = `
-      ${isGuard ? `<span class="badge guard">GUARDIA</span>`:``}
+      ${isGuard ? `<span class="badge guard">📱 GUARDIA MÓVIL</span>`:``}
       <span class="badge ${isOff ? "off":""}">${turno} · ${SHIFT[turno]?.label || turno}</span>
       ${code && !["M","T","N","D"].includes(code) ? `<span class="badge">${escapeHtml(code)}</span>` : ``}
     `;
@@ -587,7 +655,7 @@ function markBlockDone(state, dateISO, sector, blockId){
   daySector.tray.push({
     id: uid(),
     type: b.type,
-    title: "✅ " + b.title,
+    title: `${b.type === "Guardia móvil" ? "📱" : "✅"} ` + b.title,
     dur: b.dur
   });
   setTasks(state.tasks);
@@ -607,7 +675,9 @@ function addTrayCard(type){
   daySector.tray.push({
     id: uid(),
     type,
-    title: type==="Correctivo" ? "INC-____ | Ubicación | 1h" : "PM — Preventivo",
+    title: type==="Correctivo"
+      ? "INC-____ | Ubicación | 1h"
+      : (type==="Guardia móvil" ? "Guardia móvil — incidencia" : "PM — Preventivo"),
     dur: 1
   });
 
@@ -709,6 +779,7 @@ function rerenderAll(){
 
   setActiveSectorCard(sector);
   renderSectorSummaries(state, dateISO);
+  renderMonthHeatmap(state, dateISO);
   renderTray(state, dateISO, sector);
   renderTechGrid(state, dateISO, sector);
 }
@@ -755,7 +826,7 @@ function openQuick(){
 }
 function createQuickCard(){
   const type = $("quickType").value;
-  const title = $("quickTitle").value.trim() || (type==="Correctivo" ? "INC-____ | Ubicación" : "PM — Preventivo");
+  const title = $("quickTitle").value.trim() || (type==="Correctivo" ? "INC-____ | Ubicación" : (type==="Guardia móvil" ? "Guardia móvil — incidencia" : "PM — Preventivo"));
   const dur = Math.max(1, Number($("quickDur").value || 1));
 
   const dateISO = $("datePicker").value;
@@ -772,7 +843,7 @@ function createQuickCard(){
 
 // ---------- Bootstrap ----------
 function bootstrap(){
-  $("datePicker").value = todayISO();
+  $("datePicker").value = tomorrowISO();
 
   // Activar por defecto Fontanería y cargar roster default si no hay
   const state = getState();
@@ -798,6 +869,7 @@ function bootstrap(){
 
   $("btnNewCorrectivo").addEventListener("click", () => addTrayCard("Correctivo"));
   $("btnNewPreventivo").addEventListener("click", () => addTrayCard("Preventivo"));
+  $("btnNewGuardia").addEventListener("click", () => addTrayCard("Guardia móvil"));
 
   $("btnQuick").addEventListener("click", openQuick);
   $("btnCloseQuick").addEventListener("click", () => closeModal($("modalQuick")));
