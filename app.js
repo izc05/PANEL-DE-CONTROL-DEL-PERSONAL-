@@ -10,6 +10,7 @@
 const LS = {
   ROSTERS: "panel_rosters_v1",   // { sector: { year, month, days, names, matrix } }
   TASKS:   "panel_tasks_v1",     // { dateKey: { sector: { tray:[], blocks:[] } } }
+  PHONES:  "panel_phones_v1",    // { sector: { techName: phone } }
 };
 
 const SHIFT = {
@@ -61,6 +62,7 @@ function getState(){
   return {
     rosters: JSON.parse(localStorage.getItem(LS.ROSTERS) || "{}"),
     tasks: JSON.parse(localStorage.getItem(LS.TASKS) || "{}"),
+    phones: JSON.parse(localStorage.getItem(LS.PHONES) || "{}"),
   };
 }
 
@@ -70,6 +72,10 @@ function setRosters(rosters){
 
 function setTasks(tasks){
   localStorage.setItem(LS.TASKS, JSON.stringify(tasks));
+}
+
+function setPhones(phones){
+  localStorage.setItem(LS.PHONES, JSON.stringify(phones));
 }
 
 function dateKey(dateISO){
@@ -458,7 +464,7 @@ function renderTray(state, dateISO, sector){
 }
 
 function renderTechGrid(state, dateISO, sector){
-  const { rosters, tasks } = state;
+  const { rosters, tasks, phones } = state;
   const roster = rosters[sector];
   const daySector = ensureDaySector(tasks, dateISO, sector);
 
@@ -484,6 +490,11 @@ function renderTechGrid(state, dateISO, sector){
   }
 
   const orderedNames = [...roster.names].sort((a,b) => {
+    const aGuard = guardName && a === guardName;
+    const bGuard = guardName && b === guardName;
+    if(aGuard && !bGuard) return -1;
+    if(!aGuard && bGuard) return 1;
+
     const aShift = primaryShift(getTurnCode(roster, a, d));
     const bShift = primaryShift(getTurnCode(roster, b, d));
     const aRank = shiftPriority.indexOf(aShift);
@@ -502,6 +513,7 @@ function renderTechGrid(state, dateISO, sector){
     const turno = primaryShift(code);
     const isOff = (turno==="D");
     const isGuard = guardName && name === guardName;
+    const phone = phones?.[sector]?.[name] || "";
 
     const load = computeLoadForTech(daySector, name);
     const pct = loadPercent(turno, load);
@@ -514,6 +526,7 @@ function renderTechGrid(state, dateISO, sector){
 
     const badges = `
       ${isGuard ? `<span class="badge guard">📱 GUARDIA MÓVIL</span>`:``}
+      ${phone ? `<span class="badge phone">☎ ${escapeHtml(phone)}</span>` : `<span class="badge phone mutedPhone">☎ Sin teléfono</span>`}
       <span class="badge ${isOff ? "off":""}">${turno} · ${SHIFT[turno]?.label || turno}</span>
       ${code && !["M","T","N","D"].includes(code) ? `<span class="badge">${escapeHtml(code)}</span>` : ``}
     `;
@@ -990,6 +1003,114 @@ function createQuickCard(){
   rerenderAll();
 }
 
+// ---------- Phones ----------
+function renderGuardPhonesModal(){
+  const state = getState();
+  const sectors = ["Electricidad", "Fontanería"];
+  const html = sectors.map((sector) => {
+    const roster = state.rosters[sector];
+    const names = roster?.names || [];
+    const rows = names.map((name) => {
+      const val = state.phones?.[sector]?.[name] || "";
+      return `
+        <div class="phoneRow">
+          <div class="phoneName">${escapeHtml(name)}</div>
+          <input class="input phoneInput" data-sector="${escapeHtmlAttr(sector)}" data-name="${escapeHtmlAttr(name)}" value="${escapeHtmlAttr(val)}" placeholder="Ej: 600123123" />
+        </div>
+      `;
+    }).join("") || `<div class="muted">Sin cuadrante cargado para ${sector}.</div>`;
+
+    return `
+      <div class="phoneSector">
+        <h4>${sector}</h4>
+        <div class="phoneRows">${rows}</div>
+      </div>
+    `;
+  }).join("");
+
+  $("guardPhonesContent").innerHTML = html;
+}
+
+function savePhones(){
+  const state = getState();
+  state.phones ||= {};
+  for(const input of document.querySelectorAll(".phoneInput")){
+    const sector = input.dataset.sector;
+    const name = input.dataset.name;
+    state.phones[sector] ||= {};
+    state.phones[sector][name] = input.value.trim();
+  }
+  setPhones(state.phones);
+  closeModal($("modalGuardPhones"));
+  rerenderAll();
+}
+
+// ---------- Week bulk edition ----------
+function fillWeekTemplate(){
+  const state = getState();
+  const sector = $("sectorSelect").value;
+  const roster = state.rosters[sector];
+  const monday = mondayOfWeek($("datePicker").value);
+  if(!roster){
+    $("weekBulkInput").value = "";
+    return;
+  }
+
+  const lines = roster.names.map((name) => {
+    const codes = Array.from({length:7}).map((_,i) => {
+      const dayIso = addDays(monday, i);
+      if(!rosterHasDate(roster, dayIso)) return "D";
+      const {d} = isoToYMD(dayIso);
+      return getTurnCode(roster, name, d) || "D";
+    });
+    return `${name},${codes.join(",")}`;
+  });
+
+  $("weekBulkInput").value = lines.join("\n");
+}
+
+function applyWeekBulk(){
+  const raw = $("weekBulkInput").value.trim();
+  if(!raw){
+    alert("No hay datos para aplicar.");
+    return;
+  }
+
+  const state = getState();
+  const sector = $("sectorSelect").value;
+  const roster = state.rosters[sector];
+  if(!roster){
+    alert("No hay cuadrante para este sector.");
+    return;
+  }
+
+  const monday = mondayOfWeek($("datePicker").value);
+  const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const validCode = (c) => /^(M|T|N|D|M\/T|M\/N|M\/D|D\/T|D\/N|EF1|OT)$/i.test(c);
+
+  for(const line of lines){
+    const cols = line.split(",").map((x) => x.trim());
+    if(cols.length < 8) continue;
+    const name = cols[0];
+    const idx = roster.names.indexOf(name);
+    if(idx < 0) continue;
+
+    for(let i=0; i<7; i++){
+      const code = (cols[i+1] || "D").toUpperCase();
+      if(!validCode(code)) continue;
+      const dayIso = addDays(monday, i);
+      if(!rosterHasDate(roster, dayIso)) continue;
+      const {d} = isoToYMD(dayIso);
+      roster.matrix[idx][d - 1] = code;
+    }
+  }
+
+  state.rosters[sector] = roster;
+  setRosters(state.rosters);
+  closeModal($("modalWeekEdit"));
+  rerenderAll();
+}
+
 // ---------- Bootstrap ----------
 function bootstrap(){
   $("datePicker").value = tomorrowISO();
@@ -1021,8 +1142,24 @@ function bootstrap(){
   $("btnNewGuardia").addEventListener("click", () => addTrayCard("Guardia móvil"));
 
   $("btnQuick").addEventListener("click", openQuick);
+  $("btnCustomCard").addEventListener("click", openQuick);
   $("btnCloseQuick").addEventListener("click", () => closeModal($("modalQuick")));
   $("btnCreateCard").addEventListener("click", createQuickCard);
+
+  $("btnGuardPhones").addEventListener("click", () => {
+    renderGuardPhonesModal();
+    openModal($("modalGuardPhones"));
+  });
+  $("btnCloseGuardPhones").addEventListener("click", () => closeModal($("modalGuardPhones")));
+  $("btnSavePhones").addEventListener("click", savePhones);
+
+  $("btnWeekEdit").addEventListener("click", () => {
+    fillWeekTemplate();
+    openModal($("modalWeekEdit"));
+  });
+  $("btnCloseWeekEdit").addEventListener("click", () => closeModal($("modalWeekEdit")));
+  $("btnFillWeekTemplate").addEventListener("click", fillWeekTemplate);
+  $("btnApplyWeekBulk").addEventListener("click", applyWeekBulk);
 
   $("btnAuto").addEventListener("click", autoAssignPreventivos);
   $("btnCloseDay").addEventListener("click", closeDay);
