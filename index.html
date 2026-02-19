@@ -35,17 +35,20 @@
         </select>
       </div>
 
-      <button id="btnQuick" class="btn btn-primary">+ Rápido</button>
-      <button id="btnCustomCard" class="btn">➕ Tarjeta propia</button>
+      <button id="btnQuick" class="btn btn-primary">+ Crear tarjeta</button>
       <button id="btnGuardPhones" class="btn">📞 Guardias</button>
       <button id="btnWeekEdit" class="btn">✏️ Semana</button>
       <button id="btnShiftRequest" class="btn">🔁 Cambio turno</button>
+      <button id="btnPagePlanner" class="btn btn-primary">📋 Planificación</button>
+      <button id="btnPageIncidents" class="btn">🚨 Incidencias</button>
+      <button id="btnPageOT" class="btn">🛠️ OT</button>
       <button id="btnAuto" class="btn">🤖 Auto</button>
       <button id="btnCloseDay" class="btn btn-danger">Cerrar día</button>
     </div>
   </header>
 
   <main class="layout">
+    <section id="pagePlanner" class="pageSection">
     <!-- Resumen de sectores -->
     <section class="sectorRow">
       <div id="cardElec" class="sectorCard">
@@ -134,6 +137,41 @@
         <div id="shiftFocus" class="shiftFocus"></div>
         <div id="techGrid" class="techGrid"></div>
       </section>
+    </section>
+    </section>
+
+    <section id="pageIncidents" class="pageSection hidden">
+      <div class="changeBoard">
+        <div class="monthHead">Subpágina de incidencias (seguimiento y revisión)</div>
+        <div class="formGrid">
+          <input id="incTitle" class="input" placeholder="Título incidencia" />
+          <input id="incLocation" class="input" placeholder="Ubicación" />
+          <select id="incPriority" class="input">
+            <option>Alta</option>
+            <option selected>Media</option>
+            <option>Baja</option>
+          </select>
+          <input id="incOwner" class="input" placeholder="Responsable revisión" />
+          <textarea id="incNotes" class="textarea" rows="3" placeholder="Detalle"></textarea>
+          <button id="btnCreateIncident" class="btn btn-primary">Crear incidencia</button>
+        </div>
+        <div id="incidentList" class="stackList"></div>
+      </div>
+    </section>
+
+    <section id="pageOT" class="pageSection hidden">
+      <div class="changeBoard">
+        <div class="monthHead">Órdenes de trabajo (OT) con informe y seguimiento</div>
+        <div class="formGrid">
+          <input id="otTitle" class="input" placeholder="Defecto / avería" />
+          <input id="otArea" class="input" placeholder="Área / ubicación" />
+          <input id="otReportedBy" class="input" placeholder="Reportado por" />
+          <textarea id="otData" class="textarea" rows="2" placeholder="Datos técnicos iniciales"></textarea>
+          <textarea id="otPhotos" class="textarea" rows="2" placeholder="Fotos (URLs separadas por coma)"></textarea>
+          <button id="btnCreateOT" class="btn btn-primary">Crear OT</button>
+        </div>
+        <div id="otList" class="stackList"></div>
+      </div>
     </section>
   </main>
 

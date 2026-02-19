@@ -12,6 +12,8 @@ const LS = {
   TASKS:   "panel_tasks_v1",     // { dateKey: { sector: { tray:[], blocks:[] } } }
   PHONES:  "panel_phones_v1",    // { sector: { techName: phone } }
   CHANGES: "panel_shift_changes_v1", // [{...registro de cambios...}]
+  INCIDENTS: "panel_incidents_v1",
+  OTS: "panel_ots_v1",
 };
 
 const SHIFT = {
@@ -65,6 +67,8 @@ function getState(){
     tasks: JSON.parse(localStorage.getItem(LS.TASKS) || "{}"),
     phones: JSON.parse(localStorage.getItem(LS.PHONES) || "{}"),
     changes: JSON.parse(localStorage.getItem(LS.CHANGES) || "[]"),
+    incidents: JSON.parse(localStorage.getItem(LS.INCIDENTS) || "[]"),
+    ots: JSON.parse(localStorage.getItem(LS.OTS) || "[]"),
   };
 }
 
@@ -82,6 +86,14 @@ function setPhones(phones){
 
 function setChanges(changes){
   localStorage.setItem(LS.CHANGES, JSON.stringify(changes));
+}
+
+function setIncidents(incidents){
+  localStorage.setItem(LS.INCIDENTS, JSON.stringify(incidents));
+}
+
+function setOTs(ots){
+  localStorage.setItem(LS.OTS, JSON.stringify(ots));
 }
 
 function dateKey(dateISO){
@@ -970,6 +982,144 @@ function onTrayDurationChange(e){
   rerenderAll();
 }
 
+let activePage = "planner";
+
+function setActivePage(page){
+  activePage = page;
+  const pages = {
+    planner: "pagePlanner",
+    incidents: "pageIncidents",
+    ot: "pageOT",
+  };
+  for(const [name, id] of Object.entries(pages)){
+    $(id).classList.toggle("hidden", name !== page);
+  }
+  $("btnPagePlanner").classList.toggle("btn-primary", page === "planner");
+  $("btnPageIncidents").classList.toggle("btn-primary", page === "incidents");
+  $("btnPageOT").classList.toggle("btn-primary", page === "ot");
+}
+
+function createIncident(){
+  const title = $("incTitle").value.trim();
+  if(!title){ alert("Indica título de incidencia"); return; }
+  const state = getState();
+  state.incidents.unshift({
+    id: uid(),
+    createdAt: new Date().toISOString(),
+    sector: $("sectorSelect").value,
+    dateISO: $("datePicker").value,
+    title,
+    location: $("incLocation").value.trim(),
+    priority: $("incPriority").value,
+    owner: $("incOwner").value.trim(),
+    notes: $("incNotes").value.trim(),
+    status: "Pendiente",
+  });
+  setIncidents(state.incidents);
+  $("incTitle").value = "";
+  $("incLocation").value = "";
+  $("incOwner").value = "";
+  $("incNotes").value = "";
+  renderIncidents();
+}
+
+function cycleIncidentStatus(id){
+  const states = ["Pendiente", "Revisando", "Cerrada"];
+  const state = getState();
+  const item = state.incidents.find((x) => x.id === id);
+  if(!item) return;
+  const idx = states.indexOf(item.status);
+  item.status = states[(idx + 1) % states.length];
+  setIncidents(state.incidents);
+  renderIncidents();
+}
+
+function renderIncidents(){
+  const state = getState();
+  const html = state.incidents.map((item) => `
+    <div class="stackItem">
+      <div><b>${escapeHtml(item.title)}</b> <span class="badge">${escapeHtml(item.priority)}</span> <span class="badge">${escapeHtml(item.status)}</span></div>
+      <div class="muted">${escapeHtml(item.dateISO)} · ${escapeHtml(item.sector)} · ${escapeHtml(item.location || "Sin ubicación")}</div>
+      <div>${escapeHtml(item.notes || "Sin detalle")}</div>
+      <div class="stackActions">
+        <button class="btn btn-small incidentStatus" data-id="${item.id}">Cambiar estado</button>
+      </div>
+    </div>
+  `).join("") || `<div class="muted">Sin incidencias.</div>`;
+  $("incidentList").innerHTML = html;
+  for(const btn of document.querySelectorAll(".incidentStatus")){
+    btn.addEventListener("click", () => cycleIncidentStatus(btn.dataset.id));
+  }
+}
+
+function createOT(){
+  const title = $("otTitle").value.trim();
+  if(!title){ alert("Indica el defecto para crear OT."); return; }
+  const state = getState();
+  state.ots.unshift({
+    id: uid(),
+    createdAt: new Date().toISOString(),
+    sector: $("sectorSelect").value,
+    dateISO: $("datePicker").value,
+    title,
+    area: $("otArea").value.trim(),
+    reportedBy: $("otReportedBy").value.trim(),
+    data: $("otData").value.trim(),
+    photos: $("otPhotos").value.trim(),
+    step: 0,
+    reports: [
+      { step: "Inicial", date: new Date().toISOString(), note: "OT creada" }
+    ],
+  });
+  setOTs(state.ots);
+  $("otTitle").value = "";
+  $("otArea").value = "";
+  $("otReportedBy").value = "";
+  $("otData").value = "";
+  $("otPhotos").value = "";
+  renderOTs();
+}
+
+function advanceOT(id){
+  const labels = ["Inicial", "Procesado", "Finalizado"];
+  const state = getState();
+  const item = state.ots.find((x) => x.id === id);
+  if(!item) return;
+  if(item.step < 2) item.step += 1;
+  item.reports.push({
+    step: labels[item.step],
+    date: new Date().toISOString(),
+    note: `Informe automático de etapa ${labels[item.step]}`
+  });
+  setOTs(state.ots);
+  renderOTs();
+}
+
+function renderOTs(){
+  const labels = ["Inicial", "Procesado", "Finalizado"];
+  const state = getState();
+  const html = state.ots.map((item) => {
+    const reports = item.reports.map((r) => `<li><b>${escapeHtml(r.step)}</b> · ${escapeHtml(r.date.slice(0,10))} · ${escapeHtml(r.note)}</li>`).join("");
+    return `
+      <div class="stackItem">
+        <div><b>OT:</b> ${escapeHtml(item.title)} <span class="badge guard">${labels[item.step]}</span></div>
+        <div class="muted">${escapeHtml(item.area || "Sin área")} · ${escapeHtml(item.reportedBy || "Sin reporte")} · ${escapeHtml(item.dateISO)}</div>
+        <div>${escapeHtml(item.data || "Sin datos técnicos")}</div>
+        <div class="muted">Fotos: ${escapeHtml(item.photos || "Sin fotos")}</div>
+        <ul>${reports}</ul>
+        <div class="stackActions">
+          <button class="btn btn-small otAdvance" data-id="${item.id}" ${item.step >= 2 ? "disabled" : ""}>Avanzar etapa</button>
+        </div>
+      </div>
+    `;
+  }).join("") || `<div class="muted">Sin OT registradas.</div>`;
+
+  $("otList").innerHTML = html;
+  for(const btn of document.querySelectorAll(".otAdvance")){
+    btn.addEventListener("click", () => advanceOT(btn.dataset.id));
+  }
+}
+
 // ---------- Buttons ----------
 function openModal(el){ el.classList.remove("hidden"); }
 function closeModal(el){ el.classList.add("hidden"); }
@@ -1091,6 +1241,8 @@ function rerenderAll(){
   renderTray(state, dateISO, sector);
   renderTechGrid(state, dateISO, sector);
   renderShiftChangeLog();
+  renderIncidents();
+  renderOTs();
 }
 
 // ---------- Import modal actions ----------
@@ -1123,6 +1275,8 @@ function resetAll(){
   localStorage.removeItem(LS.ROSTERS);
   localStorage.removeItem(LS.TASKS);
   localStorage.removeItem(LS.CHANGES);
+  localStorage.removeItem(LS.INCIDENTS);
+  localStorage.removeItem(LS.OTS);
   $("csvInput").value = "";
   rerenderAll();
 }
@@ -1406,7 +1560,6 @@ function bootstrap(){
   $("btnNewGuardia").addEventListener("click", () => addTrayCard("Guardia móvil"));
 
   $("btnQuick").addEventListener("click", openQuick);
-  $("btnCustomCard").addEventListener("click", openQuick);
   $("btnCloseQuick").addEventListener("click", () => closeModal($("modalQuick")));
   $("btnCreateCard").addEventListener("click", createQuickCard);
 
@@ -1429,6 +1582,13 @@ function bootstrap(){
   $("btnCloseShiftRequest").addEventListener("click", () => closeModal($("modalShiftRequest")));
   $("btnApplyShiftRequest").addEventListener("click", applyShiftRequest);
 
+  $("btnPagePlanner").addEventListener("click", () => setActivePage("planner"));
+  $("btnPageIncidents").addEventListener("click", () => setActivePage("incidents"));
+  $("btnPageOT").addEventListener("click", () => setActivePage("ot"));
+
+  $("btnCreateIncident").addEventListener("click", createIncident);
+  $("btnCreateOT").addEventListener("click", createOT);
+
   $("btnAuto").addEventListener("click", autoAssignPreventivos);
   $("btnCloseDay").addEventListener("click", closeDay);
 
@@ -1445,6 +1605,7 @@ function bootstrap(){
   setInterval(updateClock, 1000);
 
   // Render inicial
+  setActivePage("planner");
   rerenderAll();
 }
 
