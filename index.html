@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Panel Central — Hospital (v1)</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logoDot"></div>
+      <div>
+        <div class="title">Panel Central</div>
+        <div class="subtitle">Dispatch Board • Turnos + Guardia + Timeline</div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="pill">
+        <label>Fecha</label>
+        <input id="datePicker" type="date">
+      </div>
+
+      <div class="pill">
+        <label>Sector</label>
+        <select id="sectorSelect">
+          <option value="Electricidad">Electricidad</option>
+          <option value="Fontanería" selected>Fontanería</option>
+        </select>
+      </div>
+
+      <button id="btnQuick" class="btn btn-primary">+ Rápido</button>
+      <button id="btnAuto" class="btn">🤖 Auto</button>
+      <button id="btnCloseDay" class="btn btn-danger">Cerrar día</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- Resumen de sectores -->
+    <section class="sectorRow">
+      <div id="cardElec" class="sectorCard">
+        <div class="sectorName">Electricidad</div>
+        <div class="sectorMeta">
+          <div><span class="k">Guardia</span> <span id="elecGuard">—</span></div>
+          <div><span class="k">Disponibles</span> <span id="elecFree">0</span></div>
+          <div><span class="k">Correctivos</span> <span id="elecInc">0</span></div>
+          <div><span class="k">Carga media</span> <span id="elecLoad">0%</span></div>
+        </div>
+      </div>
+
+      <div id="cardFont" class="sectorCard active">
+        <div class="sectorName">Fontanería</div>
+        <div class="sectorMeta">
+          <div><span class="k">Guardia</span> <span id="fontGuard">—</span></div>
+          <div><span class="k">Disponibles</span> <span id="fontFree">0</span></div>
+          <div><span class="k">Correctivos</span> <span id="fontInc">0</span></div>
+          <div><span class="k">Carga media</span> <span id="fontLoad">0%</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cuerpo -->
+    <section class="board">
+      <!-- Bandeja -->
+      <aside class="tray">
+        <div class="trayHead">
+          <h3>Bandeja</h3>
+          <button id="btnImport" class="btn btn-small">Importar cuadrante</button>
+        </div>
+
+        <div class="trayGroup">
+          <div class="trayTitle red">🔴 Correctivos</div>
+          <div id="trayCorrectivos" class="trayList"></div>
+          <button id="btnNewCorrectivo" class="btn btn-small btn-outline">+ Correctivo</button>
+        </div>
+
+        <div class="trayGroup">
+          <div class="trayTitle yellow">🟡 Preventivos</div>
+          <div id="trayPreventivos" class="trayList"></div>
+          <button id="btnNewPreventivo" class="btn btn-small btn-outline">+ Preventivo</button>
+        </div>
+
+        <div class="legend">
+          <div class="chip"><span class="sq free"></span> Libre</div>
+          <div class="chip"><span class="sq prev"></span> Preventivo</div>
+          <div class="chip"><span class="sq corr"></span> Correctivo</div>
+          <div class="chip"><span class="sq off"></span> Descanso</div>
+          <div class="chip"><span class="sq guard"></span> Guardia</div>
+        </div>
+      </aside>
+
+      <!-- Técnicos -->
+      <section class="techArea">
+        <div id="techGrid" class="techGrid"></div>
+      </section>
+    </section>
+  </main>
+
+  <!-- Modal: Import -->
+  <div id="modalImport" class="modal hidden">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h3>Importar cuadrante (CSV formato A)</h3>
+        <button id="btnCloseImport" class="btn btn-small">Cerrar</button>
+      </div>
+      <p class="muted">
+        Pega el CSV: primera columna <b>Nombre</b>, columnas 1..28 con M/T/N/D (o combinados tipo M/T).
+      </p>
+      <textarea id="csvInput" class="textarea" rows="10"></textarea>
+      <div class="modalActions">
+        <button id="btnLoadDefault" class="btn">Cargar ejemplo (Fontanería Feb 2026)</button>
+        <button id="btnProcessCsv" class="btn btn-primary">Procesar y guardar</button>
+        <button id="btnResetAll" class="btn btn-danger">Reset total</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Quick -->
+  <div id="modalQuick" class="modal hidden">
+    <div class="modalCard">
+      <div class="modalHead">
+        <h3>+ Rápido (crear tarjeta)</h3>
+        <button id="btnCloseQuick" class="btn btn-small">Cerrar</button>
+      </div>
+
+      <div class="formRow">
+        <label>Tipo</label>
+        <select id="quickType" class="input">
+          <option value="Correctivo">Correctivo</option>
+          <option value="Preventivo" selected>Preventivo</option>
+        </select>
+      </div>
+
+      <div class="formRow">
+        <label>Título</label>
+        <input id="quickTitle" class="input" placeholder="Ej: INC-3456 | UCI | fuga" />
+      </div>
+
+      <div class="formRow">
+        <label>Duración (h)</label>
+        <input id="quickDur" class="input" type="number" min="1" step="1" value="1" />
+      </div>
+
+      <div class="modalActions">
+        <button id="btnCreateCard" class="btn btn-primary">Crear en bandeja</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
