@@ -527,6 +527,7 @@ function updateRosterShift(sector, techName, day, nextCode){
   state.rosters[sector] = roster;
   setRosters(state.rosters);
   rerenderAll();
+  generateAutoReport();
 }
 
 function renderTray(state, dateISO, sector){
@@ -818,6 +819,144 @@ function escapeHtml(s){
 }
 function escapeHtmlAttr(s){
   return String(s||"").replaceAll('"',"&quot;");
+}
+
+
+function setAutoReportOutput(text){
+  const el = $("autoReportOutput");
+  if(el) el.textContent = text;
+}
+
+function formatListLine(label, value){
+  return `- ${label}: ${value}`;
+}
+
+function buildDailyAutoReport(){
+  const state = getState();
+  const dateISO = $("datePicker").value;
+  const sector = $("sectorSelect").value;
+  const daySector = ensureDaySector(state.tasks, dateISO, sector);
+
+  const incidents = state.incidents.filter((i) => i.dateISO === dateISO && i.sector === sector);
+  const ots = state.ots.filter((o) => o.dateISO === dateISO && o.sector === sector);
+
+  const doneBlocks = daySector.blocks.length;
+  const pendingTray = daySector.tray.length;
+  const extraTasks = (daySector.overflow || []).length;
+
+  const byType = daySector.blocks.reduce((acc, b) => {
+    acc[b.type] = (acc[b.type] || 0) + 1;
+    return acc;
+  }, {});
+
+  const incidentOpen = incidents.filter((x) => x.status !== "Cerrada").length;
+  const otFinal = ots.filter((x) => x.step >= 2).length;
+
+  const lines = [
+    `INFORME AUTOMÁTICO · ${dateISO} · ${sector}`,
+    "",
+    "Resumen operativo",
+    formatListLine("Tareas asignadas en timeline", doneBlocks),
+    formatListLine("Tareas pendientes en bandeja", pendingTray),
+    formatListLine("Tareas extra", extraTasks),
+    formatListLine("Bloques Correctivo", byType["Correctivo"] || 0),
+    formatListLine("Bloques Preventivo", byType["Preventivo"] || 0),
+    formatListLine("Bloques Guardia móvil", byType["Guardia móvil"] || 0),
+    "",
+    "Calidad de datos (móvil/QR)",
+    formatListLine("Incidencias totales", incidents.length),
+    formatListLine("Incidencias abiertas", incidentOpen),
+    formatListLine("OT totales", ots.length),
+    formatListLine("OT finalizadas", otFinal),
+    "",
+    "Pendientes de completar desde móvil",
+    ...incidents.filter((i) => !(i.location || "") || !(i.photos || []).length).slice(0,6).map((i) => `- INC: ${i.title}`),
+    ...ots.filter((o) => !(o.area || "") || !(o.photos || []).length).slice(0,6).map((o) => `- OT: ${o.title}`),
+  ];
+
+  const hasPending = lines[lines.length - 1]?.startsWith("- ");
+  if(!hasPending) lines.push("- Ninguno");
+
+  return lines.join("\n");
+}
+
+function generateAutoReport(){
+  setAutoReportOutput(buildDailyAutoReport());
+}
+
+function setupTouchDragAndDrop(){
+  const trayLists = ["trayCorrectivos", "trayPreventivos", "trayGuardia"];
+  const cards = trayLists.flatMap((id) => [...$(id).querySelectorAll('.cardTask')]);
+  for(const card of cards){
+    card.addEventListener("touchstart", onTouchStartCard, { passive: false });
+    card.addEventListener("touchmove", onTouchMoveCard, { passive: false });
+    card.addEventListener("touchend", onTouchEndCard, { passive: false });
+  }
+}
+
+let touchDragState = null;
+
+function onTouchStartCard(e){
+  const card = e.currentTarget;
+  const trayId = card.dataset.trayid;
+  if(!trayId) return;
+  const touch = e.touches[0];
+  touchDragState = { trayId, card, startX: touch.clientX, startY: touch.clientY };
+  card.classList.add("touchDragging");
+}
+
+function onTouchMoveCard(e){
+  if(!touchDragState) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  touchDragState.card.style.transform = `translate(${t.clientX - touchDragState.startX}px, ${t.clientY - touchDragState.startY}px)`;
+
+  const el = document.elementFromPoint(t.clientX, t.clientY);
+  for(const slot of document.querySelectorAll('.slot.touchOver')) slot.classList.remove('touchOver');
+  const slot = el?.closest?.('.slot');
+  if(slot && !slot.classList.contains('off')) slot.classList.add('touchOver');
+}
+
+function onTouchEndCard(e){
+  if(!touchDragState) return;
+  const changed = e.changedTouches[0];
+  const el = document.elementFromPoint(changed.clientX, changed.clientY);
+  const slot = el?.closest?.('.slot');
+
+  touchDragState.card.classList.remove('touchDragging');
+  touchDragState.card.style.transform = '';
+  for(const over of document.querySelectorAll('.slot.touchOver')) over.classList.remove('touchOver');
+
+  if(slot && !slot.classList.contains('off')){
+    const payload = { kind: "tray", trayId: touchDragState.trayId };
+    placePayloadInSlot(payload, slot);
+  }
+
+  touchDragState = null;
+}
+
+function placePayloadInSlot(payload, slot){
+  const tech = slot.dataset.tech;
+  const turno = slot.dataset.turn;
+  const hour = Number(slot.dataset.hour);
+  const dateISO = $("datePicker").value;
+  const sector = $("sectorSelect").value;
+  const state = getState();
+  const daySector = ensureDaySector(state.tasks, dateISO, sector);
+
+  if(payload.kind !== "tray") return;
+  const t = daySector.tray.find(x => x.id === payload.trayId);
+  if(!t) return;
+  const dur = Number(t.dur || 1);
+
+  if(!canPlace(daySector, tech, turno, hour, dur)) return;
+
+  daySector.blocks.push({
+    id: uid(), trayId: t.id, type: t.type, title: t.title, dur, name: tech, startHour: hour
+  });
+  daySector.tray = daySector.tray.filter(x => x.id !== t.id);
+  setTasks(state.tasks);
+  rerenderAll();
 }
 
 // ---------- Drag & Drop ----------
@@ -1287,6 +1426,7 @@ function rerenderAll(){
   renderSectorSummaries(state, dateISO);
   renderWeeklyCalendars(state, dateISO, sector);
   renderTray(state, dateISO, sector);
+  setupTouchDragAndDrop();
   renderTechGrid(state, dateISO, sector);
   renderShiftChangeLog();
   renderIncidents();
@@ -1505,35 +1645,49 @@ async function scanQRCodeToInput(targetInputId, statusId){
   }
 
   status.textContent = "Abriendo cámara para escanear QR...";
-  if(!("BarcodeDetector" in window)){
-    const manual = prompt("Tu navegador no soporta escaneo automático. Pega el código QR:", target.value || "");
-    if(manual) target.value = manual.trim();
-    status.textContent = manual ? "Código QR cargado manualmente." : "Escaneo cancelado.";
-    return;
+
+  try{
+    if(window.QrScanner){
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
+      const video = document.createElement("video");
+      video.srcObject = stream;
+      video.setAttribute("playsinline", "true");
+      await video.play();
+      const result = await window.QrScanner.scanImage(video, { returnDetailedScanResult: true }).catch(() => null);
+      stream.getTracks().forEach((t) => t.stop());
+      if(result?.data){
+        target.value = result.data;
+        status.textContent = `QR detectado: ${result.data}`;
+        return;
+      }
+    }
+  }catch{}
+
+  if("BarcodeDetector" in window){
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+    const video = document.createElement("video");
+    video.srcObject = stream;
+    video.setAttribute("playsinline", "true");
+    await video.play();
+    const detector = new BarcodeDetector({ formats: ["qr_code"] });
+    const endAt = Date.now() + 12000;
+    let found = "";
+    while(Date.now() < endAt && !found){
+      const results = await detector.detect(video);
+      if(results[0]?.rawValue) found = results[0].rawValue;
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    stream.getTracks().forEach((t) => t.stop());
+    if(found){
+      target.value = found;
+      status.textContent = `QR detectado: ${found}`;
+      return;
+    }
   }
 
-  const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-  const video = document.createElement("video");
-  video.srcObject = stream;
-  video.setAttribute("playsinline", "true");
-  await video.play();
-  const detector = new BarcodeDetector({ formats: ["qr_code"] });
-  const endAt = Date.now() + 10000;
-  let found = "";
-  while(Date.now() < endAt && !found){
-    const results = await detector.detect(video);
-    if(results[0]?.rawValue) found = results[0].rawValue;
-    await new Promise((r) => setTimeout(r, 200));
-  }
-  stream.getTracks().forEach((t) => t.stop());
-  if(found){
-    target.value = found;
-    status.textContent = `QR detectado: ${found}`;
-  }else{
-    const manual = prompt("No se detectó QR a tiempo. Introduce código manual:", target.value || "");
-    if(manual) target.value = manual.trim();
-    status.textContent = manual ? "Código QR cargado manualmente." : "No se detectó QR.";
-  }
+  const manual = prompt("No se detectó QR a tiempo. Introduce código manual:", target.value || "");
+  if(manual) target.value = manual.trim();
+  status.textContent = manual ? "Código QR cargado manualmente." : "No se detectó QR.";
 }
 
 // ---------- Phones ----------
@@ -1743,6 +1897,7 @@ function bootstrap(){
   $("btnOtScanQR").addEventListener("click", () => scanQRCodeToInput("otArea", "otQrStatus"));
 
   $("btnAuto").addEventListener("click", autoAssignPreventivos);
+  $("btnGenerateReport").addEventListener("click", generateAutoReport);
   $("btnCloseDay").addEventListener("click", closeDay);
 
   // Click en tarjetas de sector arriba para seleccionar
@@ -1763,6 +1918,7 @@ function bootstrap(){
   renderPhotoPreview("incident");
   renderPhotoPreview("ot");
   rerenderAll();
+  generateAutoReport();
 }
 
 bootstrap();
