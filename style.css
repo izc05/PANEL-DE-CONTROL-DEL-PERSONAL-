@@ -76,6 +76,26 @@ body{
 
 .layout{max-width:1300px;margin:14px auto;padding:0 14px;display:flex;flex-direction:column;gap:14px}
 
+.monthBoard{
+  background: rgba(9,14,26,.92);
+  border:1px solid var(--line);
+  border-radius: var(--r);
+  padding:12px;
+  box-shadow: var(--shadow);
+}
+.monthHead{font-size:13px; font-weight:800; color:#bcd2ff; margin-bottom:8px}
+.monthHeatmap{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.monthSector{border:1px solid rgba(58,160,255,.24); background: rgba(11,18,32,.45); border-radius:14px; padding:8px}
+.monthSectorTitle{font-weight:800; margin-bottom:8px; color:#dbe8ff}
+.monthGrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.mday{min-height:44px; border-radius:10px; border:1px solid rgba(255,255,255,.08); padding:4px; font-size:11px}
+.mday small{display:block;opacity:.85}
+.mday.M{background: rgba(29,215,95,.22)}
+.mday.T{background: rgba(255,211,77,.22)}
+.mday.N{background: rgba(185,79,255,.24)}
+.mday.D{background: rgba(127,138,166,.2)}
+.mday.none{background: rgba(58,160,255,.1); color:var(--muted)}
+
 .sectorRow{
   display:grid;
   grid-template-columns: 1fr 1fr;
@@ -93,6 +113,10 @@ body{
 .sectorMeta{display:grid;grid-template-columns:1fr 1fr; gap:6px 12px; color:var(--muted); font-size:13px}
 .sectorMeta .k{opacity:.9}
 .sectorMeta span b{color:var(--text)}
+.sectorMeta .guardLabel{color:#ffcb8f}
+.sectorMeta .freeLabel{color:#94f2ba}
+.sectorMeta .incLabel{color:#ff9d9d}
+.sectorMeta .loadLabel{color:#a7c8ff}
 
 .board{display:grid;grid-template-columns: 320px 1fr; gap:12px}
 .tray{
@@ -110,6 +134,7 @@ body{
 .trayTitle{font-weight:800;font-size:13px}
 .trayTitle.red{color:var(--red)}
 .trayTitle.yellow{color:var(--yellow)}
+.trayTitle.blue{color:#7fc6ff}
 .trayList{display:flex; flex-direction:column; gap:8px; min-height:40px}
 
 .cardTask{
@@ -125,6 +150,7 @@ body{
 .cardTask .d{color:var(--muted); font-size:12px}
 .cardTask.red{border-color: rgba(255,77,77,.35)}
 .cardTask.yellow{border-color: rgba(255,211,77,.35)}
+.cardTask.blue{border-color: rgba(127,198,255,.5); background: rgba(58,160,255,.18)}
 .pillDur{
   border-radius:999px;
   padding:6px 10px;
@@ -284,4 +310,5 @@ body{
 @media (max-width: 980px){
   .board{grid-template-columns: 1fr}
   .sectorRow{grid-template-columns:1fr}
+  .monthHeatmap{grid-template-columns:1fr}
 }

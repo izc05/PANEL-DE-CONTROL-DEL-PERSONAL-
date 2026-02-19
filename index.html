@@ -60,6 +60,11 @@
       </div>
     </section>
 
+    <section class="monthBoard">
+      <div class="monthHead">Calentador mensual por turnos (M/T/N/D) por sector</div>
+      <div id="monthHeatmap" class="monthHeatmap"></div>
+    </section>
+
     <!-- Cuerpo -->
     <section class="board">
       <!-- Bandeja -->
@@ -79,6 +84,12 @@
           <div class="trayTitle yellow">🟡 Preventivos</div>
           <div id="trayPreventivos" class="trayList"></div>
           <button id="btnNewPreventivo" class="btn btn-small btn-outline">+ Preventivo</button>
+        </div>
+
+        <div class="trayGroup">
+          <div class="trayTitle blue">🔵 Guardia móvil</div>
+          <div id="trayGuardia" class="trayList"></div>
+          <button id="btnNewGuardia" class="btn btn-small btn-outline">+ Guardia móvil</button>
         </div>
 
         <div class="legend">
@@ -130,6 +141,7 @@
         <select id="quickType" class="input">
           <option value="Correctivo">Correctivo</option>
           <option value="Preventivo" selected>Preventivo</option>
+          <option value="Guardia móvil">Guardia móvil</option>
         </select>
       </div>
 
