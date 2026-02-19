@@ -113,11 +113,13 @@ body{
 .calTech{font-size:12px}
 .calHeadCell,.calCell{padding:8px 6px;border-radius:10px;border:1px solid rgba(255,255,255,.08);text-align:center;font-size:12px}
 .calHeadCell{background:rgba(15,23,48,.82);color:#d4e6ff;font-weight:700;text-transform:capitalize}
+.calCell{appearance:none;cursor:pointer;color:var(--text)}
 .calCell.shift-M{background: rgba(29,215,95,.22)}
 .calCell.shift-T{background: rgba(255,211,77,.22)}
 .calCell.shift-N{background: rgba(185,79,255,.24)}
 .calCell.shift-D{background: rgba(127,138,166,.2)}
 .calCell.out{color:var(--muted);background:rgba(58,160,255,.08)}
+.todayCol{border-color:rgba(255,166,0,.7)!important;box-shadow:0 0 0 1px rgba(255,166,0,.35) inset}
 
 .sectorRow{
   display:grid;
