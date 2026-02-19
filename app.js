@@ -3129,7 +3129,13 @@ async function parseRosterFile(file, sector, ym){
   let rows = [];
   if(ext==="csv"){
     const txt = await file.text();
-    rows = txt.split(/\r?\n/).filter(Boolean).map(line=> line.split(",").map(x=>x.trim()));
+    rows = txt
+      .split(/\r?\n/)
+      .filter(Boolean)
+      .map(line=>{
+        const delim = line.includes(";") ? ";" : (line.includes("\t") ? "\t" : ",");
+        return line.split(delim).map(x=>x.trim());
+      });
   }else{
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, { type:"array" });
@@ -3237,6 +3243,9 @@ function initRosterManager(){
     const ym = currentYM();
     try{
       await parseRosterFile(f, sector, ym);
+      const datePicker = document.getElementById("datePicker");
+      if(datePicker) datePicker.value = `${ym}-01`;
+      rerenderAll();
       renderRosterMonthsList();
     }catch(err){
       console.error(err);
