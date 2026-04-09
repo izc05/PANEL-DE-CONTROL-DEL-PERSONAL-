@@ -15,6 +15,7 @@ const LS = {
   INCIDENTS: "panel_incidents_v1",
   OTS: "panel_ots_v1",
   CUSTOM_TYPES: "panel_custom_types_v1",
+  UNIFILAR: "panel_unifilar_v1",
 };
 
 const UI_V5_KEY = "panel_ui_v5";
@@ -32,6 +33,7 @@ function loadFullState(){
     incidents:   JSON.parse(localStorage.getItem(LS.INCIDENTS)     || "[]"),
     ots:         JSON.parse(localStorage.getItem(LS.OTS)           || "[]"),
     customTypes: JSON.parse(localStorage.getItem(LS.CUSTOM_TYPES)  || "[]"),
+    unifilar:    JSON.parse(localStorage.getItem(LS.UNIFILAR)      || "{\"nodes\":[],\"lines\":[]}"),
   };
 }
 const state = loadFullState();
@@ -46,6 +48,7 @@ function saveState(){
   localStorage.setItem(LS.INCIDENTS,    JSON.stringify(state.incidents));
   localStorage.setItem(LS.OTS,          JSON.stringify(state.ots));
   localStorage.setItem(LS.CUSTOM_TYPES, JSON.stringify(state.customTypes));
+  localStorage.setItem(LS.UNIFILAR,     JSON.stringify(state.unifilar || { nodes:[], lines:[] }));
 }
 
 const SHIFT = {
@@ -1230,6 +1233,7 @@ function setActivePage(page){
     planner: "pagePlanner",
     incidents: "pageIncidents",
     ot: "pageOT",
+    unifilar: "pageUnifilar",
   };
   for(const [name, id] of Object.entries(pages)){
     $(id).classList.toggle("hidden", name !== page);
@@ -1237,6 +1241,7 @@ function setActivePage(page){
   $("btnPagePlanner").classList.toggle("btn-primary", page === "planner");
   $("btnPageIncidents").classList.toggle("btn-primary", page === "incidents");
   $("btnPageOT").classList.toggle("btn-primary", page === "ot");
+  $("btnPageUnifilar")?.classList.toggle("btn-primary", page === "unifilar");
 }
 
 function createIncident(){
@@ -1514,6 +1519,7 @@ function rerenderAll(){
   renderIncidents();
   renderOTs();
   renderFilterChips();
+  renderUnifilar();
 }
 
 // ---------- Import modal actions ----------
@@ -2323,6 +2329,7 @@ function bootstrap(){
   $("btnPagePlanner").addEventListener("click", () => setActivePage("planner"));
   $("btnPageIncidents").addEventListener("click", () => setActivePage("incidents"));
   $("btnPageOT").addEventListener("click", () => setActivePage("ot"));
+  $("btnPageUnifilar")?.addEventListener("click", () => setActivePage("unifilar"));
   $("btnReglamento")?.addEventListener("click", () => openModal($("modalReglamento")));
   $("btnCloseReglamento")?.addEventListener("click", () => closeModal($("modalReglamento")));
   $("btnOpenReglamento")?.addEventListener("click", openReglamentoPdf);
@@ -2386,6 +2393,7 @@ function bootstrap(){
   ensureQuickTypeOptions();
   renderPhotoPreview("incident");
   renderPhotoPreview("ot");
+  initUnifilarEditor();
   rerenderAll();
   generateAutoReport();
 }
@@ -2412,6 +2420,161 @@ function openReglamentoPdf(){
   }
   frame.src = pdfSrc;
   openTab.href = pdfSrc;
+}
+
+let UNI_MODE = "place";
+let UNI_SELECTED_NODE = "";
+
+function uniUid(prefix="u"){
+  return `${prefix}_${Math.random().toString(36).slice(2,9)}`;
+}
+
+function getUnifilarState(){
+  if(!state.unifilar || !Array.isArray(state.unifilar.nodes) || !Array.isArray(state.unifilar.lines)){
+    state.unifilar = { nodes: [], lines: [] };
+  }
+  return state.unifilar;
+}
+
+function unifilarSymbolSvg(node){
+  const x = Number(node.x || 0), y = Number(node.y || 0);
+  const label = escapeHtml(node.label || "");
+  const common = `class="uniSymbol ${UNI_SELECTED_NODE===node.id ? "uniSelected" : ""}" data-uni-node="${escapeHtmlAttr(node.id)}" transform="translate(${x} ${y})"`;
+  if(node.type === "breaker"){
+    return `<g ${common}><rect class="body" x="-24" y="-14" width="48" height="28" rx="5"></rect><line class="body" x1="-14" y1="10" x2="14" y2="-10"></line><text class="uniText" x="0" y="32" text-anchor="middle">${label || "PIA"}</text></g>`;
+  }
+  if(node.type === "differential"){
+    return `<g ${common}><rect class="body" x="-26" y="-14" width="52" height="28" rx="5"></rect><text class="uniText" x="0" y="6" text-anchor="middle">Δ</text><text class="uniText" x="0" y="32" text-anchor="middle">${label || "ID"}</text></g>`;
+  }
+  if(node.type === "ground"){
+    return `<g ${common}><line class="body" x1="0" y1="-18" x2="0" y2="8"></line><line class="body" x1="-16" y1="8" x2="16" y2="8"></line><line class="body" x1="-11" y1="14" x2="11" y2="14"></line><line class="body" x1="-6" y1="19" x2="6" y2="19"></line><text class="uniText" x="0" y="38" text-anchor="middle">${label || "PE"}</text></g>`;
+  }
+  if(node.type === "transformer"){
+    return `<g ${common}><circle class="body" cx="-10" cy="0" r="12"></circle><circle class="body" cx="10" cy="0" r="12"></circle><text class="uniText" x="0" y="34" text-anchor="middle">${label || "TR"}</text></g>`;
+  }
+  if(node.type === "load"){
+    return `<g ${common}><circle class="body" cx="0" cy="0" r="15"></circle><line class="body" x1="-10" y1="-10" x2="10" y2="10"></line><line class="body" x1="10" y1="-10" x2="-10" y2="10"></line><text class="uniText" x="0" y="34" text-anchor="middle">${label || "Carga"}</text></g>`;
+  }
+  return `<g ${common}><rect class="body" x="-34" y="-18" width="68" height="36" rx="6"></rect><text class="uniText" x="0" y="6" text-anchor="middle">Q</text><text class="uniText" x="0" y="36" text-anchor="middle">${label || "CGMP"}</text></g>`;
+}
+
+function unifilarLinePath(fromNode, toNode){
+  const x1 = Number(fromNode?.x || 0), y1 = Number(fromNode?.y || 0);
+  const x2 = Number(toNode?.x || 0), y2 = Number(toNode?.y || 0);
+  const mid = (x1 + x2) / 2;
+  return `M ${x1} ${y1} L ${mid} ${y1} L ${mid} ${y2} L ${x2} ${y2}`;
+}
+
+function renderUnifilar(){
+  const svg = document.getElementById("unifilarSvg");
+  if(!svg) return;
+  const { nodes, lines } = getUnifilarState();
+  const defs = `
+    <defs>
+      <pattern id="uniGrid" width="24" height="24" patternUnits="userSpaceOnUse">
+        <path d="M 24 0 L 0 0 0 24" fill="none" stroke="rgba(120,170,255,.15)" stroke-width="1"></path>
+      </pattern>
+    </defs>
+  `;
+  const lineHtml = lines.map(line => {
+    const from = nodes.find(n => n.id === line.from);
+    const to = nodes.find(n => n.id === line.to);
+    if(!from || !to) return "";
+    const d = unifilarLinePath(from, to);
+    const mx = (Number(from.x)+Number(to.x))/2;
+    const my = (Number(from.y)+Number(to.y))/2 - 8;
+    return `<g><path class="uniLine" d="${d}"></path>${line.label ? `<text class="uniLineLabel" x="${mx}" y="${my}" text-anchor="middle">${escapeHtml(line.label)}</text>` : ""}</g>`;
+  }).join("");
+  const nodesHtml = nodes.map(unifilarSymbolSvg).join("");
+  svg.innerHTML = `${defs}<rect x="0" y="0" width="1400" height="700" fill="url(#uniGrid)"></rect>${lineHtml}${nodesHtml}`;
+}
+
+function unifilarPointFromEvent(e){
+  const svg = document.getElementById("unifilarSvg");
+  const rect = svg.getBoundingClientRect();
+  const sx = 1400 / rect.width;
+  const sy = 700 / rect.height;
+  return {
+    x: Math.max(20, Math.min(1380, (e.clientX - rect.left) * sx)),
+    y: Math.max(20, Math.min(680, (e.clientY - rect.top) * sy)),
+  };
+}
+
+function onUnifilarCanvasClick(e){
+  const svg = document.getElementById("unifilarSvg");
+  if(!svg) return;
+  const model = getUnifilarState();
+  const nodeTarget = e.target.closest?.("[data-uni-node]");
+  if(UNI_MODE === "line"){
+    if(!nodeTarget) return;
+    const nodeId = nodeTarget.getAttribute("data-uni-node");
+    if(!UNI_SELECTED_NODE){ UNI_SELECTED_NODE = nodeId; renderUnifilar(); return; }
+    if(UNI_SELECTED_NODE !== nodeId){
+      model.lines.push({
+        id: uniUid("line"),
+        from: UNI_SELECTED_NODE,
+        to: nodeId,
+        label: (document.getElementById("uniLineLabel")?.value || "").trim(),
+      });
+      saveState();
+    }
+    UNI_SELECTED_NODE = "";
+    renderUnifilar();
+    return;
+  }
+  const p = unifilarPointFromEvent(e);
+  model.nodes.push({
+    id: uniUid("node"),
+    type: document.getElementById("uniSymbolType")?.value || "panel",
+    label: (document.getElementById("uniLabel")?.value || "").trim(),
+    x: Math.round(p.x),
+    y: Math.round(p.y),
+  });
+  saveState();
+  renderUnifilar();
+}
+
+function exportUnifilarSvg(){
+  const svg = document.getElementById("unifilarSvg");
+  if(!svg) return;
+  const blob = new Blob([svg.outerHTML], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `esquema_unifilar_${todayISO()}.svg`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function initUnifilarEditor(){
+  const svg = document.getElementById("unifilarSvg");
+  if(!svg || svg.dataset.bound === "1") return;
+  svg.dataset.bound = "1";
+  renderUnifilar();
+  svg.addEventListener("click", onUnifilarCanvasClick);
+  document.getElementById("btnUniModePlace")?.addEventListener("click", ()=>{
+    UNI_MODE = "place";
+    UNI_SELECTED_NODE = "";
+    document.getElementById("btnUniModePlace")?.classList.add("btn-primary");
+    document.getElementById("btnUniModeLine")?.classList.remove("btn-primary");
+    document.getElementById("uniHint").textContent = "Modo colocar: toca el lienzo para añadir símbolos.";
+    renderUnifilar();
+  });
+  document.getElementById("btnUniModeLine")?.addEventListener("click", ()=>{
+    UNI_MODE = "line";
+    UNI_SELECTED_NODE = "";
+    document.getElementById("btnUniModeLine")?.classList.add("btn-primary");
+    document.getElementById("btnUniModePlace")?.classList.remove("btn-primary");
+    document.getElementById("uniHint").textContent = "Modo conectar: toca símbolo origen y después destino.";
+    renderUnifilar();
+  });
+  document.getElementById("btnUniClear")?.addEventListener("click", ()=>{
+    if(!confirm("¿Borrar todo el esquema unifilar?")) return;
+    state.unifilar = { nodes: [], lines: [] };
+    saveState();
+    renderUnifilar();
+  });
+  document.getElementById("btnUniExport")?.addEventListener("click", exportUnifilarSvg);
 }
 
 

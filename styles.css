@@ -501,6 +501,35 @@ body{
   white-space:pre-wrap;
 }
 
+.unifilarTools{
+  display:grid;
+  grid-template-columns: repeat(7, minmax(0,1fr));
+  gap:8px;
+  margin-bottom:10px;
+}
+.unifilarCanvasWrap{
+  border:1px solid rgba(125,177,255,.28);
+  border-radius:16px;
+  overflow:auto;
+  background:#0a1228;
+}
+.unifilarSvg{
+  width:100%;
+  min-width:820px;
+  min-height:520px;
+  display:block;
+}
+.uniSymbol{cursor:pointer}
+.uniSymbol .body{
+  fill:rgba(12,24,52,.96);
+  stroke:#9dc7ff;
+  stroke-width:2;
+}
+.uniText{fill:#dbe9ff;font:700 13px/1 system-ui, -apple-system, Segoe UI, Roboto, Arial}
+.uniLine{stroke:#7fc6ff;stroke-width:3;fill:none}
+.uniLineLabel{fill:#ffdca0;font:700 12px/1 system-ui, -apple-system, Segoe UI, Roboto, Arial}
+.uniSelected .body{stroke:#ffd34d;filter:drop-shadow(0 0 6px rgba(255,211,77,.55))}
+
 .cardTask.touchDragging{
   opacity:.85;
   box-shadow:0 0 0 2px rgba(255,211,77,.6);
@@ -656,6 +685,8 @@ body.bg-night #bgSky{background: radial-gradient(1000px 650px at 20% 0%, rgba(18
   }
   .calHeadCell,.calCell{font-size:11px;padding:6px 4px;}
   .calTechHead,.calTech{font-size:11px;padding:7px 8px;}
+  .unifilarTools{grid-template-columns:1fr 1fr;}
+  .unifilarSvg{min-width:680px;min-height:460px;}
   /* Tab bar */
   .pageTabs{
     position: fixed; left: 0; right: 0; bottom: 0;
