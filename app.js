@@ -73,9 +73,7 @@ JUAN MANUEL ARGUELLES BAREA,D,M,M,M,M,M,D,D,M,M,M,M,D,D,D,M,M,M,M,M,D,D,M,M,M,M,
 const $ = (id) => document.getElementById(id);
 
 function todayISO(){
-  const d = new Date();
-  const tz = d.getTimezoneOffset() * 60000;
-  return new Date(Date.now() - tz).toISOString().slice(0,10);
+  return formatDateLocal(new Date());
 }
 
 function tomorrowISO(){
@@ -116,8 +114,20 @@ function isoToYMD(dateISO){
   return {y,m,d};
 }
 
+function parseDateLocal(dateISO){
+  const { y, m, d } = isoToYMD(dateISO);
+  return new Date(y, (m - 1), d, 0, 0, 0, 0);
+}
+
+function formatDateLocal(dateObj){
+  const y = dateObj.getFullYear();
+  const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+  const d = String(dateObj.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 function dayOfWeek(dateISO){
-  const d = new Date(dateISO+"T00:00:00");
+  const d = parseDateLocal(dateISO);
   return d.getDay(); // 0 dom..6 sáb
 }
 
@@ -133,18 +143,18 @@ function weekKey(dateISO){
 }
 
 function mondayOfWeek(dateISO){
-  const d = new Date(dateISO+"T00:00:00");
+  const d = parseDateLocal(dateISO);
   const day = d.getDay(); // 0 domingo
   const diffToMon = (day === 0 ? -6 : 1 - day);
   const mon = new Date(d);
   mon.setDate(d.getDate() + diffToMon);
-  return mon.toISOString().slice(0,10);
+  return formatDateLocal(mon);
 }
 
 function addDays(dateISO, delta){
-  const d = new Date(dateISO+"T00:00:00");
+  const d = parseDateLocal(dateISO);
   d.setDate(d.getDate()+delta);
-  return d.toISOString().slice(0,10);
+  return formatDateLocal(d);
 }
 
 function normalizeSector(s){ return s; }
@@ -467,11 +477,18 @@ function renderWeeklyCalendars(state, dateISO, selectedSector){
   const today = todayISO();
 
   const dayHeader = days.map((day) => {
-    const dt = new Date(day+"T00:00:00");
+    const dt = parseDateLocal(day);
     const name = dt.toLocaleDateString("es-ES", { weekday:"short" });
     const n = String(dt.getDate()).padStart(2, "0");
     const todayClass = day === today ? "todayCol" : "";
-    return `<div class="calHeadCell ${todayClass}">${escapeHtml(name)} ${n}</div>`;
+    const otCount = state.ots.filter(o => o.dateISO === day && (!selectedSector || !o.sector || o.sector === selectedSector)).length;
+    const eventCount = state.incidents.filter(i => i.dateISO === day && (!selectedSector || !i.sector || i.sector === selectedSector)).length
+      + state.changes.filter(c => c.dateISO === day && (!selectedSector || !c.sector || c.sector === selectedSector)).length;
+    const badges = [
+      otCount > 0 ? `<span class="calMiniBadge ot">OT ${otCount}</span>` : "",
+      eventCount > 0 ? `<span class="calMiniBadge ev">EV ${eventCount}</span>` : "",
+    ].join("");
+    return `<div class="calHeadCell ${todayClass}">${escapeHtml(name)} ${n}${badges ? `<div class="calMiniWrap">${badges}</div>` : ""}</div>`;
   }).join("");
 
   const sectors = [selectedSector || "Fontanería"];
@@ -1366,6 +1383,11 @@ function renderOTs(){
   if(UIv5.otAssigned) items = items.filter(i => i.assignedTo);
   if(UIv5.otMine && UIv5.me) items = items.filter(i => i.assignedTo === UIv5.me);
   if(q) items = items.filter(i => objectMatchesQuery(i, q, ["title","area","reportedBy","data","status"]));
+  items.sort((a,b) => {
+    const dA = (a.dateISO || "") + "|" + (a.createdAt || "");
+    const dB = (b.dateISO || "") + "|" + (b.createdAt || "");
+    return dB.localeCompare(dA);
+  });
 
   const kanban = $("otKanban");
   if(kanban) renderKanbanBoard(kanban, items, "ot");
@@ -2301,6 +2323,10 @@ function bootstrap(){
   $("btnPagePlanner").addEventListener("click", () => setActivePage("planner"));
   $("btnPageIncidents").addEventListener("click", () => setActivePage("incidents"));
   $("btnPageOT").addEventListener("click", () => setActivePage("ot"));
+  $("btnReglamento")?.addEventListener("click", () => openModal($("modalReglamento")));
+  $("btnCloseReglamento")?.addEventListener("click", () => closeModal($("modalReglamento")));
+  $("btnOpenReglamento")?.addEventListener("click", openReglamentoPdf);
+  $("reglamentoFile")?.addEventListener("change", openReglamentoPdf);
 
   $("btnCreateIncident").addEventListener("click", createIncident);
   $("btnCreateOT").addEventListener("click", createOT);
@@ -2365,6 +2391,28 @@ function bootstrap(){
 }
 
 bootstrap();
+
+function openReglamentoPdf(){
+  const urlInput = document.getElementById("reglamentoUrl");
+  const fileInput = document.getElementById("reglamentoFile");
+  const frame = document.getElementById("reglamentoFrame");
+  const openTab = document.getElementById("btnOpenReglamentoTab");
+  if(!frame || !openTab) return;
+  const url = (urlInput?.value || "").trim();
+  const file = fileInput?.files?.[0];
+  let pdfSrc = "";
+  if(file && file.type === "application/pdf"){
+    pdfSrc = URL.createObjectURL(file);
+  }else if(url){
+    pdfSrc = url;
+  }
+  if(!pdfSrc){
+    toast?.("Indica URL PDF o selecciona archivo.");
+    return;
+  }
+  frame.src = pdfSrc;
+  openTab.href = pdfSrc;
+}
 
 
 // ===== Fondo dinámico por hora local =====
