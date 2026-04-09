@@ -176,6 +176,8 @@
       <button id="btnPagePlanner" class="btn btn-primary">📋 Planificación</button>
       <button id="btnPageIncidents" class="btn">🚨 Incidencias</button>
       <button id="btnPageOT" class="btn">🛠️ OT</button>
+      <button id="btnPageUnifilar" class="btn">⚡ Unifilar</button>
+      <button id="btnReglamento" class="btn">📘 Reglamento</button>
       <button id="btnAuto" class="btn">🤖 Auto</button>
       <button id="btnRosters" class="btn hiddenRole">📆 Cuadrantes</button>
       <button id="btnUsers" class="btn hiddenRole">👥 Usuarios</button>
@@ -352,6 +354,33 @@
         <div id="otList" class="stackList hidden"></div>
       </div>
     </section>
+
+    <section id="pageUnifilar" class="pageSection pageGlow hidden">
+      <div class="changeBoard glassBoard">
+        <div class="monthHead">Editor de esquema unifilar</div>
+        <p class="pageIntro">Modo simplificado para dibujar líneas y simbología normalizada (interruptor, diferencial, tierra, cargas y cuadro). Pensado para revisión rápida en móvil y escritorio.</p>
+        <div class="unifilarTools">
+          <select id="uniSymbolType" class="input">
+            <option value="panel">Cuadro (CGMP)</option>
+            <option value="breaker">PIA / Magnetotérmico</option>
+            <option value="differential">Diferencial</option>
+            <option value="ground">Tierra</option>
+            <option value="load">Carga / Receptor</option>
+            <option value="transformer">Transformador</option>
+          </select>
+          <input id="uniLabel" class="input" placeholder="Etiqueta símbolo (ej: C1, 16A)" />
+          <input id="uniLineLabel" class="input" placeholder="Etiqueta línea (ej: 3x2,5 + T)" />
+          <button id="btnUniModePlace" class="btn btn-small btn-primary" type="button">➕ Colocar</button>
+          <button id="btnUniModeLine" class="btn btn-small" type="button">🔗 Conectar</button>
+          <button id="btnUniClear" class="btn btn-small btn-danger" type="button">🗑️ Limpiar</button>
+          <button id="btnUniExport" class="btn btn-small" type="button">⬇️ Exportar SVG</button>
+        </div>
+        <div id="uniHint" class="muted">Modo colocar: toca el lienzo para añadir símbolos.</div>
+        <div class="unifilarCanvasWrap">
+          <svg id="unifilarSvg" class="unifilarSvg" viewBox="0 0 1400 700" role="img" aria-label="Editor de esquema unifilar"></svg>
+        </div>
+      </div>
+    </section>
   </main>
 
   <!-- Tabs móviles -->
@@ -431,6 +460,24 @@
       <div class="modalActions">
         <button id="btnSavePhones" class="btn btn-primary">Guardar teléfonos</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal: Reglamento PDF -->
+  <div id="modalReglamento" class="modal hidden">
+    <div class="modalCard reglamentoCard">
+      <div class="modalHead">
+        <h3>📘 Reglamento / Manual PDF</h3>
+        <button id="btnCloseReglamento" class="btn btn-small">Cerrar</button>
+      </div>
+      <p class="muted">Pega una URL PDF o carga un archivo local para revisarlo desde móvil.</p>
+      <div class="reglamentoTools">
+        <input id="reglamentoUrl" class="input" type="url" placeholder="https://.../reglamento.pdf" />
+        <input id="reglamentoFile" type="file" accept="application/pdf" class="input" />
+        <button id="btnOpenReglamento" class="btn btn-primary" type="button">Abrir PDF</button>
+        <a id="btnOpenReglamentoTab" class="btn btn-small btn-outline" href="#" target="_blank" rel="noopener noreferrer">Abrir en pestaña</a>
+      </div>
+      <iframe id="reglamentoFrame" class="reglamentoFrame" title="Visor de reglamento PDF"></iframe>
     </div>
   </div>
 
