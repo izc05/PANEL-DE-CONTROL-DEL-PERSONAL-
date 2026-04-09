@@ -176,6 +176,7 @@
       <button id="btnPagePlanner" class="btn btn-primary">📋 Planificación</button>
       <button id="btnPageIncidents" class="btn">🚨 Incidencias</button>
       <button id="btnPageOT" class="btn">🛠️ OT</button>
+      <button id="btnReglamento" class="btn">📘 Reglamento</button>
       <button id="btnAuto" class="btn">🤖 Auto</button>
       <button id="btnRosters" class="btn hiddenRole">📆 Cuadrantes</button>
       <button id="btnUsers" class="btn hiddenRole">👥 Usuarios</button>
@@ -431,6 +432,24 @@
       <div class="modalActions">
         <button id="btnSavePhones" class="btn btn-primary">Guardar teléfonos</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal: Reglamento PDF -->
+  <div id="modalReglamento" class="modal hidden">
+    <div class="modalCard reglamentoCard">
+      <div class="modalHead">
+        <h3>📘 Reglamento / Manual PDF</h3>
+        <button id="btnCloseReglamento" class="btn btn-small">Cerrar</button>
+      </div>
+      <p class="muted">Pega una URL PDF o carga un archivo local para revisarlo desde móvil.</p>
+      <div class="reglamentoTools">
+        <input id="reglamentoUrl" class="input" type="url" placeholder="https://.../reglamento.pdf" />
+        <input id="reglamentoFile" type="file" accept="application/pdf" class="input" />
+        <button id="btnOpenReglamento" class="btn btn-primary" type="button">Abrir PDF</button>
+        <a id="btnOpenReglamentoTab" class="btn btn-small btn-outline" href="#" target="_blank" rel="noopener noreferrer">Abrir en pestaña</a>
+      </div>
+      <iframe id="reglamentoFrame" class="reglamentoFrame" title="Visor de reglamento PDF"></iframe>
     </div>
   </div>
 
