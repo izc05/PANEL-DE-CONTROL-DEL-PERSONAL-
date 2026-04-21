@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Atelier Lumière</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --cream: #f8f4ed;
+        --linen: #efe4d4;
+        --blush: #e6d2cb;
+        --honey: #d2b18f;
+        --gold: #b59a6f;
+        --ink: #3f342b;
+        --ink-soft: #5a4b40;
+      }
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, -apple-system, sans-serif;
+        color: var(--ink);
+        background: var(--cream);
+      }
+      .display { font-family: "Cormorant Garamond", serif; }
+      .container { width: min(1200px, 92vw); margin: 0 auto; }
+      header {
+        position: fixed; top: 0; left: 0; right: 0; z-index: 40;
+        border-bottom: 1px solid #ffffff40;
+        backdrop-filter: blur(10px);
+        background: #f8f4edcc;
+      }
+      .header-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; }
+      .logo { text-decoration: none; color: var(--ink); font-size: clamp(1.6rem, 2vw, 2.2rem); }
+      nav { display: flex; gap: 1.1rem; font-size: .93rem; align-items: center; }
+      nav a { color: var(--ink); text-decoration: none; }
+      nav a:hover { color: var(--gold); }
+
+      .hero { position: relative; min-height: 94vh; overflow: hidden; }
+      .hero-media, .parallax-media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+      .overlay { position: absolute; inset: 0; background: linear-gradient(90deg, #2f221acc, #3f342b88 45%, #0000001a); }
+      .hero-content {
+        min-height: 94vh; display: flex; align-items: center; position: relative;
+        color: #fff; padding-top: 72px;
+      }
+      .hero-copy { max-width: 700px; }
+      h1 { font-size: clamp(2.6rem, 7vw, 5rem); line-height: .95; margin: 0 0 1rem; }
+      .hero-copy p { max-width: 620px; line-height: 1.7; font-size: clamp(1rem, 1.6vw, 1.2rem); }
+      .cta-row { display: flex; gap: .8rem; flex-wrap: wrap; margin-top: 1.4rem; }
+      .btn {
+        border-radius: 999px; padding: .85rem 1.3rem; text-decoration: none;
+        border: 1px solid #ffffff66; color: #fff; font-size: .95rem;
+      }
+      .btn.primary { background: #fff; border-color: #fff; color: var(--ink); }
+
+      .parallax {
+        position: relative;
+        height: 145vh;
+        overflow: hidden;
+        background: linear-gradient(180deg, #f6efe5 0%, #f7f1e8 100%);
+      }
+      .parallax .veil { position: absolute; inset: 0; background: radial-gradient(circle at 20% 20%, #b59a6f2e, transparent 45%), radial-gradient(circle at 75% 55%, #e6d2cb66, transparent 44%); }
+      .scene { position: sticky; top: 0; height: 100vh; display: grid; place-items: center; text-align: center; }
+      .scene p { max-width: 820px; font-size: clamp(2rem, 6vw, 4.2rem); margin: 0; }
+      .narrative { position: absolute; left: 7vw; bottom: 12vh; max-width: 460px; color: var(--ink-soft); }
+      .narrative-line { opacity: 0; transform: translateY(18px); transition: all .55s ease; margin: 0 0 .8rem; }
+      .narrative-line.active { opacity: 1; transform: translateY(0); }
+
+      section.block { padding: 5.5rem 0; }
+      .section-title { margin: 0 0 2rem; font-size: clamp(2rem, 5vw, 3.3rem); }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 1.2rem;
+      }
+      .card {
+        background: #fff; border-radius: 18px; overflow: hidden; box-shadow: 0 12px 35px #4c342211;
+      }
+      .card img { width: 100%; height: 280px; object-fit: cover; }
+      .card-body { padding: 1rem 1.1rem 1.4rem; }
+      .tag { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--gold); }
+      .process {
+        display: grid; gap: .8rem;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      }
+      .step { background: #fffaf3; border: 1px solid #e8dcc9; border-radius: 14px; padding: 1rem; }
+      .about {
+        display: grid;
+        grid-template-columns: 1.1fr 1fr;
+        gap: 1.2rem;
+        align-items: center;
+      }
+      .about img { width: 100%; border-radius: 18px; min-height: 320px; object-fit: cover; }
+      .cta-box { background: #2a211c; color: #f6efe7; padding: 2.2rem; border-radius: 18px; text-align: center; }
+      .blog { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+      footer { background: #2a211c; color: #f6efe7; padding: 2.4rem 0; }
+
+      @media (max-width: 860px) {
+        nav { display: none; }
+        .about { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="container header-row">
+        <a href="#inicio" class="logo display">Atelier Lumière</a>
+        <nav>
+          <a href="#inicio">Inicio</a>
+          <a href="#coleccion">Colección</a>
+          <a href="#encargos">Encargos</a>
+          <a href="#diario">Diario del taller</a>
+          <a href="#sobre-mi">Sobre mí</a>
+          <a href="#contacto">Contacto</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="inicio">
+      <section class="hero">
+        <video id="heroVideo" class="hero-media" autoplay muted loop playsinline poster="https://images.unsplash.com/photo-1512339917191-3356b5f326f9?auto=format&fit=crop&w=2000&q=80"></video>
+        <img id="heroPoster" class="hero-media" alt="Mujer bordando en atelier francés" src="https://images.unsplash.com/photo-1512339917191-3356b5f326f9?auto=format&fit=crop&w=2000&q=80" />
+        <div class="overlay"></div>
+        <div class="container hero-content">
+          <div class="hero-copy">
+            <h1 class="display">Donde el hilo cuenta historias</h1>
+            <p>Piezas bordadas a mano en un atelier francés donde la luz, la textura y el tiempo convierten cada detalle en una historia.</p>
+            <div class="cta-row">
+              <a class="btn primary" href="#coleccion">Descubrir la colección</a>
+              <a class="btn" href="#proceso">Ver el proceso</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="parallax" id="parallax">
+        <video id="parallaxVideo" class="parallax-media" autoplay muted loop playsinline poster="https://images.unsplash.com/photo-1473447198193-c7c5040a2de8?auto=format&fit=crop&w=1800&q=80"></video>
+        <img id="parallaxPoster" class="parallax-media" alt="Textiles y bastidor" src="https://images.unsplash.com/photo-1473447198193-c7c5040a2de8?auto=format&fit=crop&w=1800&q=80" style="opacity:.26" />
+        <div class="veil"></div>
+        <div class="scene">
+          <p class="display">Hecho a mano, creado despacio</p>
+        </div>
+        <div class="narrative display" id="narrative">
+          <p class="narrative-line">Toda pieza comienza con un instante de calma</p>
+          <p class="narrative-line">Después llega el primer gesto</p>
+          <p class="narrative-line">Puntada a puntada</p>
+          <p class="narrative-line">El hilo encuentra su forma</p>
+          <p class="narrative-line">Hecho a mano, creado despacio</p>
+        </div>
+      </section>
+
+      <section id="coleccion" class="block container">
+        <h2 class="section-title display">Colección destacada</h2>
+        <div class="cards">
+          <article class="card"><img src="https://images.unsplash.com/photo-1617038220319-276d3cfab638?auto=format&fit=crop&w=900&q=80" alt="Bolso bordado" /><div class="card-body"><p class="tag">Edición atelier</p><h3>Bolsos bordados</h3><p>Texturas nobles y bordados de autor.</p></div></article>
+          <article class="card"><img src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=900&q=80" alt="Prendas bordadas" /><div class="card-body"><p class="tag">Nueva colección</p><h3>Prendas bordadas</h3><p>Diseños delicados para vestir lento.</p></div></article>
+          <article class="card"><img src="https://images.unsplash.com/photo-1502716119720-b23a93e5fe1b?auto=format&fit=crop&w=900&q=80" alt="Pieza única" /><div class="card-body"><p class="tag">Serie limitada</p><h3>Piezas únicas</h3><p>Obras textiles irrepetibles.</p></div></article>
+          <article class="card"><img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80" alt="Encargo personalizado" /><div class="card-body"><p class="tag">A medida</p><h3>Encargos personalizados</h3><p>Una historia convertida en bordado.</p></div></article>
+        </div>
+      </section>
+
+      <section id="proceso" class="block container">
+        <h2 class="section-title display">El proceso</h2>
+        <div class="process">
+          <div class="step"><strong>01</strong><p>Inspiración</p></div><div class="step"><strong>02</strong><p>Boceto</p></div><div class="step"><strong>03</strong><p>Selección de hilo</p></div><div class="step"><strong>04</strong><p>Bastidor</p></div><div class="step"><strong>05</strong><p>Bordado</p></div><div class="step"><strong>06</strong><p>Pieza terminada</p></div>
+        </div>
+      </section>
+
+      <section id="sobre-mi" class="block container">
+        <div class="about">
+          <img src="https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=1200&q=80" alt="Creadora Atelier Lumière" />
+          <div>
+            <h2 class="section-title display">Sobre la creadora</h2>
+            <p>Atelier Lumière nace de un ritual lento: escuchar la tela, elegir el hilo y bordar sin prisa. Cada pieza guarda una atmósfera íntima inspirada en la luz de taller y la belleza de lo hecho a mano.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="encargos" class="block container">
+        <div class="cta-box">
+          <h2 class="display" style="margin-top:0">Piezas creadas para momentos con historia</h2>
+          <a class="btn primary" href="#contacto">Solicitar un encargo</a>
+        </div>
+      </section>
+
+      <section id="diario" class="block container">
+        <h2 class="section-title display">Diario del taller</h2>
+        <div class="blog">
+          <article class="card"><div class="card-body"><h3 class="display">La inspiración de la primavera</h3><p>Paletas suaves, flores y luz cálida.</p></div></article>
+          <article class="card"><div class="card-body"><h3 class="display">Por qué bordamos a mano</h3><p>Tiempo, presencia y detalle humano.</p></div></article>
+          <article class="card"><div class="card-body"><h3 class="display">El arte de los detalles</h3><p>La puntada como lenguaje emocional.</p></div></article>
+        </div>
+      </section>
+    </main>
+
+    <footer id="contacto">
+      <div class="container">
+        <h3 class="display" style="margin:0 0 .4rem">Atelier Lumière</h3>
+        <p style="margin:.2rem 0">Bordado artesanal contemporáneo · contact@atelier-lumiere.com</p>
+      </div>
+    </footer>
+
+    <script>
+      const mediaConfig = {
+        heroVideoSrc: '',
+        parallaxVideoSrc: ''
+      }
+
+      function mountVideo(videoEl, posterEl, src) {
+        if (src) {
+          videoEl.src = src
+          videoEl.style.display = 'block'
+          posterEl.style.display = 'none'
+        } else {
+          videoEl.style.display = 'none'
+          posterEl.style.display = 'block'
+        }
+      }
+
+      const heroVideo = document.getElementById('heroVideo')
+      const heroPoster = document.getElementById('heroPoster')
+      const parallaxVideo = document.getElementById('parallaxVideo')
+      const parallaxPoster = document.getElementById('parallaxPoster')
+
+      mountVideo(heroVideo, heroPoster, mediaConfig.heroVideoSrc)
+      mountVideo(parallaxVideo, parallaxPoster, mediaConfig.parallaxVideoSrc)
+
+      const parallax = document.getElementById('parallax')
+      const lines = [...document.querySelectorAll('.narrative-line')]
+      const onScroll = () => {
+        const y = window.scrollY
+        parallaxVideo.style.transform = `translateY(${y * -0.05}px) scale(${1 + Math.min(y / 12000, 0.08)})`
+        parallaxPoster.style.transform = `translateY(${y * -0.04}px) scale(${1 + Math.min(y / 14000, 0.06)})`
+
+        const rect = parallax.getBoundingClientRect()
+        const progress = Math.min(Math.max((window.innerHeight - rect.top) / (window.innerHeight + rect.height), 0), 1)
+        const index = Math.min(lines.length - 1, Math.floor(progress * lines.length))
+        lines.forEach((line, i) => line.classList.toggle('active', i <= index))
+      }
+      onScroll()
+      window.addEventListener('scroll', onScroll, { passive: true })
+    </script>
+  </body>
+</html>
