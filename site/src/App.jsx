@@ -597,7 +597,7 @@ function JournalPage() {
       <PageHero
         eyebrow="Diario del taller"
         title="Historias, proceso y escenas del atelier"
-        text="El diario queda preparado como una revista visual donde añadir artículos nuevos solo requiere editar el listado de contenido."
+        text="El diario queda preparado como una revista visual donde añadir artículos nuevos, clips y piezas audiovisuales del taller."
         image={mediaConfig.visualDetailA}
         alt="Mesa del taller con bocetos, flores y materiales"
       />
@@ -612,6 +612,27 @@ function JournalPage() {
               <p>{journalEntries[0].text}</p>
             </div>
           </article>
+        </div>
+      </section>
+
+      <section className="section-block section-block--soft">
+        <div className="container cinematic-panel cinematic-panel--v3">
+          <div className="cinematic-panel__copy">
+            <p className="eyebrow">Clip del diario</p>
+            <h2>Un fragmento breve para dar vida al taller</h2>
+            <p>
+              Esta subpágina ya queda preparada para mostrar vídeos cortos del atelier, making of, detalles de producto o pequeñas piezas con música para reforzar el universo de marca.
+            </p>
+            <ul className="feature-list">
+              <li>Ideal para clips verticales o horizontales cortos.</li>
+              <li>Sirve para diario, campañas y pequeñas historias visuales.</li>
+              <li>Se puede sustituir fácilmente por otros vídeos más adelante.</li>
+            </ul>
+          </div>
+
+          <div className="cinematic-panel__media">
+            <video controls playsInline preload="metadata" poster={mediaConfig.heroPoster} src={mediaConfig.journalVideo} />
+          </div>
         </div>
       </section>
 
