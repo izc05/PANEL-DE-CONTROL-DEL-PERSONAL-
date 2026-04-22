@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react'
 
-const media = {
-  hero: '/media/atelier-hero.png',
-  doorway: '/media/atelier-doorway.png',
-  wide: '/media/atelier-wide.png',
-  stitching: '/media/atelier-stitching.png',
-  materials: '/media/atelier-materials.png',
+const mediaConfig = {
+  heroVideoEnabled: false,
+  heroVideoSrc: '/media/atelier-hero.mp4',
+  heroPoster: '/media/atelier-hero.png',
+  visualLead: '/media/atelier-wide.png',
+  visualDetailA: '/media/atelier-materials.png',
+  visualDetailB: '/media/atelier-stitching.png',
+  visualDetailC: '/media/atelier-doorway.png',
   portrait: '/media/atelier-portrait.png',
-  video: '/media/atelier-video.mp4'
+  videoPoster: '/media/atelier-video-poster.png',
+  atelierVideo: '/media/atelier-video.mp4'
 }
 
 const navItems = [
@@ -22,58 +25,77 @@ const navItems = [
 const valuePoints = [
   {
     title: 'Hecho a mano',
-    text: 'Cada pieza se trabaja con calma, puntada a puntada, en nuestro atelier.'
+    text: 'Cada pieza nace con un ritmo sereno, puntada a puntada, dentro del atelier.'
   },
   {
-    title: 'Materiales nobles',
-    text: 'Lino, hilos suaves, paletas empolvadas y acabados pensados para durar.'
+    title: 'Luz y textura',
+    text: 'La web busca la misma sensación cálida, suave y editorial de tus imágenes.'
   },
   {
-    title: 'Encargos con historia',
-    text: 'Creamos piezas únicas para regalos, celebraciones y recuerdos importantes.'
+    title: 'Piezas con historia',
+    text: 'Colecciones y encargos pensados para recuerdos, regalos y momentos especiales.'
   },
   {
-    title: 'Narrativa visual',
-    text: 'La web respira la misma luz cálida y editorial que tienen tus referencias.'
+    title: 'Base lista para crecer',
+    text: 'La portada queda preparada para conectar después con colección, producto y contacto.'
+  }
+]
+
+const visualNarrative = [
+  {
+    title: 'Toda pieza comienza con un instante de calma',
+    image: mediaConfig.visualLead,
+    alt: 'Vista amplia del atelier con luz suave y mesa de trabajo'
+  },
+  {
+    title: 'Puntada a puntada',
+    image: mediaConfig.visualDetailA,
+    alt: 'Mesa de trabajo con hilos, flores y boceto'
+  },
+  {
+    title: 'El hilo encuentra su forma',
+    image: mediaConfig.visualDetailB,
+    alt: 'Primer plano de manos bordando una flor'
+  },
+  {
+    title: 'Hecho a mano, creado despacio',
+    image: mediaConfig.visualDetailC,
+    alt: 'Entrada íntima al atelier con atmósfera cálida'
   }
 ]
 
 const collectionItems = [
   {
-    title: 'Colección atelier',
-    tag: 'Selección principal',
-    description:
-      'Una portada más editorial para presentar piezas bordadas, series cortas y novedades con intención.',
-    image: media.hero,
-    alt: 'Artesana bordando junto a la ventana',
-    cta: 'Ver la propuesta'
+    title: 'Bolsos bordados',
+    tag: 'Colección destacada',
+    description: 'Piezas delicadas para acompañar días especiales con un aire suave y femenino.',
+    image: mediaConfig.heroPoster,
+    alt: 'Bolso bordado en un entorno cálido de atelier',
+    cta: 'Ver colección'
   },
   {
-    title: 'Detalles bordados',
-    tag: 'Textura y oficio',
-    description:
-      'Primeros planos del trabajo manual para transmitir delicadeza, tiempo y autenticidad real.',
-    image: media.stitching,
-    alt: 'Primer plano de manos bordando una flor',
-    cta: 'Explorar detalles'
+    title: 'Prendas bordadas',
+    tag: 'Textura y detalle',
+    description: 'Diseños donde la tela, el hilo y el tiempo se convierten en una prenda con historia.',
+    image: mediaConfig.visualDetailB,
+    alt: 'Detalle de bordado manual sobre tela',
+    cta: 'Explorar prendas'
   },
   {
-    title: 'Ritual de taller',
-    tag: 'Proceso lento',
-    description:
-      'Mesas, hilos, bocetos y bastidores que ayudan a contar cómo nace cada pieza en el atelier.',
-    image: media.materials,
-    alt: 'Mesa del taller con hilos, dibujo y bastidor',
-    cta: 'Ver el proceso'
+    title: 'Piezas únicas',
+    tag: 'Edición atelier',
+    description: 'Series breves y creaciones irrepetibles con una presentación más editorial.',
+    image: mediaConfig.visualLead,
+    alt: 'Atelier luminoso con piezas bordadas expuestas',
+    cta: 'Descubrir piezas'
   },
   {
-    title: 'Encargos a medida',
-    tag: 'Piezas únicas',
-    description:
-      'Una narrativa preparada para convertir ideas personales en piezas bordadas con significado.',
-    image: media.doorway,
-    alt: 'Vista íntima del atelier desde la puerta',
-    cta: 'Solicitar un encargo'
+    title: 'Encargos personalizados',
+    tag: 'A medida',
+    description: 'Una forma elegante de transformar una idea personal en una pieza con significado.',
+    image: mediaConfig.portrait,
+    alt: 'Retrato cálido de la creadora bordando junto a la ventana',
+    cta: 'Solicitar encargo'
   }
 ]
 
@@ -81,52 +103,46 @@ const processSteps = [
   {
     number: '01',
     title: 'Inspiración',
-    description: 'Partimos de una historia, una emoción o una escena que merece quedarse.'
+    description: 'Todo empieza con una escena, una emoción o un recuerdo que merece quedarse.'
   },
   {
     number: '02',
-    title: 'Materiales',
-    description: 'Elegimos telas, hilos y tonos suaves para que la pieza respire con naturalidad.'
+    title: 'Boceto y materiales',
+    description: 'Se eligen dibujo, colores, telas y hilos para encontrar el tono justo de la pieza.'
   },
   {
     number: '03',
-    title: 'Bordado',
-    description: 'La forma aparece despacio: textura, volumen y ritmo construidos a mano.'
+    title: 'Bastidor y bordado',
+    description: 'El trabajo manual convierte la idea en textura viva, volumen y presencia real.'
   },
   {
     number: '04',
-    title: 'Entrega',
-    description: 'Rematamos cada detalle para que la pieza llegue cuidada, lista para perdurar.'
+    title: 'Remate final',
+    description: 'Cada detalle se ajusta con calma para que la pieza llegue cuidada y lista para perdurar.'
   }
-]
-
-const atelierNotes = [
-  'Atelier Lumière nace de la calma, la luz y los gestos pequeños que dejan huella.',
-  'Esta versión ya utiliza tus imágenes reales como base visual del proyecto.',
-  'La estructura queda preparada para seguir ampliando colección, producto, carrito y checkout.'
 ]
 
 const journalEntries = [
   {
     title: 'La inspiración del atelier',
     meta: 'Diario del taller',
-    text: 'Flores, luz filtrada y materiales suaves como punto de partida para cada pieza.',
-    image: media.wide,
-    alt: 'Vista amplia del atelier bordado'
+    text: 'Flores, luz filtrada y materiales suaves como punto de partida para cada nueva pieza.',
+    image: mediaConfig.visualLead,
+    alt: 'Vista amplia del atelier con ventana luminosa'
   },
   {
     title: 'Por qué bordamos a mano',
     meta: 'Oficio',
-    text: 'El detalle manual convierte cada bordado en una pieza con presencia propia.',
-    image: media.stitching,
-    alt: 'Detalle de manos bordando'
+    text: 'El detalle manual convierte cada bordado en una presencia única, lenta y auténtica.',
+    image: mediaConfig.visualDetailB,
+    alt: 'Detalle de la aguja y el hilo sobre la tela'
   },
   {
     title: 'Lo que cuenta una mesa de trabajo',
     meta: 'Materiales',
-    text: 'Hilos, bocetos y bastidores construyen la atmósfera que la web necesita transmitir.',
-    image: media.materials,
-    alt: 'Mesa del atelier con herramientas y boceto floral'
+    text: 'Hilos, tijeras, bocetos y bastidores construyen el lenguaje visual del atelier.',
+    image: mediaConfig.visualDetailA,
+    alt: 'Mesa del taller con herramientas y boceto floral'
   }
 ]
 
@@ -195,8 +211,7 @@ export default function App() {
               <p className="eyebrow">Bordado artesanal contemporáneo</p>
               <h1>Donde el hilo cuenta historias</h1>
               <p className="hero-copy__lead">
-                Ya he empezado a montar la web con tus imágenes reales del atelier para que el tono
-                visual se acerque mucho más a la identidad que me has compartido.
+                Una portada premium para presentar colecciones bordadas, encargos a medida y un diario del taller con una estética más cálida, delicada y editorial.
               </p>
 
               <div className="hero-actions">
@@ -209,19 +224,21 @@ export default function App() {
               </div>
 
               <div className="hero-note">
-                <strong>Hecho a mano en Francia</strong>
+                <strong>Preparada para vídeo</strong>
                 <span>
-                  Una narrativa pensada para mostrar colección, proceso, encargos y contenido de
-                  marca.
+                  Cuando subas tu MP4 a <code>public/media</code>, el hero podrá usarlo sin cambiar la estructura visual de la web.
                 </span>
               </div>
             </div>
 
             <figure className="hero-figure">
-              <img src={media.hero} alt="Artesana bordando junto a una ventana luminosa" />
+              {mediaConfig.heroVideoEnabled ? (
+                <video autoPlay loop muted playsInline poster={mediaConfig.heroPoster} src={mediaConfig.heroVideoSrc} />
+              ) : (
+                <img src={mediaConfig.heroPoster} alt="Artesana bordando junto a una ventana luminosa" />
+              )}
               <figcaption>
-                Luz suave, lino, flores y bordado: esta escena marca ahora el tono general de la
-                portada.
+                Luz suave, lino, flores y bordado: el hero queda listo para mostrar la atmósfera principal de Atelier Lumière.
               </figcaption>
             </figure>
           </div>
@@ -238,14 +255,40 @@ export default function App() {
           </div>
         </section>
 
-        <section id="coleccion" className="section-block">
+        <section className="section-block">
           <div className="container">
             <div className="section-heading">
-              <p className="eyebrow">Base visual de la web</p>
-              <h2>Colección, proceso y encargo ya tienen lenguaje propio</h2>
+              <p className="eyebrow">Narrativa visual</p>
+              <h2>Una transición elegante en lugar del parallax complejo</h2>
               <p>
-                Tomé tus mockups como referencia y usé las fotos reales del atelier para que esta
-                primera versión ya se sienta coherente, delicada y lista para seguir creciendo.
+                Para mantener la calidad visual, la web usa ahora una composición narrativa de imágenes que conecta el hero con la colección sin depender de un efecto forzado.
+              </p>
+            </div>
+
+            <div className="collection-grid">
+              {visualNarrative.map((item) => (
+                <article key={item.title} className="collection-card">
+                  <img loading="lazy" src={item.image} alt={item.alt} />
+                  <div className="collection-card__body">
+                    <p className="collection-card__tag">Atelier</p>
+                    <h3>{item.title}</h3>
+                    <p>
+                      Una secuencia visual cálida y editorial para sostener el tono artesanal antes de entrar en la parte comercial.
+                    </p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="coleccion" className="section-block section-block--tinted">
+          <div className="container">
+            <div className="section-heading">
+              <p className="eyebrow">Colección destacada</p>
+              <h2>La página principal ya conecta con el resto de la tienda</h2>
+              <p>
+                Esta base deja preparada la transición hacia colección, producto y encargos con una estética consistente y mucho más cercana a las referencias del chat.
               </p>
             </div>
 
@@ -257,7 +300,7 @@ export default function App() {
                     <p className="collection-card__tag">{item.tag}</p>
                     <h3>{item.title}</h3>
                     <p>{item.description}</p>
-                    <a className="text-link" href={item.title === 'Encargos a medida' ? '#encargos' : '#proceso'}>
+                    <a className="text-link" href={item.title === 'Encargos personalizados' ? '#encargos' : '#proceso'}>
                       {item.cta}
                     </a>
                   </div>
@@ -267,31 +310,30 @@ export default function App() {
           </div>
         </section>
 
-        <section id="proceso" className="section-block section-block--tinted">
+        <section id="proceso" className="section-block">
           <div className="container process-layout">
             <div className="process-gallery">
               <figure className="process-gallery__lead">
-                <img loading="lazy" src={media.wide} alt="Vista amplia del atelier lleno de materiales" />
+                <img loading="lazy" src={mediaConfig.visualLead} alt="Vista amplia del atelier lleno de materiales" />
               </figure>
 
               <figure className="process-gallery__detail">
-                <img loading="lazy" src={media.materials} alt="Mesa del atelier con boceto y materiales" />
-                <figcaption>Materiales, bocetos y herramientas de trabajo.</figcaption>
+                <img loading="lazy" src={mediaConfig.visualDetailA} alt="Mesa del atelier con boceto y materiales" />
+                <figcaption>Materiales, bocetos y herramientas que sostienen el lenguaje del atelier.</figcaption>
               </figure>
 
               <figure className="process-gallery__detail">
-                <img loading="lazy" src={media.stitching} alt="Detalle de un bordado en proceso" />
-                <figcaption>La puntada convierte el dibujo en textura viva.</figcaption>
+                <img loading="lazy" src={mediaConfig.visualDetailB} alt="Detalle de un bordado en proceso" />
+                <figcaption>La puntada convierte el dibujo en textura y presencia real.</figcaption>
               </figure>
             </div>
 
             <div className="process-copy">
               <div className="section-heading section-heading--compact">
                 <p className="eyebrow">Proceso artesanal</p>
-                <h2>Cada sección ya cuenta cómo nace una pieza</h2>
+                <h2>Cómo nace una pieza</h2>
                 <p>
-                  En lugar de dejar solo títulos sueltos, organicé el relato para que el visitante
-                  entienda rápido qué haces, cómo trabajas y por qué cada encargo tiene valor.
+                  Una explicación sencilla y visual para que la web no sea solo bonita, sino también clara y útil para quien llega por primera vez.
                 </p>
               </div>
 
@@ -310,31 +352,23 @@ export default function App() {
           </div>
         </section>
 
-        <section id="video" className="section-block">
+        <section id="video" className="section-block section-block--soft">
           <div className="container video-panel">
             <div className="video-panel__media">
-              <video
-                autoPlay
-                loop
-                muted
-                playsInline
-                poster={media.wide}
-                src={media.video}
-              />
+              <video autoPlay loop muted playsInline poster={mediaConfig.videoPoster} src={mediaConfig.atelierVideo} />
             </div>
 
             <div className="video-panel__copy">
               <p className="eyebrow">Vídeo del atelier</p>
-              <h2>Tu material de vídeo ya está integrado en la experiencia</h2>
+              <h2>Un bloque listo para tus clips y futuros hero videos</h2>
               <p>
-                Coloqué el clip como un bloque protagonista para que la web no dependa solo de
-                imágenes estáticas. Así la marca gana atmósfera, ritmo y una sensación más viva.
+                Esta sección permite introducir tu vídeo actual sin romper el ritmo de la portada. Más adelante se puede reutilizar también para el hero principal.
               </p>
 
               <ul className="feature-list">
-                <li>Vídeo suave y silencioso, preparado para acompañar la narrativa visual.</li>
-                <li>Poster coherente con el resto de la dirección de arte del atelier.</li>
-                <li>Sección reutilizable para futuro hero, reels o piezas de campaña.</li>
+                <li>Preparado para vídeo real en MP4 dentro de <code>public/media</code>.</li>
+                <li>Poster coherente con el resto de la dirección de arte del proyecto.</li>
+                <li>Base clara para hero, reels, making-of o piezas de campaña.</li>
               </ul>
             </div>
           </div>
@@ -343,20 +377,18 @@ export default function App() {
         <section className="section-block">
           <div className="container split-panels">
             <article id="sobre-mi" className="story-card">
-              <img loading="lazy" src={media.doorway} alt="Vista del atelier desde la puerta" />
+              <img loading="lazy" src={mediaConfig.visualDetailC} alt="Vista del atelier desde la puerta" />
 
               <div className="story-card__body">
                 <p className="eyebrow">Sobre la creadora</p>
                 <h2>Una historia tejida con dedicación</h2>
                 <p>
-                  Esta parte queda pensada para presentar a la creadora con una imagen más íntima y
-                  un texto que respira mejor. La web empieza a parecerse mucho más a tu universo.
+                  Este bloque presenta a la creadora desde una mirada íntima, femenina y auténtica, reforzando la sensación de atelier real y de marca artesanal cuidada.
                 </p>
-
                 <ul className="note-list">
-                  {atelierNotes.map((note) => (
-                    <li key={note}>{note}</li>
-                  ))}
+                  <li>La web se apoya en luz cálida, textura y gestos pequeños.</li>
+                  <li>La estructura está lista para crecer con producto, checkout y contacto.</li>
+                  <li>El tono visual sigue la misma línea de las referencias compartidas en este chat.</li>
                 </ul>
               </div>
             </article>
@@ -366,16 +398,15 @@ export default function App() {
                 <p className="eyebrow">Encargos personalizados</p>
                 <h2>Piezas únicas creadas para momentos con historia</h2>
                 <p>
-                  Dejé un bloque claro para convertir la portada en una invitación real al encargo,
-                  no solo en una galería bonita.
+                  Un bloque claro para transformar la portada en una invitación real al encargo, no solo en una galería de imágenes bonitas.
                 </p>
                 <a className="button button--dark" href="mailto:atelier@atelierlumiere.com">
                   Solicitar un encargo
                 </a>
-                <small>También podemos llevar este mismo lenguaje a catálogo, producto y checkout.</small>
+                <small>Después podemos llevar esta misma línea visual a la página específica de encargos.</small>
               </div>
 
-              <img loading="lazy" src={media.portrait} alt="Retrato cercano de la creadora bordando" />
+              <img loading="lazy" src={mediaConfig.portrait} alt="Retrato cercano de la creadora bordando" />
             </article>
           </div>
         </section>
@@ -386,8 +417,7 @@ export default function App() {
               <p className="eyebrow">Diario del taller</p>
               <h2>Contenido editorial para sostener la marca</h2>
               <p>
-                Tus referencias también piden una parte más narrativa. Por eso dejé una base de
-                artículos visuales para inspiración, proceso y detalles del día a día.
+                El diario añade una capa más narrativa y hace que la web respire como una pequeña revista del atelier, no solo como un escaparate.
               </p>
             </div>
 
@@ -415,8 +445,7 @@ export default function App() {
               <span>Broderie artisanale</span>
             </a>
             <p>
-              Portada editorial inspirada en tu material visual, preparada para seguir creciendo con
-              colección, producto, carrito y checkout.
+              Portada editorial inspirada en todo lo que hemos definido en este chat: hero premium, sección visual narrativa, colección, proceso, vídeo y encargos.
             </p>
           </div>
 
