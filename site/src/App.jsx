@@ -30,6 +30,7 @@ const getRouteFromHash = (hash) => {
 
 const collectionPreview = products.slice(0, 4)
 const categories = ['Todos', 'Bolsos bordados', 'Prendas bordadas', 'Piezas únicas', 'Accesorios', 'Encargos']
+const atmosphereLayers = ['Lino y luz suave', 'Oficio lento', 'Pequeñas series artesanales']
 
 function Header({ isScrolled, menuOpen, setMenuOpen, route }) {
   return (
@@ -66,6 +67,12 @@ function Header({ isScrolled, menuOpen, setMenuOpen, route }) {
             </a>
           ))}
         </nav>
+
+        <div className="header-tools" aria-label="Accesos rápidos">
+          <a className="cart-pill" href="#/coleccion" onClick={() => setMenuOpen(false)}>
+            Cesta 0
+          </a>
+        </div>
       </div>
     </header>
   )
@@ -148,6 +155,17 @@ function HomePage() {
               <h2>{item.title}</h2>
               <p>{item.text}</p>
             </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="section-block section-block--ornament">
+        <div className="container ornament-band">
+          {atmosphereLayers.map((item) => (
+            <div key={item} className="ornament-chip">
+              <span className="ornament-chip__dot" />
+              <p>{item}</p>
+            </div>
           ))}
         </div>
       </section>
