@@ -8,6 +8,7 @@ import {
   navItems,
   processSteps,
   products,
+  signatureQuote,
   valuePoints,
   visualNarrative
 } from './content'
@@ -70,17 +71,46 @@ function Header({ isScrolled, menuOpen, setMenuOpen, route }) {
   )
 }
 
+function HeroMedia() {
+  return (
+    <div className="hero-v4__media-wrap">
+      <figure className="hero-v4__media">
+        {mediaConfig.heroVideoEnabled ? (
+          <video autoPlay loop muted playsInline poster={mediaConfig.heroPoster} src={mediaConfig.heroVideoSrc} />
+        ) : (
+          <img src={mediaConfig.heroPoster} alt="Artesana bordando junto a una ventana luminosa" />
+        )}
+      </figure>
+
+      <article className="hero-v4__card hero-v4__card--quote">
+        <p className="collection-card__tag">Atelier Lumière</p>
+        <h3>{signatureQuote.title}</h3>
+        <p>{signatureQuote.text}</p>
+      </article>
+
+      <article className="hero-v4__card hero-v4__card--product">
+        <img src={products[0].image} alt={products[0].alt} />
+        <div>
+          <p className="collection-card__tag">Pieza destacada</p>
+          <h3>{products[0].title}</h3>
+          <span>{products[0].price}</span>
+        </div>
+      </article>
+    </div>
+  )
+}
+
 function HomePage() {
   return (
     <>
-      <section id="inicio" className="hero-v3">
-        <div className="hero-v3__backdrop" />
-        <div className="container hero-v3__grid">
-          <div className="hero-v3__copy">
-            <p className="eyebrow">Atelier francés · bordado artesanal contemporáneo</p>
+      <section id="inicio" className="hero-v4">
+        <div className="hero-v4__veil" />
+        <div className="container hero-v4__grid">
+          <div className="hero-v4__copy">
+            <p className="eyebrow">Atelier francés · bordado artesanal</p>
             <h1>Donde el hilo cuenta historias</h1>
-            <p className="hero-v3__lead">
-              Una entrada con más atmósfera, más presencia editorial y más delicadeza visual para que la marca se sienta desde el primer segundo como un atelier real.
+            <p className="hero-v4__lead">
+              Piezas bordadas a mano con calma, luz y delicadeza. Un atelier donde cada puntada convierte un recuerdo en algo único.
             </p>
 
             <div className="hero-actions">
@@ -92,7 +122,7 @@ function HomePage() {
               </a>
             </div>
 
-            <div className="hero-v3__highlights">
+            <div className="hero-v4__highlights">
               {heroHighlights.map((item) => (
                 <span key={item} className="hero-pill">
                   {item}
@@ -100,38 +130,10 @@ function HomePage() {
               ))}
             </div>
 
-            <div className="hero-v3__note">
-              <strong>Hecho a mano, creado despacio.</strong>
-              <p>
-                La home V3 busca menos sensación de plantilla y más sensación de escena, materia, luz y oficio.
-              </p>
-            </div>
+            <p className="hero-v4__closing">Hecho a mano, creado despacio.</p>
           </div>
 
-          <div className="hero-v3__stage">
-            <figure className="hero-v3__main-media">
-              {mediaConfig.heroVideoEnabled ? (
-                <video autoPlay loop muted playsInline poster={mediaConfig.heroPoster} src={mediaConfig.heroVideoSrc} />
-              ) : (
-                <img src={mediaConfig.heroPoster} alt="Artesana bordando junto a una ventana luminosa" />
-              )}
-            </figure>
-
-            <article className="hero-v3__floating hero-v3__floating--left">
-              <p className="collection-card__tag">Firma visual</p>
-              <h3>Una atmósfera viva y cinematográfica</h3>
-              <p>El vídeo pasa a ser protagonista de verdad y no un recurso decorativo aislado.</p>
-            </article>
-
-            <article className="hero-v3__floating hero-v3__floating--right">
-              <img src={products[0].image} alt={products[0].alt} />
-              <div>
-                <p className="collection-card__tag">Pieza destacada</p>
-                <h3>{products[0].title}</h3>
-                <span>{products[0].price}</span>
-              </div>
-            </article>
-          </div>
+          <HeroMedia />
         </div>
       </section>
 
@@ -154,7 +156,7 @@ function HomePage() {
               <h2>Una secuencia visual más propia de una editorial</h2>
             </div>
             <p>
-              La transición entre portada y tienda se apoya ahora en una composición más rica, con una imagen protagonista y varias escenas secundarias del atelier y del bordado.
+              La transición entre portada y tienda se apoya en una composición más rica, con una imagen protagonista y varias escenas secundarias del atelier y del bordado.
             </p>
           </div>
 
@@ -191,7 +193,7 @@ function HomePage() {
               <h2>Una entrada más potente hacia la parte comercial</h2>
             </div>
             <p>
-              La colección destacada usa ahora una tarjeta principal más grande y tres piezas secundarias para sentirse más boutique y menos catálogo plano.
+              La colección destacada usa una tarjeta principal más grande y tres piezas secundarias para sentirse más boutique y menos catálogo plano.
             </p>
           </div>
 
@@ -355,7 +357,8 @@ function PageHero({ eyebrow, title, text, image, alt, actions = [] }) {
             <div className="hero-actions">
               {actions.map((action) => (
                 <a key={action.href} className={`button ${action.kind === 'secondary' ? 'button--secondary' : 'button--primary'}`} href={action.href}>
-                  {action.label}</a>
+                  {action.label}
+                </a>
               ))}
             </div>
           ) : null}
