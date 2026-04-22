@@ -355,7 +355,7 @@ function PageHero({ eyebrow, title, text, image, alt, actions = [] }) {
             <div className="hero-actions">
               {actions.map((action) => (
                 <a key={action.href} className={`button ${action.kind === 'secondary' ? 'button--secondary' : 'button--primary'}`} href={action.href}>
-                  {action.label}</n                </a>
+                  {action.label}</a>
               ))}
             </div>
           ) : null}
