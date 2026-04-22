@@ -1,82 +1,451 @@
 import { useEffect, useState } from 'react'
 
-const mediaConfig = {
-  heroVideoEnabled: false,
-  heroVideoSrc: '/videos/hero.mp4',
-  parallaxVideoEnabled: false,
-  parallaxVideoSrc: '/videos/parallax.mp4'
+const media = {
+  hero: '/media/atelier-hero.png',
+  doorway: '/media/atelier-doorway.png',
+  wide: '/media/atelier-wide.png',
+  stitching: '/media/atelier-stitching.png',
+  materials: '/media/atelier-materials.png',
+  portrait: '/media/atelier-portrait.png',
+  video: '/media/atelier-video.mp4'
 }
-
-const heroVideoSrc = mediaConfig.heroVideoEnabled ? mediaConfig.heroVideoSrc : ''
-const heroPosterSrc = 'https://images.unsplash.com/photo-1512339917191-3356b5f326f9?auto=format&fit=crop&w=2000&q=80'
-const parallaxVideoSrc = mediaConfig.parallaxVideoEnabled ? mediaConfig.parallaxVideoSrc : ''
-const parallaxPosterSrc = 'https://images.unsplash.com/photo-1473447198193-c7c5040a2de8?auto=format&fit=crop&w=1800&q=80'
 
 const navItems = [
   { label: 'Inicio', href: '#inicio' },
   { label: 'Colección', href: '#coleccion' },
+  { label: 'Proceso', href: '#proceso' },
   { label: 'Encargos', href: '#encargos' },
-  { label: 'Diario del taller', href: '#diario' },
-  { label: 'Sobre mí', href: '#sobre-mi' },
+  { label: 'Diario', href: '#diario' },
   { label: 'Contacto', href: '#contacto' }
 ]
 
+const valuePoints = [
+  {
+    title: 'Hecho a mano',
+    text: 'Cada pieza se trabaja con calma, puntada a puntada, en nuestro atelier.'
+  },
+  {
+    title: 'Materiales nobles',
+    text: 'Lino, hilos suaves, paletas empolvadas y acabados pensados para durar.'
+  },
+  {
+    title: 'Encargos con historia',
+    text: 'Creamos piezas únicas para regalos, celebraciones y recuerdos importantes.'
+  },
+  {
+    title: 'Narrativa visual',
+    text: 'La web respira la misma luz cálida y editorial que tienen tus referencias.'
+  }
+]
+
+const collectionItems = [
+  {
+    title: 'Colección atelier',
+    tag: 'Selección principal',
+    description:
+      'Una portada más editorial para presentar piezas bordadas, series cortas y novedades con intención.',
+    image: media.hero,
+    alt: 'Artesana bordando junto a la ventana',
+    cta: 'Ver la propuesta'
+  },
+  {
+    title: 'Detalles bordados',
+    tag: 'Textura y oficio',
+    description:
+      'Primeros planos del trabajo manual para transmitir delicadeza, tiempo y autenticidad real.',
+    image: media.stitching,
+    alt: 'Primer plano de manos bordando una flor',
+    cta: 'Explorar detalles'
+  },
+  {
+    title: 'Ritual de taller',
+    tag: 'Proceso lento',
+    description:
+      'Mesas, hilos, bocetos y bastidores que ayudan a contar cómo nace cada pieza en el atelier.',
+    image: media.materials,
+    alt: 'Mesa del taller con hilos, dibujo y bastidor',
+    cta: 'Ver el proceso'
+  },
+  {
+    title: 'Encargos a medida',
+    tag: 'Piezas únicas',
+    description:
+      'Una narrativa preparada para convertir ideas personales en piezas bordadas con significado.',
+    image: media.doorway,
+    alt: 'Vista íntima del atelier desde la puerta',
+    cta: 'Solicitar un encargo'
+  }
+]
+
+const processSteps = [
+  {
+    number: '01',
+    title: 'Inspiración',
+    description: 'Partimos de una historia, una emoción o una escena que merece quedarse.'
+  },
+  {
+    number: '02',
+    title: 'Materiales',
+    description: 'Elegimos telas, hilos y tonos suaves para que la pieza respire con naturalidad.'
+  },
+  {
+    number: '03',
+    title: 'Bordado',
+    description: 'La forma aparece despacio: textura, volumen y ritmo construidos a mano.'
+  },
+  {
+    number: '04',
+    title: 'Entrega',
+    description: 'Rematamos cada detalle para que la pieza llegue cuidada, lista para perdurar.'
+  }
+]
+
+const atelierNotes = [
+  'Atelier Lumière nace de la calma, la luz y los gestos pequeños que dejan huella.',
+  'Esta versión ya utiliza tus imágenes reales como base visual del proyecto.',
+  'La estructura queda preparada para seguir ampliando colección, producto, carrito y checkout.'
+]
+
+const journalEntries = [
+  {
+    title: 'La inspiración del atelier',
+    meta: 'Diario del taller',
+    text: 'Flores, luz filtrada y materiales suaves como punto de partida para cada pieza.',
+    image: media.wide,
+    alt: 'Vista amplia del atelier bordado'
+  },
+  {
+    title: 'Por qué bordamos a mano',
+    meta: 'Oficio',
+    text: 'El detalle manual convierte cada bordado en una pieza con presencia propia.',
+    image: media.stitching,
+    alt: 'Detalle de manos bordando'
+  },
+  {
+    title: 'Lo que cuenta una mesa de trabajo',
+    meta: 'Materiales',
+    text: 'Hilos, bocetos y bastidores construyen la atmósfera que la web necesita transmitir.',
+    image: media.materials,
+    alt: 'Mesa del atelier con herramientas y boceto floral'
+  }
+]
+
 export default function App() {
-  const [scrollY, setScrollY] = useState(0)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [isScrolled, setIsScrolled] = useState(false)
+
   useEffect(() => {
-    const onScroll = () => setScrollY(window.scrollY)
+    document.title = 'Atelier Lumière'
+
+    const onScroll = () => {
+      setIsScrolled(window.scrollY > 18)
+    }
+
+    onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+    }
   }, [])
 
+  const closeMenu = () => setMenuOpen(false)
+
   return (
-    <div id="inicio" className="bg-cream text-ink font-body">
-      <header className="fixed top-0 z-50 w-full border-b border-white/20 bg-cream/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-10">
-          <a href="#inicio" className="font-display text-3xl tracking-wide">Atelier Lumière</a>
-          <nav className="hidden gap-7 text-sm md:flex">
-            {navItems.map((item) => <a key={item.label} href={item.href} className="transition hover:text-gold">{item.label}</a>)}
+    <div className="page-shell">
+      <a className="skip-link" href="#main-content">
+        Saltar al contenido
+      </a>
+
+      <header className={`site-header ${isScrolled ? 'is-scrolled' : ''}`}>
+        <div className="container site-header__inner">
+          <a className="brand-mark" href="#inicio" onClick={closeMenu}>
+            Atelier Lumière
+            <span>Broderie artisanale</span>
+          </a>
+
+          <button
+            type="button"
+            className="menu-toggle"
+            aria-expanded={menuOpen}
+            aria-controls="primary-navigation"
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            Menú
+          </button>
+
+          <nav
+            id="primary-navigation"
+            className={`site-nav ${menuOpen ? 'is-open' : ''}`}
+            aria-label="Navegación principal"
+          >
+            {navItems.map((item) => (
+              <a key={item.href} href={item.href} onClick={closeMenu}>
+                {item.label}
+              </a>
+            ))}
           </nav>
         </div>
       </header>
 
-      <section className="relative min-h-[94vh] overflow-hidden">
-        {heroVideoSrc ? (
-          <video className="absolute inset-0 h-full w-full object-cover" src={heroVideoSrc} autoPlay loop muted playsInline poster={heroPosterSrc} />
-        ) : (
-          <img src={heroPosterSrc} alt="Mujer bordando en atelier" className="absolute inset-0 h-full w-full object-cover" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#2f221acc] via-[#3f342b99] to-[#00000014]" />
-        <div className="relative mx-auto flex min-h-[94vh] max-w-7xl items-center px-6 pt-20 lg:px-10">
-          <div className="max-w-2xl space-y-6 text-white">
-            <h1 className="font-display text-5xl leading-tight md:text-7xl">Donde el hilo cuenta historias</h1>
-            <p className="max-w-xl text-base leading-relaxed text-white/90 md:text-lg">Piezas bordadas a mano en un atelier francés donde la luz, la textura y el tiempo convierten cada detalle en una historia.</p>
-            <div className="flex flex-wrap gap-4 pt-2">
-              <a href="#coleccion" className="rounded-full bg-white px-7 py-3 text-sm font-medium text-ink">Descubrir la colección</a>
-              <a href="#proceso" className="rounded-full border border-white/45 px-7 py-3 text-sm text-white">Ver el proceso</a>
+      <main id="main-content">
+        <section id="inicio" className="hero-section">
+          <div className="container hero-section__grid">
+            <div className="hero-copy">
+              <p className="eyebrow">Bordado artesanal contemporáneo</p>
+              <h1>Donde el hilo cuenta historias</h1>
+              <p className="hero-copy__lead">
+                Ya he empezado a montar la web con tus imágenes reales del atelier para que el tono
+                visual se acerque mucho más a la identidad que me has compartido.
+              </p>
+
+              <div className="hero-actions">
+                <a className="button button--primary" href="#coleccion">
+                  Descubrir la colección
+                </a>
+                <a className="button button--secondary" href="#video">
+                  Ver el vídeo del atelier
+                </a>
+              </div>
+
+              <div className="hero-note">
+                <strong>Hecho a mano en Francia</strong>
+                <span>
+                  Una narrativa pensada para mostrar colección, proceso, encargos y contenido de
+                  marca.
+                </span>
+              </div>
+            </div>
+
+            <figure className="hero-figure">
+              <img src={media.hero} alt="Artesana bordando junto a una ventana luminosa" />
+              <figcaption>
+                Luz suave, lino, flores y bordado: esta escena marca ahora el tono general de la
+                portada.
+              </figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section className="value-ribbon" aria-label="Valores del atelier">
+          <div className="container value-ribbon__grid">
+            {valuePoints.map((item) => (
+              <article key={item.title} className="value-card">
+                <h2>{item.title}</h2>
+                <p>{item.text}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section id="coleccion" className="section-block">
+          <div className="container">
+            <div className="section-heading">
+              <p className="eyebrow">Base visual de la web</p>
+              <h2>Colección, proceso y encargo ya tienen lenguaje propio</h2>
+              <p>
+                Tomé tus mockups como referencia y usé las fotos reales del atelier para que esta
+                primera versión ya se sienta coherente, delicada y lista para seguir creciendo.
+              </p>
+            </div>
+
+            <div className="collection-grid">
+              {collectionItems.map((item) => (
+                <article key={item.title} className="collection-card">
+                  <img loading="lazy" src={item.image} alt={item.alt} />
+                  <div className="collection-card__body">
+                    <p className="collection-card__tag">{item.tag}</p>
+                    <h3>{item.title}</h3>
+                    <p>{item.description}</p>
+                    <a className="text-link" href={item.title === 'Encargos a medida' ? '#encargos' : '#proceso'}>
+                      {item.cta}
+                    </a>
+                  </div>
+                </article>
+              ))}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="relative h-[145vh] overflow-hidden bg-[#f6efe5]">
-        {parallaxVideoSrc ? (
-          <video className="absolute inset-0 h-full w-full object-cover opacity-35" src={parallaxVideoSrc} autoPlay loop muted playsInline poster={parallaxPosterSrc} style={{ transform: `translateY(${scrollY * -0.05}px) scale(${1 + Math.min(scrollY / 12000, 0.08)})` }} />
-        ) : (
-          <img src={parallaxPosterSrc} alt="Tela y bastidor en atelier" className="absolute inset-0 h-full w-full object-cover opacity-25" style={{ transform: `translateY(${scrollY * -0.04}px) scale(${1 + Math.min(scrollY / 14000, 0.06)})` }} />
-        )}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(181,154,111,0.15),transparent_45%),radial-gradient(circle_at_80%_50%,rgba(230,210,203,0.28),transparent_42%)]" />
-        <div className="sticky top-0 mx-auto flex h-screen max-w-5xl items-center justify-center px-6 text-center">
-          <p className="max-w-2xl font-display text-4xl leading-tight text-ink md:text-6xl">Hecho a mano, creado despacio</p>
-        </div>
-      </section>
+        <section id="proceso" className="section-block section-block--tinted">
+          <div className="container process-layout">
+            <div className="process-gallery">
+              <figure className="process-gallery__lead">
+                <img loading="lazy" src={media.wide} alt="Vista amplia del atelier lleno de materiales" />
+              </figure>
 
-      <section id="coleccion" className="mx-auto max-w-7xl px-6 py-24 lg:px-10"><h2 className="font-display text-5xl">Colección destacada</h2></section>
-      <section id="proceso" className="mx-auto max-w-7xl px-6 py-24 lg:px-10"><h2 className="font-display text-5xl">El proceso</h2></section>
-      <section id="sobre-mi" className="mx-auto max-w-7xl px-6 py-24 lg:px-10"><h2 className="font-display text-5xl">Sobre la creadora</h2></section>
-      <section id="encargos" className="mx-auto max-w-7xl px-6 py-24 lg:px-10"><h2 className="font-display text-5xl">Encargos personalizados</h2></section>
-      <section id="diario" className="mx-auto max-w-7xl px-6 py-24 lg:px-10"><h2 className="font-display text-5xl">Diario del taller</h2></section>
-      <footer id="contacto" className="bg-[#2a211c] px-6 py-14 text-[#f6efe7]"><p>© 2026 Atelier Lumière</p></footer>
+              <figure className="process-gallery__detail">
+                <img loading="lazy" src={media.materials} alt="Mesa del atelier con boceto y materiales" />
+                <figcaption>Materiales, bocetos y herramientas de trabajo.</figcaption>
+              </figure>
+
+              <figure className="process-gallery__detail">
+                <img loading="lazy" src={media.stitching} alt="Detalle de un bordado en proceso" />
+                <figcaption>La puntada convierte el dibujo en textura viva.</figcaption>
+              </figure>
+            </div>
+
+            <div className="process-copy">
+              <div className="section-heading section-heading--compact">
+                <p className="eyebrow">Proceso artesanal</p>
+                <h2>Cada sección ya cuenta cómo nace una pieza</h2>
+                <p>
+                  En lugar de dejar solo títulos sueltos, organicé el relato para que el visitante
+                  entienda rápido qué haces, cómo trabajas y por qué cada encargo tiene valor.
+                </p>
+              </div>
+
+              <ol className="step-list">
+                {processSteps.map((step) => (
+                  <li key={step.number} className="step-list__item">
+                    <span>{step.number}</span>
+                    <div>
+                      <h3>{step.title}</h3>
+                      <p>{step.description}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <section id="video" className="section-block">
+          <div className="container video-panel">
+            <div className="video-panel__media">
+              <video
+                autoPlay
+                loop
+                muted
+                playsInline
+                poster={media.wide}
+                src={media.video}
+              />
+            </div>
+
+            <div className="video-panel__copy">
+              <p className="eyebrow">Vídeo del atelier</p>
+              <h2>Tu material de vídeo ya está integrado en la experiencia</h2>
+              <p>
+                Coloqué el clip como un bloque protagonista para que la web no dependa solo de
+                imágenes estáticas. Así la marca gana atmósfera, ritmo y una sensación más viva.
+              </p>
+
+              <ul className="feature-list">
+                <li>Vídeo suave y silencioso, preparado para acompañar la narrativa visual.</li>
+                <li>Poster coherente con el resto de la dirección de arte del atelier.</li>
+                <li>Sección reutilizable para futuro hero, reels o piezas de campaña.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section className="section-block">
+          <div className="container split-panels">
+            <article id="sobre-mi" className="story-card">
+              <img loading="lazy" src={media.doorway} alt="Vista del atelier desde la puerta" />
+
+              <div className="story-card__body">
+                <p className="eyebrow">Sobre la creadora</p>
+                <h2>Una historia tejida con dedicación</h2>
+                <p>
+                  Esta parte queda pensada para presentar a la creadora con una imagen más íntima y
+                  un texto que respira mejor. La web empieza a parecerse mucho más a tu universo.
+                </p>
+
+                <ul className="note-list">
+                  {atelierNotes.map((note) => (
+                    <li key={note}>{note}</li>
+                  ))}
+                </ul>
+              </div>
+            </article>
+
+            <article id="encargos" className="story-card story-card--accent">
+              <div className="story-card__body story-card__body--centered">
+                <p className="eyebrow">Encargos personalizados</p>
+                <h2>Piezas únicas creadas para momentos con historia</h2>
+                <p>
+                  Dejé un bloque claro para convertir la portada en una invitación real al encargo,
+                  no solo en una galería bonita.
+                </p>
+                <a className="button button--dark" href="mailto:atelier@atelierlumiere.com">
+                  Solicitar un encargo
+                </a>
+                <small>También podemos llevar este mismo lenguaje a catálogo, producto y checkout.</small>
+              </div>
+
+              <img loading="lazy" src={media.portrait} alt="Retrato cercano de la creadora bordando" />
+            </article>
+          </div>
+        </section>
+
+        <section id="diario" className="section-block section-block--soft">
+          <div className="container">
+            <div className="section-heading">
+              <p className="eyebrow">Diario del taller</p>
+              <h2>Contenido editorial para sostener la marca</h2>
+              <p>
+                Tus referencias también piden una parte más narrativa. Por eso dejé una base de
+                artículos visuales para inspiración, proceso y detalles del día a día.
+              </p>
+            </div>
+
+            <div className="journal-grid">
+              {journalEntries.map((entry) => (
+                <article key={entry.title} className="journal-card">
+                  <img loading="lazy" src={entry.image} alt={entry.alt} />
+                  <div className="journal-card__body">
+                    <p className="journal-card__meta">{entry.meta}</p>
+                    <h3>{entry.title}</h3>
+                    <p>{entry.text}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer id="contacto" className="site-footer">
+        <div className="container site-footer__grid">
+          <div className="footer-brand">
+            <a className="brand-mark brand-mark--footer" href="#inicio">
+              Atelier Lumière
+              <span>Broderie artisanale</span>
+            </a>
+            <p>
+              Portada editorial inspirada en tu material visual, preparada para seguir creciendo con
+              colección, producto, carrito y checkout.
+            </p>
+          </div>
+
+          <div className="footer-column">
+            <h2>Contacto</h2>
+            <a href="mailto:atelier@atelierlumiere.com">atelier@atelierlumiere.com</a>
+            <a href="tel:+33612345678">+33 6 12 34 56 78</a>
+            <span>Provence, France</span>
+          </div>
+
+          <div className="footer-column">
+            <h2>Navega</h2>
+            {navItems.map((item) => (
+              <a key={item.href} href={item.href}>
+                {item.label}
+              </a>
+            ))}
+          </div>
+
+          <form className="footer-form">
+            <h2>Newsletter</h2>
+            <p>Recibe novedades, historias del taller y nuevas colecciones.</p>
+            <div className="footer-form__row">
+              <input type="email" placeholder="Tu correo electrónico" aria-label="Correo electrónico" />
+              <button type="button">Suscribirme</button>
+            </div>
+          </form>
+        </div>
+      </footer>
     </div>
   )
 }
