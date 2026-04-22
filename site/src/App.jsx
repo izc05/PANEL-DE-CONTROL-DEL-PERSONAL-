@@ -378,14 +378,44 @@ function CollectionPage() {
       <PageHero
         eyebrow="Colección"
         title="Piezas bordadas con una presencia más premium"
-        text="La colección queda planteada como una subpágina real, lista para recibir nuevos artículos, categorías y futuras fichas de producto sin romper el diseño general."
+        text="La colección ya se plantea como una boutique visual, lista para crecer con más categorías, productos y futuras opciones de compra."
         image={mediaConfig.visualLead}
         alt="Colección bordada presentada en el atelier"
       />
 
+      <section className="section-block section-block--soft">
+        <div className="container boutique-intro">
+          <article className="boutique-panel boutique-panel--feature">
+            <div>
+              <p className="eyebrow">Selección curada</p>
+              <h2>Una colección pensada como escaparate</h2>
+              <p>
+                La tienda empieza a sentirse menos catálogo y más colección. Cada tarjeta ya prepara el terreno para una futura compra real con carrito, stock y checkout.
+              </p>
+            </div>
+            <img src={products[0].image} alt={products[0].alt} />
+          </article>
+
+          <div className="boutique-stats">
+            <article className="mini-stat-card">
+              <strong>06</strong>
+              <span>Piezas iniciales</span>
+            </article>
+            <article className="mini-stat-card">
+              <strong>01</strong>
+              <span>Encargo a medida</span>
+            </article>
+            <article className="mini-stat-card">
+              <strong>100%</strong>
+              <span>Trabajo artesanal</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
       <section className="section-block">
         <div className="container">
-          <div className="pill-list">
+          <div className="pill-list pill-list--shop">
             {categories.map((category, index) => (
               <span key={category} className={`editorial-pill editorial-pill--category ${index === 0 ? 'is-active' : ''}`}>
                 {category}
@@ -393,9 +423,17 @@ function CollectionPage() {
             ))}
           </div>
 
-          <div className="product-grid">
+          <div className="shop-toolbar">
+            <p>Explora piezas bordadas, accesorios, objetos decorativos y encargos personalizados.</p>
+            <div className="shop-toolbar__actions">
+              <span className="editorial-pill">Más recientes</span>
+              <span className="editorial-pill">Edición atelier</span>
+            </div>
+          </div>
+
+          <div className="product-grid product-grid--shop">
             {products.map((product) => (
-              <article key={product.slug} className="product-card">
+              <article key={product.slug} className="product-card product-card--shop">
                 <img src={product.image} alt={product.alt} />
                 <div className="product-card__body">
                   <p className="collection-card__tag">{product.category}</p>
@@ -406,6 +444,14 @@ function CollectionPage() {
                     <a className="text-link" href="#/producto">
                       Ver ficha
                     </a>
+                  </div>
+                  <div className="product-card__actions product-card__actions--shop">
+                    <a className="button button--secondary" href="#/producto">
+                      Ver detalles
+                    </a>
+                    <button type="button" className="button button--primary">
+                      Añadir pronto
+                    </button>
                   </div>
                 </div>
               </article>
@@ -424,7 +470,7 @@ function ProductPage() {
       <PageHero
         eyebrow={featured.category}
         title={featured.title}
-        text="Una ficha de producto premium para que más adelante puedas añadir variaciones, fotografías adicionales, detalles técnicos o botón de compra sin rediseñar toda la base."
+        text="Una ficha de producto premium para preparar la futura compra real: imágenes, descripción, detalle artesanal y una zona lista para carrito o checkout."
         image={featured.image}
         alt={featured.alt}
         actions={[
@@ -434,44 +480,56 @@ function ProductPage() {
       />
 
       <section className="section-block section-block--soft">
-        <div className="container info-form-grid">
-          <article className="contact-card">
-            <p className="eyebrow">Detalle de producto</p>
-            <h3>{featured.price}</h3>
-            <p>{featured.description}</p>
-            <div className="contact-list">
-              <div>
-                <strong>Técnica</strong>
-                <span>Bordado floral a mano</span>
-              </div>
-              <div>
-                <strong>Material</strong>
-                <span>Lino, hilo y acabados suaves</span>
-              </div>
-              <div>
-                <strong>Formato</strong>
-                <span>Pieza artesanal de edición atelier</span>
-              </div>
-            </div>
-          </article>
+        <div className="container product-showcase">
+          <div className="product-showcase__gallery">
+            <figure className="product-showcase__main">
+              <img src={featured.image} alt={featured.alt} />
+            </figure>
+            <figure>
+              <img src={mediaConfig.visualDetailA} alt="Mesa del atelier con materiales" />
+            </figure>
+            <figure>
+              <img src={mediaConfig.visualDetailB} alt="Detalle del bordado artesanal" />
+            </figure>
+          </div>
 
-          <form className="contact-form">
-            <label>
-              Nombre
-              <input type="text" placeholder="Tu nombre" />
-            </label>
-            <label>
-              Correo electrónico
-              <input type="email" placeholder="Tu correo" />
-            </label>
-            <label>
-              Mensaje
-              <textarea rows="6" placeholder="Quiero consultar este producto o pedir una variante" />
-            </label>
-            <button type="button" className="button button--primary">
-              Consultar este producto
-            </button>
-          </form>
+          <div className="product-showcase__info">
+            <article className="contact-card contact-card--product">
+              <p className="eyebrow">Detalle de producto</p>
+              <h3>{featured.price}</h3>
+              <p>{featured.description}</p>
+              <div className="contact-list">
+                <div>
+                  <strong>Técnica</strong>
+                  <span>Bordado floral a mano</span>
+                </div>
+                <div>
+                  <strong>Material</strong>
+                  <span>Lino, hilo y acabados suaves</span>
+                </div>
+                <div>
+                  <strong>Formato</strong>
+                  <span>Pieza artesanal de edición atelier</span>
+                </div>
+              </div>
+              <div className="product-card__actions product-card__actions--detail">
+                <button type="button" className="button button--primary">
+                  Añadir al carrito pronto
+                </button>
+                <a className="button button--secondary" href="#/encargos">
+                  Pedir variante
+                </a>
+              </div>
+            </article>
+
+            <article className="quote-panel quote-panel--product">
+              <p className="eyebrow">Pensado para vender</p>
+              <h3>La ficha ya prepara el siguiente salto</h3>
+              <p>
+                Aquí podremos añadir stock, colores, variantes, selección de cantidad, productos relacionados y checkout real cuando entremos en la fase de tienda completa.
+              </p>
+            </article>
+          </div>
         </div>
       </section>
     </>
@@ -539,6 +597,19 @@ function JournalPage() {
         image={mediaConfig.visualDetailA}
         alt="Mesa del taller con bocetos, flores y materiales"
       />
+
+      <section className="section-block section-block--soft">
+        <div className="container journal-featured">
+          <article className="journal-featured__lead">
+            <img src={journalEntries[0].image} alt={journalEntries[0].alt} />
+            <div className="journal-featured__copy">
+              <p className="journal-card__meta">{journalEntries[0].meta}</p>
+              <h2>{journalEntries[0].title}</h2>
+              <p>{journalEntries[0].text}</p>
+            </div>
+          </article>
+        </div>
+      </section>
 
       <section className="section-block">
         <div className="container journal-grid journal-grid--large">
