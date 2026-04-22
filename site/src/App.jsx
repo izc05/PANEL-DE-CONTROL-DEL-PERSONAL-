@@ -12,6 +12,16 @@ import {
   visualNarrative
 } from './content'
 
+const routeTitles = {
+  '/': 'Atelier Lumière',
+  '/coleccion': 'Colección · Atelier Lumière',
+  '/producto': 'Producto · Atelier Lumière',
+  '/encargos': 'Encargos · Atelier Lumière',
+  '/diario': 'Diario del taller · Atelier Lumière',
+  '/sobre-mi': 'Sobre mí · Atelier Lumière',
+  '/contacto': 'Contacto · Atelier Lumière'
+}
+
 const getRouteFromHash = (hash) => {
   const value = hash.replace(/^#/, '') || '/'
   return value.startsWith('/') ? value : `/${value}`
@@ -275,7 +285,6 @@ function HomePage() {
         <div className="container split-panels split-panels--premium">
           <article className="story-card story-card--premium">
             <img loading="lazy" src={mediaConfig.visualDetailC} alt="Vista del atelier desde la puerta" />
-
             <div className="story-card__body">
               <p className="eyebrow">Sobre la creadora</p>
               <h2>Una historia tejida con dedicación</h2>
@@ -398,14 +407,75 @@ function CollectionPage() {
                   <p>{product.description}</p>
                   <div className="product-card__meta">
                     <strong>{product.price}</strong>
-                    <a className="text-link" href="#/encargos">
-                      Consultar / comprar
+                    <a className="text-link" href="#/producto">
+                      Ver ficha
                     </a>
                   </div>
                 </div>
               </article>
             ))}
           </div>
+        </div>
+      </section>
+    </>
+  )
+}
+
+function ProductPage() {
+  const featured = products[0]
+  return (
+    <>
+      <PageHero
+        eyebrow={featured.category}
+        title={featured.title}
+        text="Una ficha de producto premium para que más adelante puedas añadir variaciones, fotografías adicionales, detalles técnicos o botón de compra sin rediseñar toda la base."
+        image={featured.image}
+        alt={featured.alt}
+        actions={[
+          { label: 'Solicitar información', href: '#/contacto' },
+          { label: 'Volver a colección', href: '#/coleccion', kind: 'secondary' }
+        ]}
+      />
+
+      <section className="section-block section-block--soft">
+        <div className="container info-form-grid">
+          <article className="contact-card">
+            <p className="eyebrow">Detalle de producto</p>
+            <h3>{featured.price}</h3>
+            <p>{featured.description}</p>
+            <div className="contact-list">
+              <div>
+                <strong>Técnica</strong>
+                <span>Bordado floral a mano</span>
+              </div>
+              <div>
+                <strong>Material</strong>
+                <span>Lino, hilo y acabados suaves</span>
+              </div>
+              <div>
+                <strong>Formato</strong>
+                <span>Pieza artesanal de edición atelier</span>
+              </div>
+            </div>
+          </article>
+
+          <form className="contact-form">
+            <label>
+              Nombre
+              <input type="text" placeholder="Tu nombre" />
+            </label>
+            <label>
+              Correo electrónico
+              <input type="email" placeholder="Tu correo" />
+            </label>
+            <label>
+              Mensaje
+              <textarea rows="6" placeholder="Quiero consultar este producto o pedir una variante" />
+            </label>
+            <button type="button" className="button button--primary">
+              Consultar este producto
+            </button>
+          </form>
         </div>
       </section>
     </>
@@ -595,7 +665,7 @@ function Footer() {
             <span>Broderie artisanale</span>
           </a>
           <p>
-            Web editorial inspirada en todo lo trabajado en este chat, ahora organizada para que puedas seguir ampliándola con más producto, artículos e imágenes desde un solo archivo de contenido. fileciteturn39file0
+            Web editorial inspirada en todo lo trabajado en este chat, ahora organizada para que puedas seguir ampliándola con más producto, artículos e imágenes desde un solo archivo de contenido.
           </p>
         </div>
 
@@ -640,11 +710,10 @@ export default function App() {
   const [route, setRoute] = useState(getRouteFromHash(window.location.hash))
 
   useEffect(() => {
-    document.title = 'Atelier Lumière'
-
     const onScroll = () => setIsScrolled(window.scrollY > 18)
     const onHashChange = () => {
-      setRoute(getRouteFromHash(window.location.hash))
+      const nextRoute = getRouteFromHash(window.location.hash)
+      setRoute(nextRoute)
       setMenuOpen(false)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
@@ -659,9 +728,13 @@ export default function App() {
     }
   }, [])
 
-  let page = <HomePage />
+  useEffect(() => {
+    document.title = routeTitles[route] || 'Atelier Lumière'
+  }, [route])
 
+  let page = <HomePage />
   if (route === '/coleccion') page = <CollectionPage />
+  if (route === '/producto') page = <ProductPage />
   if (route === '/encargos') page = <OrdersPage />
   if (route === '/diario') page = <JournalPage />
   if (route === '/sobre-mi') page = <AboutPage />
