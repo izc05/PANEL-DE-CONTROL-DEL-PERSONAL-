@@ -10,7 +10,7 @@ export const mediaConfig = {
   visualDetailC: withBase('/media/atelier-doorway.png'),
   portrait: withBase('/media/atelier-portrait.png'),
   atelierVideo: withBase('/media/atelier-video.mp4'),
-  journalVideo: withBase('/media/video_musica_desde_050.mp4')
+  journalVideo: withBase('/media/atelier-video.mp4')
 }
 
 export const navItems = [
