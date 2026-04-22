@@ -82,12 +82,6 @@ function HeroMedia() {
         )}
       </figure>
 
-      <article className="hero-v4__card hero-v4__card--quote">
-        <p className="collection-card__tag">Atelier Lumière</p>
-        <h3>{signatureQuote.title}</h3>
-        <p>{signatureQuote.text}</p>
-      </article>
-
       <article className="hero-v4__card hero-v4__card--product">
         <img src={products[0].image} alt={products[0].alt} />
         <div>
@@ -103,7 +97,7 @@ function HeroMedia() {
 function HomePage() {
   return (
     <>
-      <section id="inicio" className="hero-v4">
+      <section id="inicio" className="hero-v4 hero-v4--clean">
         <div className="hero-v4__veil" />
         <div className="container hero-v4__grid">
           <div className="hero-v4__copy">
@@ -134,6 +128,16 @@ function HomePage() {
           </div>
 
           <HeroMedia />
+        </div>
+      </section>
+
+      <section className="section-block section-block--soft section-block--compact-top">
+        <div className="container">
+          <article className="quote-panel quote-panel--signature">
+            <p className="eyebrow">Atelier Lumière</p>
+            <h3>{signatureQuote.title}</h3>
+            <p>{signatureQuote.text}</p>
+          </article>
         </div>
       </section>
 
