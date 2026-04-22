@@ -49,8 +49,16 @@ a {
 }
 
 button,
-input {
+input,
+code {
   font: inherit;
+}
+
+code {
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(47, 39, 34, 0.08);
+  color: #78583e;
 }
 
 .page-shell {
@@ -310,7 +318,8 @@ h3 {
   box-shadow: var(--shadow);
 }
 
-.hero-figure img {
+.hero-figure img,
+.hero-figure video {
   width: 100%;
   aspect-ratio: 4 / 4.65;
   object-fit: cover;
@@ -828,6 +837,7 @@ h3 {
   }
 
   .hero-figure img,
+  .hero-figure video,
   .story-card img {
     min-height: 20rem;
   }
