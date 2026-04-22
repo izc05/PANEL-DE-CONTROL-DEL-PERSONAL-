@@ -18,14 +18,13 @@ const getRouteFromHash = (hash) => {
 }
 
 const collectionPreview = products.slice(0, 4)
-
 const categories = ['Todos', 'Bolsos bordados', 'Prendas bordadas', 'Piezas únicas', 'Accesorios', 'Encargos']
 
 function Header({ isScrolled, menuOpen, setMenuOpen, route }) {
   return (
     <header className={`site-header ${isScrolled ? 'is-scrolled' : ''}`}>
       <div className="container site-header__inner">
-        <a className="brand-mark" href="#/">
+        <a className="brand-mark" href="#/" onClick={() => setMenuOpen(false)}>
           Atelier Lumière
           <span>Broderie artisanale</span>
         </a>
@@ -46,7 +45,12 @@ function Header({ isScrolled, menuOpen, setMenuOpen, route }) {
           aria-label="Navegación principal"
         >
           {navItems.map((item) => (
-            <a key={item.href} href={item.href} className={route === getRouteFromHash(item.href) ? 'is-active' : ''}>
+            <a
+              key={item.href}
+              href={item.href}
+              className={route === getRouteFromHash(item.href) ? 'is-active' : ''}
+              onClick={() => setMenuOpen(false)}
+            >
               {item.label}
             </a>
           ))}
@@ -56,9 +60,289 @@ function Header({ isScrolled, menuOpen, setMenuOpen, route }) {
   )
 }
 
-function PageHero({ eyebrow, title, text, image, alt, actions = [], compact = false }) {
+function HeroStage() {
   return (
-    <section className={`page-hero ${compact ? 'page-hero--compact' : ''}`}>
+    <div className="hero-stage-v2">
+      <figure className="hero-visual hero-visual--main">
+        {mediaConfig.heroVideoEnabled ? (
+          <video autoPlay loop muted playsInline poster={mediaConfig.heroPoster} src={mediaConfig.heroVideoSrc} />
+        ) : (
+          <img src={mediaConfig.heroPoster} alt="Artesana bordando junto a una ventana luminosa" />
+        )}
+      </figure>
+
+      <article className="floating-card floating-card--quote">
+        <p className="collection-card__tag">Atelier français</p>
+        <h3>Una entrada más viva y cinematográfica</h3>
+        <p>
+          El vídeo ya ocupa el lugar principal de la portada para acercar la web a la atmósfera refinada que buscabas desde el inicio.
+        </p>
+      </article>
+
+      <article className="floating-card floating-card--product">
+        <img src={products[0].image} alt={products[0].alt} />
+        <div>
+          <p className="collection-card__tag">Pieza destacada</p>
+          <h3>{products[0].title}</h3>
+          <span>{products[0].price}</span>
+        </div>
+      </article>
+    </div>
+  )
+}
+
+function HomePage() {
+  return (
+    <>
+      <section id="inicio" className="hero-v2">
+        <div className="hero-v2__veil" />
+        <div className="container hero-v2__grid">
+          <div className="hero-copy hero-copy--premium">
+            <p className="eyebrow">Atelier francés · bordado artesanal contemporáneo</p>
+            <h1>Donde el hilo cuenta historias</h1>
+            <p className="hero-copy__lead hero-copy__lead--premium">
+              Una portada con más intención visual, más lujo silencioso y una presencia editorial real para presentar colección, encargos y diario del taller sin parecer una tienda genérica.
+            </p>
+
+            <div className="hero-actions">
+              <a className="button button--primary" href="#/coleccion">
+                Descubrir la colección
+              </a>
+              <a className="button button--secondary" href="#/encargos">
+                Solicitar un encargo
+              </a>
+            </div>
+
+            <div className="hero-highlights-grid">
+              {heroHighlights.map((item) => (
+                <span key={item} className="hero-pill">
+                  {item}
+                </span>
+              ))}
+            </div>
+
+            <div className="hero-mini-story">
+              <strong>Hecho a mano, creado despacio.</strong>
+              <p>
+                La home ya no se apoya solo en bloques: ahora busca transmitir escena, textura y emoción desde el primer scroll.
+              </p>
+            </div>
+          </div>
+
+          <HeroStage />
+        </div>
+      </section>
+
+      <section className="value-ribbon value-ribbon--premium" aria-label="Valores del atelier">
+        <div className="container value-ribbon__grid">
+          {valuePoints.map((item) => (
+            <article key={item.title} className="value-card value-card--premium">
+              <h2>{item.title}</h2>
+              <p>{item.text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="section-block section-block--editorial">
+        <div className="container editorial-band">
+          <div className="section-heading section-heading--wide">
+            <p className="eyebrow">Narrativa visual</p>
+            <h2>Un relato visual más rico para sostener la portada</h2>
+            <p>
+              En lugar de una composición plana, esta transición usa imágenes grandes, detalles y jerarquía editorial para que el paso entre hero y tienda tenga mucha más presencia.
+            </p>
+          </div>
+
+          <div className="editorial-collage">
+            <article className="editorial-collage__feature">
+              <img src={visualNarrative[0].image} alt={visualNarrative[0].alt} />
+              <div className="editorial-collage__copy">
+                <p className="collection-card__tag">Atelier</p>
+                <h3>{visualNarrative[0].title}</h3>
+                <p>Una escena amplia que introduce el universo visual antes de entrar a la colección.</p>
+              </div>
+            </article>
+
+            <div className="editorial-collage__side">
+              {visualNarrative.slice(1).map((item) => (
+                <article key={item.title} className="editorial-mini-card">
+                  <img src={item.image} alt={item.alt} />
+                  <div>
+                    <p className="collection-card__tag">Proceso</p>
+                    <h3>{item.title}</h3>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="section-block section-block--tinted">
+        <div className="container">
+          <div className="section-heading section-heading--split">
+            <div>
+              <p className="eyebrow">Colección destacada</p>
+              <h2>Una entrada más potente hacia la parte comercial</h2>
+            </div>
+            <p>
+              La portada conecta ahora con la tienda mediante tarjetas más grandes, mejor aire y una selección de piezas que se siente más boutique y menos catálogo genérico.
+            </p>
+          </div>
+
+          <div className="collection-grid collection-grid--featured">
+            {collectionPreview.map((item, index) => (
+              <article key={item.slug} className={`collection-card collection-card--featured ${index === 0 ? 'collection-card--hero' : ''}`}>
+                <img loading="lazy" src={item.image} alt={item.alt} />
+                <div className="collection-card__body">
+                  <p className="collection-card__tag">{item.tag}</p>
+                  <h3>{item.title}</h3>
+                  <p>{item.description}</p>
+                  <div className="collection-card__footer">
+                    <strong>{item.price}</strong>
+                    <a className="text-link" href="#/coleccion">
+                      Ver colección
+                    </a>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="section-block process-showcase">
+        <div className="container process-showcase__grid">
+          <div className="process-showcase__media">
+            <figure className="process-image process-image--large">
+              <img loading="lazy" src={mediaConfig.visualLead} alt="Vista amplia del atelier lleno de materiales" />
+            </figure>
+            <figure className="process-image process-image--small">
+              <img loading="lazy" src={mediaConfig.visualDetailA} alt="Mesa del atelier con boceto y materiales" />
+            </figure>
+            <figure className="process-image process-image--small">
+              <img loading="lazy" src={mediaConfig.visualDetailB} alt="Detalle de un bordado en proceso" />
+            </figure>
+          </div>
+
+          <div className="process-copy process-copy--premium">
+            <div className="section-heading section-heading--compact">
+              <p className="eyebrow">Proceso artesanal</p>
+              <h2>Cómo nace una pieza</h2>
+              <p>
+                Una explicación visual y clara para que el visitante entienda rápido el valor del proceso y la diferencia entre una pieza hecha a mano y una tienda sin relato.
+              </p>
+            </div>
+
+            <ol className="step-list step-list--premium">
+              {processSteps.map((step) => (
+                <li key={step.number} className="step-list__item">
+                  <span>{step.number}</span>
+                  <div>
+                    <h3>{step.title}</h3>
+                    <p>{step.description}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <section className="section-block section-block--soft">
+        <div className="container cinematic-panel">
+          <div className="cinematic-panel__copy">
+            <p className="eyebrow">Vídeo del atelier</p>
+            <h2>El clip acompaña la experiencia principal</h2>
+            <p>
+              Mientras seguimos mejorando los medios, el vídeo ya funciona como pieza viva del universo Atelier Lumière y ayuda a que la portada tenga más presencia emocional.
+            </p>
+            <ul className="feature-list">
+              <li>Vídeo reutilizable en home, campañas o reels.</li>
+              <li>Base preparada para sustituir el clip cuando tengas otro mejor.</li>
+              <li>Integración más coherente con la estética general de la web.</li>
+            </ul>
+          </div>
+
+          <div className="cinematic-panel__media">
+            <video autoPlay loop muted playsInline poster={mediaConfig.heroPoster} src={mediaConfig.atelierVideo} />
+          </div>
+        </div>
+      </section>
+
+      <section className="section-block">
+        <div className="container split-panels split-panels--premium">
+          <article className="story-card story-card--premium">
+            <img loading="lazy" src={mediaConfig.visualDetailC} alt="Vista del atelier desde la puerta" />
+
+            <div className="story-card__body">
+              <p className="eyebrow">Sobre la creadora</p>
+              <h2>Una historia tejida con dedicación</h2>
+              <p>
+                El bloque de marca gana más peso visual y queda mejor conectado con la parte editorial y la parte comercial.
+              </p>
+              <ul className="note-list">
+                {aboutNotes.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+              <a className="text-link" href="#/sobre-mi">
+                Ir a la página completa
+              </a>
+            </div>
+          </article>
+
+          <article className="story-card story-card--accent story-card--premium-accent">
+            <div className="story-card__body story-card__body--centered">
+              <p className="eyebrow">Encargos personalizados</p>
+              <h2>Piezas únicas creadas para momentos con historia</h2>
+              <p>
+                La llamada a la acción ahora tiene más fuerza visual y queda más integrada en el tono premium de la portada.
+              </p>
+              <a className="button button--dark" href="#/encargos">
+                Solicitar un encargo
+              </a>
+            </div>
+
+            <img loading="lazy" src={mediaConfig.portrait} alt="Retrato cercano de la creadora bordando" />
+          </article>
+        </div>
+      </section>
+
+      <section className="section-block section-block--soft">
+        <div className="container">
+          <div className="section-heading section-heading--split">
+            <div>
+              <p className="eyebrow">Diario del taller</p>
+              <h2>Contenido editorial para sostener la marca</h2>
+            </div>
+            <p>
+              El diario refuerza la sensación de universo artesanal y deja la web preparada para recibir entradas nuevas con cambios mínimos.
+            </p>
+          </div>
+
+          <div className="journal-grid journal-grid--editorial">
+            {journalEntries.map((entry) => (
+              <article key={entry.slug} className="journal-card journal-card--editorial">
+                <img loading="lazy" src={entry.image} alt={entry.alt} />
+                <div className="journal-card__body">
+                  <p className="journal-card__meta">{entry.meta}</p>
+                  <h3>{entry.title}</h3>
+                  <p>{entry.text}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+    </>
+  )
+}
+
+function PageHero({ eyebrow, title, text, image, alt, actions = [] }) {
+  return (
+    <section className="page-hero page-hero--premium">
       <div className="container page-hero__grid">
         <div className="page-hero__copy">
           <p className="eyebrow">{eyebrow}</p>
@@ -83,278 +367,13 @@ function PageHero({ eyebrow, title, text, image, alt, actions = [], compact = fa
   )
 }
 
-function HomePage() {
-  return (
-    <>
-      <section id="inicio" className="hero-section hero-section--rich">
-        <div className="container hero-section__grid hero-section__grid--rich">
-          <div className="hero-copy hero-copy--rich">
-            <p className="eyebrow">Atelier francés · bordado artesanal contemporáneo</p>
-            <h1>Donde el hilo cuenta historias</h1>
-            <p className="hero-copy__lead">
-              Una portada más ambiciosa, más cinematográfica y más premium para presentar colecciones bordadas, encargos a medida y un diario del taller con alma propia.
-            </p>
-
-            <div className="hero-actions">
-              <a className="button button--primary" href="#/coleccion">
-                Descubrir la colección
-              </a>
-              <a className="button button--secondary" href="#/encargos">
-                Ver encargos a medida
-              </a>
-            </div>
-
-            <div className="hero-note hero-note--quote">
-              <strong>Atelier Lumière</strong>
-              <span>
-                Un universo de luz, lino, flores y bordado preparado para crecer sin perder delicadeza ni calidad visual.
-              </span>
-            </div>
-          </div>
-
-          <div className="hero-stage">
-            <figure className="hero-figure hero-figure--video">
-              {mediaConfig.heroVideoEnabled ? (
-                <video autoPlay loop muted playsInline poster={mediaConfig.heroPoster} src={mediaConfig.heroVideoSrc} />
-              ) : (
-                <img src={mediaConfig.heroPoster} alt="Artesana bordando junto a una ventana luminosa" />
-              )}
-            </figure>
-
-            <div className="hero-floating-card">
-              <p className="collection-card__tag">Firma visual</p>
-              <h3>Hero con vídeo real</h3>
-              <p>
-                La portada ya puede usar el vídeo del atelier como entrada principal para que la web no se sienta plana ni sosa.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="value-ribbon" aria-label="Valores del atelier">
-        <div className="container value-ribbon__grid">
-          {valuePoints.map((item) => (
-            <article key={item.title} className="value-card">
-              <h2>{item.title}</h2>
-              <p>{item.text}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="section-block section-block--soft">
-        <div className="container editorial-ribbon">
-          {heroHighlights.map((item) => (
-            <div key={item} className="editorial-pill">
-              {item}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="section-block">
-        <div className="container">
-          <div className="section-heading">
-            <p className="eyebrow">Narrativa visual</p>
-            <h2>Una transición elegante y más rica visualmente</h2>
-            <p>
-              En lugar de un parallax flojo, la portada usa una secuencia editorial de imágenes que sostiene la atmósfera artesanal y conecta mejor con la tienda.
-            </p>
-          </div>
-
-          <div className="narrative-mosaic">
-            <article className="narrative-mosaic__lead">
-              <img src={visualNarrative[0].image} alt={visualNarrative[0].alt} />
-              <div className="narrative-mosaic__caption">
-                <p className="collection-card__tag">Atelier</p>
-                <h3>{visualNarrative[0].title}</h3>
-              </div>
-            </article>
-
-            <div className="narrative-mosaic__side">
-              {visualNarrative.slice(1).map((item) => (
-                <article key={item.title} className="collection-card">
-                  <img src={item.image} alt={item.alt} />
-                  <div className="collection-card__body">
-                    <p className="collection-card__tag">Proceso</p>
-                    <h3>{item.title}</h3>
-                    <p>Una escena cálida y editorial para reforzar el universo visual de la marca.</p>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="section-block section-block--tinted">
-        <div className="container">
-          <div className="section-heading">
-            <p className="eyebrow">Colección destacada</p>
-            <h2>La portada conecta con la parte de venta sin perder encanto</h2>
-            <p>
-              Esta base deja preparada la transición hacia colección, producto y encargos con una estética consistente y más cercana a las referencias del chat.
-            </p>
-          </div>
-
-          <div className="collection-grid">
-            {collectionPreview.map((item) => (
-              <article key={item.slug} className="collection-card">
-                <img loading="lazy" src={item.image} alt={item.alt} />
-                <div className="collection-card__body">
-                  <p className="collection-card__tag">{item.tag}</p>
-                  <h3>{item.title}</h3>
-                  <p>{item.description}</p>
-                  <a className="text-link" href="#/coleccion">
-                    Ver colección
-                  </a>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="section-block">
-        <div className="container process-layout">
-          <div className="process-gallery">
-            <figure className="process-gallery__lead">
-              <img loading="lazy" src={mediaConfig.visualLead} alt="Vista amplia del atelier lleno de materiales" />
-            </figure>
-
-            <figure className="process-gallery__detail">
-              <img loading="lazy" src={mediaConfig.visualDetailA} alt="Mesa del atelier con boceto y materiales" />
-              <figcaption>Materiales, bocetos y herramientas que sostienen el lenguaje del atelier.</figcaption>
-            </figure>
-
-            <figure className="process-gallery__detail">
-              <img loading="lazy" src={mediaConfig.visualDetailB} alt="Detalle de un bordado en proceso" />
-              <figcaption>La puntada convierte el dibujo en textura y presencia real.</figcaption>
-            </figure>
-          </div>
-
-          <div className="process-copy">
-            <div className="section-heading section-heading--compact">
-              <p className="eyebrow">Proceso artesanal</p>
-              <h2>Cómo nace una pieza</h2>
-              <p>
-                Una explicación sencilla y visual para que la web no sea solo bonita, sino también clara y útil para quien llega por primera vez.
-              </p>
-            </div>
-
-            <ol className="step-list">
-              {processSteps.map((step) => (
-                <li key={step.number} className="step-list__item">
-                  <span>{step.number}</span>
-                  <div>
-                    <h3>{step.title}</h3>
-                    <p>{step.description}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </div>
-      </section>
-
-      <section className="section-block section-block--soft">
-        <div className="container video-panel">
-          <div className="video-panel__media">
-            <video autoPlay loop muted playsInline poster={mediaConfig.heroPoster} src={mediaConfig.atelierVideo} />
-          </div>
-
-          <div className="video-panel__copy">
-            <p className="eyebrow">Vídeo del atelier</p>
-            <h2>El clip ya acompaña la experiencia principal</h2>
-            <p>
-              El vídeo existente deja de ser un elemento suelto y pasa a formar parte de la narrativa de la portada para elevar la experiencia de entrada.
-            </p>
-
-            <ul className="feature-list">
-              <li>Hero con movimiento real y tono cinematográfico.</li>
-              <li>Preparado para sustituir clip o poster más adelante.</li>
-              <li>Base válida para reels, landing y futuras campañas.</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <section className="section-block">
-        <div className="container split-panels">
-          <article className="story-card">
-            <img loading="lazy" src={mediaConfig.visualDetailC} alt="Vista del atelier desde la puerta" />
-
-            <div className="story-card__body">
-              <p className="eyebrow">Sobre la creadora</p>
-              <h2>Una historia tejida con dedicación</h2>
-              <p>
-                Este bloque presenta a la creadora desde una mirada íntima, femenina y auténtica, reforzando la sensación de atelier real y de marca artesanal cuidada.
-              </p>
-              <ul className="note-list">
-                {aboutNotes.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-              <a className="text-link" href="#/sobre-mi">
-                Ir a la página completa
-              </a>
-            </div>
-          </article>
-
-          <article className="story-card story-card--accent">
-            <div className="story-card__body story-card__body--centered">
-              <p className="eyebrow">Encargos personalizados</p>
-              <h2>Piezas únicas creadas para momentos con historia</h2>
-              <p>
-                Un bloque claro para transformar la portada en una invitación real al encargo, no solo en una galería de imágenes bonitas.
-              </p>
-              <a className="button button--dark" href="#/encargos">
-                Solicitar un encargo
-              </a>
-              <small>Después podemos llevar esta misma línea visual a la página específica de encargos.</small>
-            </div>
-
-            <img loading="lazy" src={mediaConfig.portrait} alt="Retrato cercano de la creadora bordando" />
-          </article>
-        </div>
-      </section>
-
-      <section className="section-block section-block--soft">
-        <div className="container">
-          <div className="section-heading">
-            <p className="eyebrow">Diario del taller</p>
-            <h2>Contenido editorial para sostener la marca</h2>
-            <p>
-              El diario añade una capa más narrativa y hace que la web respire como una pequeña revista del atelier, no solo como un escaparate.
-            </p>
-          </div>
-
-          <div className="journal-grid">
-            {journalEntries.map((entry) => (
-              <article key={entry.slug} className="journal-card">
-                <img loading="lazy" src={entry.image} alt={entry.alt} />
-                <div className="journal-card__body">
-                  <p className="journal-card__meta">{entry.meta}</p>
-                  <h3>{entry.title}</h3>
-                  <p>{entry.text}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-    </>
-  )
-}
-
 function CollectionPage() {
   return (
     <>
       <PageHero
         eyebrow="Colección"
         title="Piezas bordadas con una presencia más premium"
-        text="La colección queda planteada como una subpágina real, lista para recibir nuevos artículos, categorías y futuras fichas de producto."
+        text="La colección queda planteada como una subpágina real, lista para recibir nuevos artículos, categorías y futuras fichas de producto sin romper el diseño general."
         image={mediaConfig.visualLead}
         alt="Colección bordada presentada en el atelier"
       />
@@ -362,8 +381,8 @@ function CollectionPage() {
       <section className="section-block">
         <div className="container">
           <div className="pill-list">
-            {categories.map((category) => (
-              <span key={category} className="editorial-pill editorial-pill--category">
+            {categories.map((category, index) => (
+              <span key={category} className={`editorial-pill editorial-pill--category ${index === 0 ? 'is-active' : ''}`}>
                 {category}
               </span>
             ))}
@@ -415,7 +434,7 @@ function OrdersPage() {
                 La estructura queda lista para explicar el servicio con claridad: idea, boceto, selección de materiales, bordado y entrega cuidada.
               </p>
             </div>
-            <ol className="step-list">
+            <ol className="step-list step-list--premium">
               {processSteps.map((step) => (
                 <li key={step.number} className="step-list__item">
                   <span>{step.number}</span>
@@ -428,7 +447,7 @@ function OrdersPage() {
             </ol>
           </div>
 
-          <article className="contact-card">
+          <article className="quote-panel">
             <p className="eyebrow">Encargo a medida</p>
             <h3>Piezas creadas para bodas, recuerdos, homenajes o regalos</h3>
             <p>
@@ -458,7 +477,7 @@ function JournalPage() {
       <section className="section-block">
         <div className="container journal-grid journal-grid--large">
           {journalEntries.map((entry) => (
-            <article key={entry.slug} className="journal-card">
+            <article key={entry.slug} className="journal-card journal-card--editorial">
               <img src={entry.image} alt={entry.alt} />
               <div className="journal-card__body">
                 <p className="journal-card__meta">{entry.meta}</p>
@@ -489,7 +508,7 @@ function AboutPage() {
 
       <section className="section-block">
         <div className="container split-panels split-panels--single">
-          <article className="story-card">
+          <article className="story-card story-card--premium">
             <img src={mediaConfig.visualDetailC} alt="Entrada al atelier con luz suave" />
             <div className="story-card__body">
               <p className="eyebrow">Atelier Lumière</p>
@@ -576,7 +595,7 @@ function Footer() {
             <span>Broderie artisanale</span>
           </a>
           <p>
-            Portada y subpáginas pensadas para crecer con facilidad: productos, artículos, imágenes y pequeños cambios se pueden mantener desde un archivo de contenido más sencillo.
+            Web editorial inspirada en todo lo trabajado en este chat, ahora organizada para que puedas seguir ampliándola con más producto, artículos e imágenes desde un solo archivo de contenido. fileciteturn39file0
           </p>
         </div>
 
