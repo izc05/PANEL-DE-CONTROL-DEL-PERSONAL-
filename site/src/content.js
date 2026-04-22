@@ -22,27 +22,32 @@ export const navItems = [
 export const valuePoints = [
   {
     title: 'Hecho a mano',
-    text: 'Cada pieza nace con calma, puntada a puntada, en un atelier donde el tiempo cuenta.'
+    text: 'Cada pieza nace despacio, puntada a puntada, con un ritmo sereno y una mirada cuidada.'
   },
   {
     title: 'Atmósfera editorial',
-    text: 'La web se apoya en luz suave, textura, flores y composición premium para no parecer una tienda genérica.'
+    text: 'La web busca la misma sensación de luz, lino, flores y silencio elegante que transmite el atelier.'
   },
   {
-    title: 'Colecciones y encargos',
-    text: 'La estructura está pensada para enseñar piezas listas y también abrir encargos con significado.'
+    title: 'Piezas con historia',
+    text: 'Colecciones y encargos pensados para recuerdos, regalos delicados y momentos que merecen quedarse.'
   },
   {
     title: 'Edición sencilla',
-    text: 'Todo el contenido principal vive aquí para poder cambiar textos, productos y artículos sin tocar demasiado el código.'
+    text: 'El contenido principal vive aquí para poder cambiar textos, productos y artículos sin complicar el mantenimiento.'
   }
 ]
 
 export const heroHighlights = [
-  'Luz filtrada y tonos lino',
+  'Luz suave y tonos lino',
   'Bordado floral artesanal',
-  'Piezas únicas y delicadas'
+  'Piezas delicadas y únicas'
 ]
+
+export const signatureQuote = {
+  title: 'Belleza lenta, materia noble y detalles que perduran',
+  text: 'Atelier Lumière no quiere parecer una tienda más. Quiere sentirse como una casa creativa pequeña, íntima y cuidadosamente compuesta.'
+}
 
 export const visualNarrative = [
   {
@@ -74,7 +79,7 @@ export const products = [
     category: 'Bolsos bordados',
     tag: 'Edición atelier',
     price: '195 €',
-    description: 'Bolso de lino bordado a mano con flores suaves y acabados cálidos.',
+    description: 'Bolso de lino bordado a mano con flores suaves y un acabado cálido y elegante.',
     image: mediaConfig.heroPoster,
     alt: 'Bolso bordado en un entorno cálido de atelier'
   },
@@ -84,7 +89,7 @@ export const products = [
     category: 'Prendas bordadas',
     tag: 'Nueva colección',
     price: '145 €',
-    description: 'Prenda ligera con bordado floral discreto y presencia editorial.',
+    description: 'Prenda ligera con bordado floral discreto y una presencia suave, limpia y femenina.',
     image: mediaConfig.portrait,
     alt: 'Creadora con prenda bordada en tonos suaves'
   },
@@ -94,7 +99,7 @@ export const products = [
     category: 'Piezas únicas',
     tag: 'Pieza única',
     price: '85 €',
-    description: 'Bordado botánico pensado como objeto decorativo y pieza de recuerdo.',
+    description: 'Bordado botánico concebido como objeto decorativo y pequeña pieza de recuerdo.',
     image: mediaConfig.visualDetailB,
     alt: 'Bastidor con bordado floral artesanal'
   },
@@ -104,7 +109,7 @@ export const products = [
     category: 'Accesorios',
     tag: 'Accesorio',
     price: '48 €',
-    description: 'Neceser bordado con aire romántico, ideal para regalo o colección.',
+    description: 'Neceser bordado con aire romántico, ideal para regalo o como detalle de colección.',
     image: mediaConfig.visualLead,
     alt: 'Neceser bordado en escena de atelier'
   },
@@ -114,7 +119,7 @@ export const products = [
     category: 'Bolsos bordados',
     tag: 'Colección destacada',
     price: 'Desde 120 €',
-    description: 'Una selección cuidada de piezas pensadas para abrir la colección principal.',
+    description: 'Una selección cuidada de piezas pensadas para abrir la colección principal con más presencia.',
     image: mediaConfig.visualDetailC,
     alt: 'Vista íntima del atelier desde la puerta'
   },
@@ -124,7 +129,7 @@ export const products = [
     category: 'Encargos',
     tag: 'A medida',
     price: 'Consultar',
-    description: 'Transformamos una idea o recuerdo en una pieza bordada con significado.',
+    description: 'Transformamos una idea, una palabra o un recuerdo en una pieza bordada con significado.',
     image: mediaConfig.portrait,
     alt: 'Retrato cálido de la creadora bordando junto a la ventana'
   }
@@ -139,12 +144,12 @@ export const processSteps = [
   {
     number: '02',
     title: 'Boceto y materiales',
-    description: 'Se eligen dibujo, colores, telas y hilos para encontrar el tono justo de la pieza.'
+    description: 'Se eligen dibujo, colores, telas y hilos para encontrar el tono justo de cada pieza.'
   },
   {
     number: '03',
     title: 'Bastidor y bordado',
-    description: 'El trabajo manual convierte la idea en textura viva, volumen y presencia real.'
+    description: 'El gesto manual convierte la idea en textura viva, volumen y presencia real.'
   },
   {
     number: '04',
@@ -188,6 +193,6 @@ export const aboutNotes = [
 
 export const contactDetails = [
   { label: 'Correo', value: 'atelier@atelierlumiere.com', href: 'mailto:atelier@atelierlumiere.com' },
-  { label: 'Teléfono', value: '+33 6 12 34 56 78', href: 'tel:+33612345678' },
-  { label: 'Ubicación', value: 'Provence, France', href: '' }
+  { label: 'Teléfono', value: '+34 612 34 56 78', href: 'tel:+34612345678' },
+  { label: 'Atelier', value: 'Atención personalizada con cita o encargo previo', href: '' }
 ]
