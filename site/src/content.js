@@ -24,26 +24,26 @@ export const navItems = [
 export const valuePoints = [
   {
     title: 'Hecho a mano',
-    text: 'Cada pieza nace despacio, puntada a puntada, con un ritmo sereno y una mirada cuidada.'
+    text: 'Cada pieza se trabaja con calma, cuidando el dibujo, la textura y la última puntada.'
   },
   {
-    title: 'Atmósfera editorial',
-    text: 'La web busca la misma sensación de luz, lino, flores y silencio elegante que transmite el atelier.'
+    title: 'Belleza serena',
+    text: 'Lino, luz suave, flores y materiales nobles componen un universo delicado y atemporal.'
   },
   {
     title: 'Piezas con historia',
     text: 'Colecciones y encargos pensados para recuerdos, regalos delicados y momentos que merecen quedarse.'
   },
   {
-    title: 'Edición sencilla',
-    text: 'El contenido principal vive aquí para poder cambiar textos, productos y artículos sin complicar el mantenimiento.'
+    title: 'Encargos con alma',
+    text: 'Creamos piezas personalizadas para transformar una idea, un nombre o un recuerdo en algo único.'
   }
 ]
 
 export const heroHighlights = [
-  'Luz suave y tonos lino',
-  'Bordado floral artesanal',
-  'Piezas delicadas y únicas'
+  'Bordado artesanal',
+  'Piezas únicas',
+  'Encargos personalizados'
 ]
 
 export const signatureQuote = {
@@ -188,9 +188,9 @@ export const journalEntries = [
 ]
 
 export const aboutNotes = [
-  'La marca se apoya en luz cálida, textura y gestos pequeños.',
-  'La base visual de la portada ya está preparada para crecer con tienda, producto y checkout.',
-  'Los textos, productos y artículos se pueden ampliar editando este archivo.'
+  'Cada pieza nace entre lino, luz cálida y pequeños gestos hechos a mano.',
+  'La portada ya está preparada para crecer con colección, producto y encargos.',
+  'Los textos, productos y artículos pueden ampliarse editando este archivo.'
 ]
 
 export const contactDetails = [
