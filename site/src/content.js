@@ -1,13 +1,15 @@
+const withBase = (path) => `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`
+
 export const mediaConfig = {
   heroVideoEnabled: true,
-  heroVideoSrc: '/media/atelier-video.mp4',
-  heroPoster: '/media/atelier-hero.png',
-  visualLead: '/media/atelier-wide.png',
-  visualDetailA: '/media/atelier-materials.png',
-  visualDetailB: '/media/atelier-stitching.png',
-  visualDetailC: '/media/atelier-doorway.png',
-  portrait: '/media/atelier-portrait.png',
-  atelierVideo: '/media/atelier-video.mp4'
+  heroVideoSrc: withBase('/media/atelier-video.mp4'),
+  heroPoster: withBase('/media/atelier-hero.png'),
+  visualLead: withBase('/media/atelier-wide.png'),
+  visualDetailA: withBase('/media/atelier-materials.png'),
+  visualDetailB: withBase('/media/atelier-stitching.png'),
+  visualDetailC: withBase('/media/atelier-doorway.png'),
+  portrait: withBase('/media/atelier-portrait.png'),
+  atelierVideo: withBase('/media/atelier-video.mp4')
 }
 
 export const navItems = [
