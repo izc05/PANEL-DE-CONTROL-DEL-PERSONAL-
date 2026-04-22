@@ -78,33 +78,19 @@ function Header({ isScrolled, menuOpen, setMenuOpen, route }) {
   )
 }
 
-function HeroMedia() {
-  return (
-    <div className="hero-v4__media-wrap">
-      <figure className="hero-v4__media">
-        {mediaConfig.heroVideoEnabled ? (
-          <video autoPlay loop muted playsInline poster={mediaConfig.heroPoster} src={mediaConfig.heroVideoSrc} />
-        ) : (
-          <img src={mediaConfig.heroPoster} alt="Artesana bordando junto a una ventana luminosa" />
-        )}
-      </figure>
-
-      <article className="hero-v4__card hero-v4__card--product">
-        <img src={products[0].image} alt={products[0].alt} />
-        <div>
-          <p className="collection-card__tag">Pieza destacada</p>
-          <h3>{products[0].title}</h3>
-          <span>{products[0].price}</span>
-        </div>
-      </article>
-    </div>
-  )
-}
-
 function HomePage() {
   return (
     <>
       <section id="inicio" className="hero-v4 hero-v4--clean">
+        <div className="hero-v4__media-wrap">
+          <figure className="hero-v4__media">
+            {mediaConfig.heroVideoEnabled ? (
+              <video autoPlay loop muted playsInline poster={mediaConfig.heroPoster} src={mediaConfig.heroVideoSrc} />
+            ) : (
+              <img src={mediaConfig.heroPoster} alt="Artesana bordando junto a una ventana luminosa" />
+            )}
+          </figure>
+        </div>
         <div className="hero-v4__veil" />
         <div className="container hero-v4__grid">
           <div className="hero-v4__copy">
@@ -133,8 +119,6 @@ function HomePage() {
 
             <p className="hero-v4__closing">Hecho a mano, creado despacio.</p>
           </div>
-
-          <HeroMedia />
         </div>
       </section>
 
@@ -175,10 +159,10 @@ function HomePage() {
           <div className="section-heading section-heading--split">
             <div>
               <p className="eyebrow">Narrativa visual</p>
-              <h2>Una secuencia visual más propia de una editorial</h2>
+              <h2>Una secuencia visual para entrar en el universo del atelier</h2>
             </div>
             <p>
-              La transición entre portada y tienda se apoya en una composición más rica, con una imagen protagonista y varias escenas secundarias del atelier y del bordado.
+              La luz del taller, los materiales y el gesto del bordado crean una entrada serena antes de descubrir cada pieza.
             </p>
           </div>
 
@@ -212,10 +196,10 @@ function HomePage() {
           <div className="section-heading section-heading--split">
             <div>
               <p className="eyebrow">Colección destacada</p>
-              <h2>Una entrada más potente hacia la parte comercial</h2>
+              <h2>Piezas creadas con calma, para durar</h2>
             </div>
             <p>
-              La colección destacada usa una tarjeta principal más grande y tres piezas secundarias para sentirse más boutique y menos catálogo plano.
+              Una selección pensada para descubrir el universo del atelier a través de bordados, texturas suaves y detalles hechos a mano.
             </p>
           </div>
 
@@ -281,16 +265,11 @@ function HomePage() {
       <section className="section-block section-block--soft">
         <div className="container cinematic-panel cinematic-panel--v3">
           <div className="cinematic-panel__copy">
-            <p className="eyebrow">Vídeo del atelier</p>
-            <h2>El clip sigue reforzando la experiencia principal</h2>
+            <p className="eyebrow">El gesto, la luz y el oficio</p>
+            <h2>Cada pieza nace en un proceso lento, íntimo y cuidadosamente elaborado.</h2>
             <p>
-              Además del hero, mantenemos un bloque de vídeo más sereno para dar continuidad visual y reforzar la idea de un universo artesanal vivo.
+              Entre bastidores, cada puntada se trabaja con paciencia para que la pieza final conserve presencia, delicadeza y carácter propio.
             </p>
-            <ul className="feature-list">
-              <li>Vídeo reutilizable en home, campañas o reels.</li>
-              <li>Base preparada para sustituir el clip cuando tengas otro mejor.</li>
-              <li>Integración más coherente con la estética general de la web.</li>
-            </ul>
           </div>
 
           <div className="cinematic-panel__media">
@@ -307,7 +286,7 @@ function HomePage() {
               <p className="eyebrow">Sobre la creadora</p>
               <h2>Una historia tejida con dedicación</h2>
               <p>
-                El bloque de marca gana más peso visual y queda mejor conectado con la parte editorial y la parte comercial.
+                Atelier Lumière nace de una práctica lenta y consciente, donde cada pieza se elabora a mano para perdurar en el tiempo.
               </p>
               <ul className="note-list">
                 {aboutNotes.map((item) => (
@@ -325,7 +304,7 @@ function HomePage() {
               <p className="eyebrow">Encargos personalizados</p>
               <h2>Piezas únicas creadas para momentos con historia</h2>
               <p>
-                La llamada a la acción ahora tiene más fuerza visual y queda más integrada en el tono premium de la portada.
+                Encargos pensados para celebrar recuerdos, nombres y fechas con un bordado hecho exclusivamente para ti.
               </p>
               <a className="button button--dark" href="#/encargos">
                 Solicitar un encargo
@@ -342,10 +321,10 @@ function HomePage() {
           <div className="section-heading section-heading--split">
             <div>
               <p className="eyebrow">Diario del taller</p>
-              <h2>Contenido editorial para sostener la marca</h2>
+              <h2>Historias del taller, entre luz y materia</h2>
             </div>
             <p>
-              El diario refuerza la sensación de universo artesanal y deja la web preparada para recibir entradas nuevas con cambios mínimos.
+              Un espacio para compartir procesos, inspiración y escenas cotidianas del oficio artesanal.
             </p>
           </div>
 
@@ -397,22 +376,32 @@ function PageHero({ eyebrow, title, text, image, alt, actions = [] }) {
 function CollectionPage() {
   return (
     <>
-      <PageHero
-        eyebrow="Colección"
-        title="Piezas bordadas con una presencia más premium"
-        text="La colección ya se plantea como una boutique visual, lista para crecer con más categorías, productos y futuras opciones de compra."
-        image={mediaConfig.visualLead}
-        alt="Colección bordada presentada en el atelier"
-      />
+      <section className="collection-hero">
+        <div className="container collection-hero__grid">
+          <div className="collection-hero__copy">
+            <p className="eyebrow">Colección</p>
+            <h1>Piezas bordadas con alma artesanal</h1>
+            <p>
+              Una selección de bolsos, textiles y creaciones bordadas a mano, pensadas para acompañar momentos especiales con delicadeza y presencia.
+            </p>
+            <a className="button button--primary" href="#/producto">
+              Ver piezas disponibles
+            </a>
+          </div>
+          <div className="collection-hero__media">
+            <video controls playsInline poster={mediaConfig.heroPoster} src={mediaConfig.collectionVideoSrc} />
+          </div>
+        </div>
+      </section>
 
       <section className="section-block section-block--soft">
         <div className="container boutique-intro">
           <article className="boutique-panel boutique-panel--feature">
             <div>
               <p className="eyebrow">Selección curada</p>
-              <h2>Una colección pensada como escaparate</h2>
+              <h2>Piezas para regalar, guardar y recordar</h2>
               <p>
-                La tienda empieza a sentirse menos catálogo y más colección. Cada tarjeta ya prepara el terreno para una futura compra real con carrito, stock y checkout.
+                Diseños bordados a mano que combinan materiales suaves, acabados delicados y una presencia serena.
               </p>
             </div>
             <img src={products[0].image} alt={products[0].alt} />
