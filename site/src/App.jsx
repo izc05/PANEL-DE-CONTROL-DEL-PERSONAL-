@@ -299,7 +299,7 @@ function CollectionPage() {
                 Diseños bordados a mano que combinan materiales suaves, acabados delicados y una presencia serena.
               </p>
             </div>
-            <img src={products[0].image} alt={products[0].alt} />
+            <video controls playsInline preload="metadata" poster={mediaConfig.heroPoster} src={mediaConfig.collectionVideoSrc} />
           </article>
 
           <div className="boutique-stats">

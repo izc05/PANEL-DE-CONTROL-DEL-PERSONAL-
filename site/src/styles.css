@@ -701,6 +701,7 @@ h3,
 .product-card img,
 .journal-card img,
 .boutique-panel img,
+.boutique-panel video,
 .product-showcase__gallery img,
 .journal-featured__lead img {
   width: 100%;
@@ -715,9 +716,11 @@ h3,
   gap: 1rem;
 }
 
-.boutique-panel img {
+.boutique-panel img,
+.boutique-panel video {
   height: 20rem;
   border-radius: 1.4rem;
+  object-fit: cover;
 }
 
 .boutique-stats {
