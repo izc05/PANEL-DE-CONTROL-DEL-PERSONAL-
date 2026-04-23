@@ -374,8 +374,13 @@ function CollectionPage({ onAddToCart }) {
                     <a className="button button--secondary" href="#/producto">
                       Ver detalles
                     </a>
+<<<<<<< codex/refactorizar-web-react-atelier-lumiere-en-movil
                     <button type="button" className="button button--primary" onClick={() => onAddToCart(product)}>
                       Añadir al carrito
+=======
+                    <button type="button" className="button button--primary">
+                      Próximamente
+>>>>>>> main
                     </button>
                   </div>
                 </div>
@@ -447,8 +452,13 @@ function ProductPage({ onAddToCart }) {
                 </div>
               </div>
               <div className="product-card__actions product-card__actions--detail">
+<<<<<<< codex/refactorizar-web-react-atelier-lumiere-en-movil
                 <button type="button" className="button button--primary" onClick={() => onAddToCart(featured)}>
                   Añadir al carrito
+=======
+                <button type="button" className="button button--primary">
+                  Compra disponible pronto
+>>>>>>> main
                 </button>
                 <a className="button button--secondary" href="#/encargos">
                   Pedir variante
