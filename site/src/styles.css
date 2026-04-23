@@ -558,6 +558,10 @@ h3,
   object-position: 50% 45%;
 }
 
+.page-shell.route-home .hero-v4__media video {
+  object-position: 50% 38%;
+}
+
 .page-hero__media img {
   min-height: 30rem;
 }
@@ -634,6 +638,103 @@ h3,
 .page-shell.route-coleccion .collection-hero__copy {
   background: none;
   border-color: transparent;
+}
+
+.collection-intro-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
+  gap: 1rem;
+  align-items: stretch;
+  margin-bottom: 1.4rem;
+  padding: 1.3rem;
+  border: 1px solid rgba(47, 39, 34, 0.08);
+  border-radius: 1.6rem;
+  background: rgba(255, 251, 246, 0.86);
+  box-shadow: var(--shadow);
+}
+
+.collection-intro-panel h2 {
+  margin: 0.2rem 0 0.6rem;
+  font-size: clamp(2rem, 3.4vw, 3.1rem);
+  line-height: 0.96;
+}
+
+.collection-intro-panel p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.75;
+}
+
+.collection-intro-panel__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.collection-intro-panel__stats div {
+  display: grid;
+  gap: 0.25rem;
+  align-content: center;
+  min-height: 7rem;
+  padding: 0.9rem;
+  border: 1px solid rgba(189, 143, 86, 0.22);
+  border-radius: 1.1rem;
+  background: rgba(255, 248, 238, 0.82);
+  text-align: center;
+}
+
+.collection-intro-panel__stats strong {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 2rem;
+  line-height: 1;
+  color: #855b34;
+}
+
+.collection-intro-panel__stats span {
+  font-size: 0.78rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #8f7159;
+}
+
+.collection-featured-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+}
+
+.collection-featured-item {
+  display: grid;
+  grid-template-rows: 12rem auto;
+  overflow: hidden;
+  border: 1px solid rgba(47, 39, 34, 0.08);
+  border-radius: 1.35rem;
+  background: rgba(255, 251, 246, 0.82);
+}
+
+.collection-featured-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.collection-featured-item div {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1rem;
+}
+
+.collection-featured-item h3 {
+  margin: 0;
+  font-size: 1.55rem;
+  line-height: 0.95;
+}
+
+.collection-featured-item p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.65;
 }
 
 .page-shell.route-encargos .page-hero__copy .button--primary {
@@ -1234,6 +1335,12 @@ h3,
     grid-template-columns: 1fr;
   }
 
+  .collection-intro-panel,
+  .collection-intro-panel__stats,
+  .collection-featured-strip {
+    grid-template-columns: 1fr;
+  }
+
   .value-ribbon__grid,
   .product-grid,
   .journal-grid,
@@ -1445,6 +1552,10 @@ h3,
   .product-showcase__gallery,
   .ornament-band {
     grid-template-columns: 1fr;
+  }
+
+  .collection-featured-item {
+    grid-template-rows: 11rem auto;
   }
 
   .ornament-band .ornament-chip:last-child {
