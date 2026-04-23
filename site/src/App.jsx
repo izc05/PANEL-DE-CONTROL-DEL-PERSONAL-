@@ -310,36 +310,30 @@ function CollectionPage({ onAddToCart }) {
 
   return (
     <>
-      <section className="collection-hero">
+      <section className="collection-hero collection-hero--immersive">
+        <div className="collection-hero__media">
+          <SmartVideo
+            controls={false}
+            autoPlay
+            loop
+            muted
+            poster={mediaConfig.heroPoster}
+            primarySrc={mediaConfig.collectionVideoSrc}
+            fallbackSrc={mediaConfig.atelierVideo}
+          />
+        </div>
+        <div className="collection-hero__veil" />
         <div className="container collection-hero__grid">
           <div className="collection-hero__copy">
             <p className="eyebrow">Colección</p>
             <h1>Piezas bordadas con alma artesanal</h1>
-            <p>
-              Una selección de bolsos, textiles y creaciones bordadas a mano, pensadas para acompañar momentos especiales con delicadeza y presencia.
-            </p>
+            <p>Una entrada visual limpia para recorrer la colección desde su esencia.</p>
             <button type="button" className="button button--primary" onClick={scrollToPieces}>
               Ver piezas disponibles
             </button>
           </div>
-          <div className="collection-hero__media">
-            <SmartVideo poster={mediaConfig.heroPoster} primarySrc={mediaConfig.collectionVideoSrc} fallbackSrc={mediaConfig.atelierVideo} />
-          </div>
         </div>
       </section>
-
-      <PageSection className="section-block--soft">
-        <div className="container">
-          <article className="boutique-panel boutique-panel--feature">
-            <div>
-              <p className="eyebrow">Selección curada</p>
-              <h2>Piezas para regalar, guardar y recordar</h2>
-              <p>Diseños bordados a mano que combinan materiales suaves, acabados delicados y una presencia serena.</p>
-            </div>
-            <SmartVideo poster={mediaConfig.heroPoster} primarySrc={mediaConfig.collectionVideoSrc} fallbackSrc={mediaConfig.atelierVideo} />
-          </article>
-        </div>
-      </PageSection>
 
       <PageSection id="piezas-disponibles">
         <div className="container">

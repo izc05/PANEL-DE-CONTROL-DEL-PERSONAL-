@@ -550,14 +550,19 @@ h3,
 }
 
 .collection-hero {
-  padding: 7rem 0 2rem;
+  position: relative;
+  margin-top: -6rem;
+  min-height: 88svh;
+  padding: 7.8rem 0 3rem;
 }
 
 .collection-hero__grid {
+  position: relative;
+  z-index: 2;
   display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
-  gap: 1rem;
-  align-items: center;
+  min-height: calc(88svh - 7.8rem);
+  grid-template-columns: 1fr;
+  align-items: end;
 }
 
 .collection-hero__copy,
@@ -566,11 +571,9 @@ h3,
 }
 
 .collection-hero__copy {
-  padding: 1.3rem;
-  border: 1px solid rgba(47, 39, 34, 0.08);
-  border-radius: 1.8rem;
-  background: rgba(255, 251, 246, 0.86);
-  box-shadow: var(--shadow);
+  max-width: 40rem;
+  padding: 0 0 2.2rem;
+  color: #fff;
 }
 
 .collection-hero__copy h1 {
@@ -582,9 +585,9 @@ h3,
 
 .collection-hero__copy p:not(.eyebrow) {
   margin-top: 0.95rem;
-  color: var(--ink-soft);
-  line-height: 1.8;
-  max-width: 34rem;
+  color: rgba(255, 249, 242, 0.94);
+  line-height: 1.65;
+  max-width: 30rem;
 }
 
 .collection-hero__copy .button {
@@ -592,22 +595,32 @@ h3,
 }
 
 .collection-hero__media {
+  position: absolute;
+  inset: 0;
   overflow: hidden;
-  border-radius: 1.8rem;
-  border: 1px solid rgba(47, 39, 34, 0.08);
-  box-shadow: var(--shadow);
+  border: 0;
+  box-shadow: none;
 }
 
 .collection-hero__media video {
   width: 100%;
-  min-height: 29rem;
+  height: 100%;
+  min-height: 88svh;
   object-fit: cover;
-  object-position: 54% center;
+  object-position: 50% 38%;
+}
+
+.collection-hero__veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(118deg, rgba(18, 14, 12, 0.64) 0%, rgba(18, 14, 12, 0.24) 44%, rgba(18, 14, 12, 0.58) 100%);
+  pointer-events: none;
+  z-index: 1;
 }
 
 .page-shell.route-coleccion .collection-hero__copy {
-  background: rgba(255, 248, 239, 0.9);
-  border-color: rgba(189, 143, 86, 0.2);
+  background: none;
+  border-color: transparent;
 }
 
 .page-shell.route-encargos .page-hero__copy .button--primary {
@@ -1361,15 +1374,16 @@ h3,
   }
 
   .collection-hero {
-    padding-top: 6.4rem;
+    min-height: 70svh;
+    padding-top: 6.8rem;
   }
 
   .collection-hero__copy {
-    padding: 1.05rem;
+    padding-bottom: 1.2rem;
   }
 
   .collection-hero__media {
-    order: -1;
+    order: initial;
   }
 
   .collection-hero__copy h1 {
@@ -1378,8 +1392,8 @@ h3,
   }
 
   .collection-hero__media video {
-    min-height: 18rem;
-    object-position: 68% center;
+    min-height: 70svh;
+    object-position: 60% center;
   }
 
   .hero-actions,
