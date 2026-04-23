@@ -109,6 +109,25 @@ function PageSection({ id, className = '', children }) {
   )
 }
 
+function SmartVideo({ primarySrc, fallbackSrc, poster, className = '', controls = true, autoPlay = false, loop = false, muted = false }) {
+  return (
+    <video
+      className={className}
+      controls={controls}
+      autoPlay={autoPlay}
+      loop={loop}
+      muted={muted}
+      playsInline
+      preload="metadata"
+      poster={poster}
+    >
+      <source src={primarySrc} type="video/mp4" />
+      {fallbackSrc ? <source src={fallbackSrc} type="video/mp4" /> : null}
+      Tu navegador no puede reproducir este vídeo.
+    </video>
+  )
+}
+
 function HomePage() {
   return (
     <>
@@ -116,7 +135,7 @@ function HomePage() {
         <div className="hero-v4__media-wrap">
           <figure className="hero-v4__media">
             {mediaConfig.heroVideoEnabled ? (
-              <video autoPlay loop muted playsInline poster={mediaConfig.heroPoster} src={mediaConfig.heroVideoSrc} />
+              <SmartVideo autoPlay loop muted controls={false} poster={mediaConfig.heroPoster} primarySrc={mediaConfig.heroVideoSrc} fallbackSrc={mediaConfig.atelierVideo} />
             ) : (
               <img src={mediaConfig.heroPoster} alt="Artesana bordando junto a una ventana luminosa" />
             )}
@@ -304,7 +323,7 @@ function CollectionPage({ onAddToCart }) {
             </button>
           </div>
           <div className="collection-hero__media">
-            <video controls playsInline poster={mediaConfig.heroPoster} src={mediaConfig.collectionVideoSrc} />
+            <SmartVideo poster={mediaConfig.heroPoster} primarySrc={mediaConfig.collectionVideoSrc} fallbackSrc={mediaConfig.atelierVideo} />
           </div>
         </div>
       </section>
@@ -317,7 +336,7 @@ function CollectionPage({ onAddToCart }) {
               <h2>Piezas para regalar, guardar y recordar</h2>
               <p>Diseños bordados a mano que combinan materiales suaves, acabados delicados y una presencia serena.</p>
             </div>
-            <video controls playsInline preload="metadata" poster={mediaConfig.heroPoster} src={mediaConfig.collectionVideoSrc} />
+            <SmartVideo poster={mediaConfig.heroPoster} primarySrc={mediaConfig.collectionVideoSrc} fallbackSrc={mediaConfig.atelierVideo} />
           </article>
         </div>
       </PageSection>
@@ -667,7 +686,7 @@ function JournalPage() {
           </div>
 
           <div className="cinematic-panel__media">
-            <video controls playsInline preload="metadata" poster={mediaConfig.heroPoster} src={mediaConfig.journalVideo} />
+            <SmartVideo poster={mediaConfig.heroPoster} primarySrc={mediaConfig.journalVideo} fallbackSrc={mediaConfig.atelierVideo} />
           </div>
         </div>
       </section>

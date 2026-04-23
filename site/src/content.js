@@ -1,20 +1,20 @@
-const withBase = (path) => `${import.meta.env.BASE_URL}${encodeURI(path.replace(/^\//, ''))}`
+const withBaseMedia = (filename) => `${import.meta.env.BASE_URL}media/${encodeURIComponent(filename)}`
 
 export const mediaConfig = {
   heroVideoEnabled: true,
-  heroVideoSrc: withBase('/media/atelier-video.mp4'),
-  collectionVideoSrc: withBase('/media/video_musica_desde_050.mp4'),
-  heroPoster: withBase('/media/atelier-hero.png'),
-  visualLead: withBase('/media/atelier-wide.png'),
-  visualDetailA: withBase('/media/atelier-materials.png'),
-  visualDetailB: withBase('/media/atelier-stitching.png'),
-  visualDetailC: withBase('/media/atelier-doorway.png'),
-  portrait: withBase('/media/atelier-portrait.png'),
-  atelierVideo: withBase('/media/atelier-video.mp4'),
-  journalVideo: withBase('/media/video_musica_desde_050.mp4'),
-  bagImage: withBase('/media/ChatGPT Image 23 abr 2026, 13_03_07.png'),
-  cushionImage: withBase('/media/ChatGPT Image 23 abr 2026, 13_03_13.png'),
-  embroideredSetImage: withBase('/media/ChatGPT Image 23 abr 2026, 13_03_23.png')
+  heroVideoSrc: withBaseMedia('atelier-video.mp4'),
+  collectionVideoSrc: withBaseMedia('video_musica_desde_050.mp4'),
+  heroPoster: withBaseMedia('atelier-hero.png'),
+  visualLead: withBaseMedia('atelier-wide.png'),
+  visualDetailA: withBaseMedia('atelier-materials.png'),
+  visualDetailB: withBaseMedia('atelier-stitching.png'),
+  visualDetailC: withBaseMedia('atelier-doorway.png'),
+  portrait: withBaseMedia('atelier-portrait.png'),
+  atelierVideo: withBaseMedia('atelier-video.mp4'),
+  journalVideo: withBaseMedia('video_musica_desde_050.mp4'),
+  bagImage: withBaseMedia('ChatGPT Image 23 abr 2026, 13_03_07.png'),
+  cushionImage: withBaseMedia('ChatGPT Image 23 abr 2026, 13_03_13.png'),
+  embroideredSetImage: withBaseMedia('ChatGPT Image 23 abr 2026, 13_03_23.png')
 }
 
 export const navItems = [
