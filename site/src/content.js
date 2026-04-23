@@ -1,4 +1,4 @@
-const withBase = (path) => `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`
+const withBase = (path) => `${import.meta.env.BASE_URL}${encodeURI(path.replace(/^\//, ''))}`
 
 export const mediaConfig = {
   heroVideoEnabled: true,
