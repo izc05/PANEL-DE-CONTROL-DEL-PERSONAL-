@@ -195,6 +195,11 @@ h3,
   color: var(--ink);
 }
 
+.cart-pill--ghost {
+  background: rgba(255, 255, 255, 0.54);
+  font-size: 1rem;
+}
+
 .menu-toggle {
   display: none;
   border: 1px solid var(--line);

@@ -14,6 +14,8 @@ const routeTitles = {
   '/': 'Atelier Lumière',
   '/coleccion': 'Colección · Atelier Lumière',
   '/producto': 'Producto · Atelier Lumière',
+  '/carrito': 'Carrito · Atelier Lumière',
+  '/acceder': 'Acceder · Atelier Lumière',
   '/encargos': 'Encargos · Atelier Lumière',
   '/diario': 'Diario del taller · Atelier Lumière',
   '/sobre-mi': 'Sobre mí · Atelier Lumière',
@@ -33,7 +35,7 @@ const getRouteClass = (route) => {
 const collectionPreview = products.slice(0, 4)
 const categories = ['Todos', 'Bolsos bordados', 'Prendas bordadas', 'Piezas únicas', 'Accesorios', 'Encargos']
 
-function Header({ isScrolled, menuOpen, setMenuOpen, route }) {
+function Header({ isScrolled, menuOpen, setMenuOpen, route, cartCount }) {
   return (
     <header className={`site-header ${isScrolled ? 'is-scrolled' : ''}`}>
       <div className="container site-header__inner">
@@ -70,8 +72,11 @@ function Header({ isScrolled, menuOpen, setMenuOpen, route }) {
         </nav>
 
         <div className="header-tools" aria-label="Accesos rápidos">
-          <a className="cart-pill" href="#/coleccion" onClick={() => setMenuOpen(false)}>
-            Cesta 0
+          <a className="cart-pill" href="#/carrito" onClick={() => setMenuOpen(false)}>
+            Cesta {cartCount}
+          </a>
+          <a className="cart-pill cart-pill--ghost" href="#/acceder" onClick={() => setMenuOpen(false)}>
+            Acceder
           </a>
         </div>
       </div>
@@ -270,7 +275,7 @@ function PageHero({ eyebrow, title, text, image, alt, actions = [] }) {
   )
 }
 
-function CollectionPage() {
+function CollectionPage({ onAddToCart }) {
   const [activeCategory, setActiveCategory] = useState('Todos')
   const filteredProducts = activeCategory === 'Todos' ? products : products.filter((product) => product.category === activeCategory)
 
@@ -369,8 +374,13 @@ function CollectionPage() {
                     <a className="button button--secondary" href="#/producto">
                       Ver detalles
                     </a>
+<<<<<<< codex/refactorizar-web-react-atelier-lumiere-en-movil
+                    <button type="button" className="button button--primary" onClick={() => onAddToCart(product)}>
+                      Añadir al carrito
+=======
                     <button type="button" className="button button--primary">
                       Próximamente
+>>>>>>> main
                     </button>
                   </div>
                 </div>
@@ -392,7 +402,7 @@ function CollectionPage() {
   )
 }
 
-function ProductPage() {
+function ProductPage({ onAddToCart }) {
   const featured = products[0]
   return (
     <>
@@ -442,8 +452,13 @@ function ProductPage() {
                 </div>
               </div>
               <div className="product-card__actions product-card__actions--detail">
+<<<<<<< codex/refactorizar-web-react-atelier-lumiere-en-movil
+                <button type="button" className="button button--primary" onClick={() => onAddToCart(featured)}>
+                  Añadir al carrito
+=======
                 <button type="button" className="button button--primary">
                   Compra disponible pronto
+>>>>>>> main
                 </button>
                 <a className="button button--secondary" href="#/encargos">
                   Pedir variante
@@ -461,6 +476,99 @@ function ProductPage() {
           </div>
         </div>
       </section>
+    </>
+  )
+}
+
+function CartPage({ cartItems, onAddToCart }) {
+  const lines = cartItems
+    .map((line) => {
+      const product = products.find((item) => item.slug === line.slug)
+      return product ? { ...line, product } : null
+    })
+    .filter(Boolean)
+
+  return (
+    <>
+      <PageHero
+        eyebrow="Carrito"
+        title="Tu selección del atelier"
+        text="Revisa tus piezas y continúa con tu solicitud. Este flujo quedará preparado para checkout en la siguiente fase."
+        image={mediaConfig.visualLead}
+        alt="Mesa del atelier con piezas seleccionadas"
+      />
+
+      <PageSection className="section-block--soft">
+        <div className="container">
+          {lines.length === 0 ? (
+            <article className="quote-panel quote-panel--signature">
+              <p className="eyebrow">Carrito vacío</p>
+              <h3>Aún no has añadido ninguna pieza</h3>
+              <p>Explora la colección y guarda tus favoritas para continuar después.</p>
+              <a className="button button--primary" href="#/coleccion">
+                Ir a colección
+              </a>
+            </article>
+          ) : (
+            <div className="product-grid product-grid--shop">
+              {lines.map((line) => (
+                <article key={line.slug} className="product-card product-card--shop">
+                  <img src={line.product.image} alt={line.product.alt} />
+                  <div className="product-card__body">
+                    <p className="collection-card__tag">{line.product.category}</p>
+                    <h3>{line.product.title}</h3>
+                    <p>{line.product.description}</p>
+                    <div className="product-card__meta">
+                      <strong>{line.product.price}</strong>
+                      <span>Cantidad: {line.qty}</span>
+                    </div>
+                    <div className="product-card__actions product-card__actions--shop">
+                      <button type="button" className="button button--secondary" onClick={() => onAddToCart(line.product)}>
+                        Añadir otra
+                      </button>
+                      <a className="button button--primary" href="#/contacto">
+                        Finalizar solicitud
+                      </a>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+      </PageSection>
+    </>
+  )
+}
+
+function LoginPage() {
+  return (
+    <>
+      <PageHero
+        eyebrow="Acceder"
+        title="Tu cuenta Atelier Lumière"
+        text="Accede para guardar favoritos, seguir tus encargos y centralizar tu historial de piezas."
+        image={mediaConfig.portrait}
+        alt="Retrato de la creadora junto a la ventana"
+      />
+      <PageSection className="section-block--soft">
+        <div className="container split-panels split-panels--single">
+          <form className="contact-form">
+            <h2>Iniciar sesión</h2>
+            <label>
+              Correo electrónico
+              <input type="email" placeholder="tu@email.com" />
+            </label>
+            <label>
+              Contraseña
+              <input type="password" placeholder="••••••••" />
+            </label>
+            <button type="button" className="button button--primary">
+              Acceder
+            </button>
+          </form>
+        </div>
+      </PageSection>
     </>
   )
 }
@@ -725,6 +833,19 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [route, setRoute] = useState(getRouteFromHash(window.location.hash))
+  const [cartItems, setCartItems] = useState([])
+
+  const cartCount = cartItems.reduce((total, item) => total + item.qty, 0)
+
+  const handleAddToCart = (product) => {
+    setCartItems((items) => {
+      const existing = items.find((item) => item.slug === product.slug)
+      if (existing) {
+        return items.map((item) => (item.slug === product.slug ? { ...item, qty: item.qty + 1 } : item))
+      }
+      return [...items, { slug: product.slug, qty: 1 }]
+    })
+  }
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 18)
@@ -750,8 +871,10 @@ export default function App() {
   }, [route])
 
   let page = <HomePage />
-  if (route === '/coleccion') page = <CollectionPage />
-  if (route === '/producto') page = <ProductPage />
+  if (route === '/coleccion') page = <CollectionPage onAddToCart={handleAddToCart} />
+  if (route === '/producto') page = <ProductPage onAddToCart={handleAddToCart} />
+  if (route === '/carrito') page = <CartPage cartItems={cartItems} onAddToCart={handleAddToCart} />
+  if (route === '/acceder') page = <LoginPage />
   if (route === '/encargos') page = <OrdersPage />
   if (route === '/diario') page = <JournalPage />
   if (route === '/sobre-mi') page = <AboutPage />
@@ -763,7 +886,7 @@ export default function App() {
         Saltar al contenido
       </a>
 
-      <Header isScrolled={isScrolled} menuOpen={menuOpen} setMenuOpen={setMenuOpen} route={route} />
+      <Header isScrolled={isScrolled} menuOpen={menuOpen} setMenuOpen={setMenuOpen} route={route} cartCount={cartCount} />
       <main id="main-content">{page}</main>
       <Footer />
     </div>
