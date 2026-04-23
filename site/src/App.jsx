@@ -34,6 +34,11 @@ const getRouteClass = (route) => {
 
 const collectionPreview = products.slice(0, 4)
 const categories = ['Todos', 'Bolsos bordados', 'Prendas bordadas', 'Piezas únicas', 'Accesorios', 'Encargos']
+const whatsappHrefForProduct = (product) => {
+  const text = `Hola, me interesa ${product.title} (${product.price}). ¿Me das más información?`
+  return `https://wa.me/34612345678?text=${encodeURIComponent(text)}`
+}
+
 
 function Header({ isScrolled, menuOpen, setMenuOpen, route, cartCount }) {
   return (
@@ -104,6 +109,25 @@ function PageSection({ id, className = '', children }) {
   )
 }
 
+function SmartVideo({ primarySrc, fallbackSrc, poster, className = '', controls = true, autoPlay = false, loop = false, muted = false }) {
+  return (
+    <video
+      className={className}
+      controls={controls}
+      autoPlay={autoPlay}
+      loop={loop}
+      muted={muted}
+      playsInline
+      preload="metadata"
+      poster={poster}
+    >
+      <source src={primarySrc} type="video/mp4" />
+      {fallbackSrc ? <source src={fallbackSrc} type="video/mp4" /> : null}
+      Tu navegador no puede reproducir este vídeo.
+    </video>
+  )
+}
+
 function HomePage() {
   return (
     <>
@@ -111,7 +135,7 @@ function HomePage() {
         <div className="hero-v4__media-wrap">
           <figure className="hero-v4__media">
             {mediaConfig.heroVideoEnabled ? (
-              <video autoPlay loop muted playsInline poster={mediaConfig.heroPoster} src={mediaConfig.heroVideoSrc} />
+              <SmartVideo autoPlay loop muted controls={false} poster={mediaConfig.heroPoster} primarySrc={mediaConfig.heroVideoSrc} fallbackSrc={mediaConfig.atelierVideo} />
             ) : (
               <img src={mediaConfig.heroPoster} alt="Artesana bordando junto a una ventana luminosa" />
             )}
@@ -278,6 +302,7 @@ function PageHero({ eyebrow, title, text, image, alt, actions = [] }) {
 function CollectionPage({ onAddToCart }) {
   const [activeCategory, setActiveCategory] = useState('Todos')
   const filteredProducts = activeCategory === 'Todos' ? products : products.filter((product) => product.category === activeCategory)
+  const sortedProducts = [...filteredProducts].sort((a, b) => (a.featuredRank ?? 999) - (b.featuredRank ?? 999))
 
   const scrollToPieces = () => {
     document.getElementById('piezas-disponibles')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -298,7 +323,7 @@ function CollectionPage({ onAddToCart }) {
             </button>
           </div>
           <div className="collection-hero__media">
-            <video controls playsInline poster={mediaConfig.heroPoster} src={mediaConfig.collectionVideoSrc} />
+            <SmartVideo poster={mediaConfig.heroPoster} primarySrc={mediaConfig.collectionVideoSrc} fallbackSrc={mediaConfig.atelierVideo} />
           </div>
         </div>
       </section>
@@ -311,7 +336,7 @@ function CollectionPage({ onAddToCart }) {
               <h2>Piezas para regalar, guardar y recordar</h2>
               <p>Diseños bordados a mano que combinan materiales suaves, acabados delicados y una presencia serena.</p>
             </div>
-            <video controls playsInline preload="metadata" poster={mediaConfig.visualLead} src={mediaConfig.atelierVideo} />
+            <SmartVideo poster={mediaConfig.heroPoster} primarySrc={mediaConfig.collectionVideoSrc} fallbackSrc={mediaConfig.atelierVideo} />
           </article>
         </div>
       </PageSection>
@@ -340,6 +365,7 @@ function CollectionPage({ onAddToCart }) {
               {activeCategory === 'Todos'
                 ? `Explora ${filteredProducts.length} piezas bordadas, accesorios y encargos personalizados.`
                 : `${filteredProducts.length} pieza(s) en ${activeCategory}.`}
+              {' '}Ordenadas por destacadas para que veas primero los ejemplos más nuevos.
             </p>
             {activeCategory !== 'Todos' ? (
               <div className="shop-toolbar__actions">
@@ -357,11 +383,14 @@ function CollectionPage({ onAddToCart }) {
           </div>
 
           <div className="product-grid product-grid--shop">
-            {filteredProducts.length > 0 ? filteredProducts.map((product) => (
+            {sortedProducts.length > 0 ? sortedProducts.map((product) => (
               <article key={product.slug} className="product-card product-card--shop">
                 <img src={product.image} alt={product.alt} />
                 <div className="product-card__body">
-                  <p className="collection-card__tag">{product.category}</p>
+                  <div className="product-card__labels">
+                    <p className="collection-card__tag">{product.category}</p>
+                    <span className="product-badge">{product.badge ?? 'Atelier'}</span>
+                  </div>
                   <h3>{product.title}</h3>
                   <p>{product.description}</p>
                   <div className="product-card__meta">
@@ -374,14 +403,12 @@ function CollectionPage({ onAddToCart }) {
                     <a className="button button--secondary" href="#/producto">
                       Ver detalles
                     </a>
-<<<<<<< codex/refactorizar-web-react-atelier-lumiere-en-movil
                     <button type="button" className="button button--primary" onClick={() => onAddToCart(product)}>
                       Añadir al carrito
-=======
-                    <button type="button" className="button button--primary">
-                      Próximamente
->>>>>>> main
                     </button>
+                    <a className="button button--dark button--whatsapp" href={whatsappHrefForProduct(product)} target="_blank" rel="noreferrer">
+                      WhatsApp
+                    </a>
                   </div>
                 </div>
               </article>
@@ -452,13 +479,8 @@ function ProductPage({ onAddToCart }) {
                 </div>
               </div>
               <div className="product-card__actions product-card__actions--detail">
-<<<<<<< codex/refactorizar-web-react-atelier-lumiere-en-movil
                 <button type="button" className="button button--primary" onClick={() => onAddToCart(featured)}>
                   Añadir al carrito
-=======
-                <button type="button" className="button button--primary">
-                  Compra disponible pronto
->>>>>>> main
                 </button>
                 <a className="button button--secondary" href="#/encargos">
                   Pedir variante
@@ -651,20 +673,20 @@ function JournalPage() {
       <section className="section-block section-block--soft">
         <div className="container cinematic-panel cinematic-panel--v3">
           <div className="cinematic-panel__copy">
-            <p className="eyebrow">Clip del diario</p>
-            <h2>Un fragmento breve para dar vida al taller</h2>
+            <p className="eyebrow">Podcast del diario</p>
+            <h2>Un formato mini podcast para contar historias reales</h2>
             <p>
-              Vídeos cortos del atelier para acercarte al proceso real: el gesto, la luz y la paciencia detrás de cada puntada.
+              Cápsulas de menos de un minuto para contar procesos, datos y pequeñas anécdotas del atelier con imagen y voz.
             </p>
             <ul className="feature-list">
-              <li>Ideal para piezas breves en formato vertical u horizontal.</li>
-              <li>Perfecto para diario, campañas y pequeñas historias del atelier.</li>
-              <li>Una forma viva de mostrar textura, gesto y proceso.</li>
+              <li>Formato ágil para contenido tipo podcast visual.</li>
+              <li>Incluye historia breve, dato útil y detalle del proceso.</li>
+              <li>Perfecto para dar más vida a la sección Diario.</li>
             </ul>
           </div>
 
           <div className="cinematic-panel__media">
-            <video controls playsInline preload="metadata" poster={mediaConfig.heroPoster} src={mediaConfig.journalVideo} />
+            <SmartVideo poster={mediaConfig.heroPoster} primarySrc={mediaConfig.journalVideo} fallbackSrc={mediaConfig.atelierVideo} />
           </div>
         </div>
       </section>
@@ -679,7 +701,7 @@ function JournalPage() {
                 <h3>{entry.title}</h3>
                 <p>{entry.text}</p>
                 <a className="text-link" href="#/diario">
-                  Leer artículo
+                  Escuchar cápsula
                 </a>
               </div>
             </article>
