@@ -48,3 +48,13 @@ El catálogo de tienda se carga desde:
 Ahí puedes añadir, quitar o editar productos (`title`, `description`, `price`, `category`, `image`, etc.) sin tocar JSX.
 
 Si este JSON no existe o falla, la app usa el catálogo por defecto de `site/src/content.js`.
+
+## Si GitHub no te deja confirmar por conflicto en `assets/app.js`
+
+`assets/app.js` y `assets/app.css` son archivos generados de build.  
+Si aparece conflicto en PR:
+
+1. Elige la versión de `main` para `assets/app.js` / `assets/app.css`.
+2. Haz merge del PR.
+3. En local ejecuta `npm run build`.
+4. Sube el commit con los assets regenerados.
