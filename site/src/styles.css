@@ -588,6 +588,7 @@ h3,
   line-height: 0.94;
   font-weight: 600;
   letter-spacing: -0.025em;
+  text-wrap: balance;
 }
 
 .section-block {

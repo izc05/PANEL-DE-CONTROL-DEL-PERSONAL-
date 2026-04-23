@@ -447,7 +447,7 @@ function CollectionPage() {
                       Ver detalles
                     </a>
                     <button type="button" className="button button--primary">
-                      Añadir pronto
+                      Próximamente
                     </button>
                   </div>
                 </div>
@@ -467,7 +467,7 @@ function ProductPage() {
       <PageHero
         eyebrow={featured.category}
         title={featured.title}
-        text="Una ficha de producto premium para preparar la futura compra real: imágenes, descripción, detalle artesanal y una zona lista para carrito o checkout."
+        text="Una pieza pensada para apreciarse en detalle: materiales nobles, bordado a mano y acabados que transmiten calma y presencia."
         image={featured.image}
         alt={featured.alt}
         actions={[
@@ -511,7 +511,7 @@ function ProductPage() {
               </div>
               <div className="product-card__actions product-card__actions--detail">
                 <button type="button" className="button button--primary">
-                  Añadir al carrito pronto
+                  Compra disponible pronto
                 </button>
                 <a className="button button--secondary" href="#/encargos">
                   Pedir variante
@@ -520,10 +520,10 @@ function ProductPage() {
             </article>
 
             <article className="quote-panel quote-panel--product">
-              <p className="eyebrow">Pensado para vender</p>
-              <h3>La ficha ya prepara el siguiente salto</h3>
+              <p className="eyebrow">Detalle artesanal</p>
+              <h3>Una ficha clara para elegir con calma</h3>
               <p>
-                Aquí podremos añadir stock, colores, variantes, selección de cantidad, productos relacionados y checkout real cuando entremos en la fase de tienda completa.
+                Cada descripción está enfocada en mostrar textura, técnica y carácter para facilitar una elección cuidada y personal.
               </p>
             </article>
           </div>
@@ -590,7 +590,7 @@ function JournalPage() {
       <PageHero
         eyebrow="Diario del taller"
         title="Historias, proceso y escenas del atelier"
-        text="El diario queda preparado como una revista visual donde añadir artículos nuevos, clips y piezas audiovisuales del taller."
+        text="Un cuaderno visual para compartir inspiración, procesos y pequeños instantes del taller."
         image={mediaConfig.visualDetailA}
         alt="Mesa del taller con bocetos, flores y materiales"
       />
@@ -614,12 +614,12 @@ function JournalPage() {
             <p className="eyebrow">Clip del diario</p>
             <h2>Un fragmento breve para dar vida al taller</h2>
             <p>
-              Esta subpágina ya queda preparada para mostrar vídeos cortos del atelier, making of, detalles de producto o pequeñas piezas con música para reforzar el universo de marca.
+              Vídeos cortos del atelier para acercarte al proceso real: el gesto, la luz y la paciencia detrás de cada puntada.
             </p>
             <ul className="feature-list">
-              <li>Ideal para clips verticales o horizontales cortos.</li>
-              <li>Sirve para diario, campañas y pequeñas historias visuales.</li>
-              <li>Se puede sustituir fácilmente por otros vídeos más adelante.</li>
+              <li>Ideal para piezas breves en formato vertical u horizontal.</li>
+              <li>Perfecto para diario, campañas y pequeñas historias del atelier.</li>
+              <li>Una forma viva de mostrar textura, gesto y proceso.</li>
             </ul>
           </div>
 
@@ -656,7 +656,7 @@ function AboutPage() {
       <PageHero
         eyebrow="Sobre mí"
         title="Una marca construida desde la calma y el detalle"
-        text="Esta subpágina cuenta quién está detrás del atelier con una composición más íntima y una base preparada para ampliar el relato de marca cuando quieras."
+        text="La historia personal detrás del atelier: inspiración cotidiana, oficio manual y una búsqueda constante de belleza serena."
         image={mediaConfig.portrait}
         alt="Retrato de la creadora en el atelier"
       />
@@ -669,7 +669,7 @@ function AboutPage() {
               <p className="eyebrow">Atelier Lumière</p>
               <h2>Una historia de luz, hilo y piezas que perduran</h2>
               <p>
-                La página queda lista para desarrollar mejor la historia personal, la inspiración de la marca, el enfoque artesanal y los valores que la diferencian.
+                Un recorrido por la sensibilidad que da forma a cada colección, entre materia noble, ritmo lento y detalle humano.
               </p>
               <ul className="note-list">
                 {aboutNotes.map((item) => (
@@ -690,7 +690,7 @@ function ContactPage() {
       <PageHero
         eyebrow="Contacto"
         title="Hablemos de la pieza que quieres crear"
-        text="La página de contacto queda planteada para resolver dudas, abrir encargos y facilitar pequeños cambios futuros sin tocar demasiado la estructura general."
+        text="Escríbenos para resolver dudas, solicitar un encargo o compartir la idea de una pieza bordada a medida."
         image={mediaConfig.visualLead}
         alt="Atelier luminoso listo para recibir encargos"
       />
