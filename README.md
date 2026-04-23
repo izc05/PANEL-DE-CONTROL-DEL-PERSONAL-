@@ -22,17 +22,29 @@ npm run dev
 npm run build
 ```
 
-## Vídeos opcionales
+## Gestión de fotos/vídeos y catálogo (modo tienda simple)
 
-Si quieres usar vídeos propios en hero o en la sección narrativa, crea una carpeta `public/videos/` y actualiza `mediaConfig` en [`src/App.jsx`](./src/App.jsx):
+### 1) Subir archivos multimedia
 
-```js
-const mediaConfig = {
-  heroVideoEnabled: true,
-  heroVideoSrc: '/videos/hero.mp4',
-  parallaxVideoEnabled: true,
-  parallaxVideoSrc: '/videos/parallax.mp4'
-}
-```
+Guarda imágenes o vídeos en `public/uploads/` (puedes ver guía rápida en `public/uploads/README.md`).
 
-Si `heroVideoEnabled` o `parallaxVideoEnabled` están en `false`, la página usará automáticamente las imágenes de apoyo.
+Ejemplos de ruta:
+
+- `./uploads/bolso-azul.jpg`
+- `./uploads/home-video.mp4`
+
+Nombres auto-usados por la portada:
+
+- `home-video.mp4` (Inicio)
+- `collection-video.mp4` (Colección)
+- `home-photo-1.jpg` y `home-photo-2.jpg` (fotos destacadas en Inicio)
+
+### 2) Editar productos de la colección
+
+El catálogo de tienda se carga desde:
+
+- `public/data/shop-products.json`
+
+Ahí puedes añadir, quitar o editar productos (`title`, `description`, `price`, `category`, `image`, etc.) sin tocar JSX.
+
+Si este JSON no existe o falla, la app usa el catálogo por defecto de `site/src/content.js`.
