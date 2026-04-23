@@ -394,6 +394,15 @@ h3,
   backdrop-filter: blur(8px);
 }
 
+.hero-v4__copy--open {
+  max-width: 56rem;
+  padding: 0 0 2.2rem;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  backdrop-filter: none;
+}
+
 .hero-v4__copy .eyebrow,
 .hero-v4__copy h1,
 .hero-v4__copy .hero-v4__lead,
@@ -405,6 +414,10 @@ h3,
   border-color: rgba(255, 255, 255, 0.2);
   background: rgba(255, 251, 246, 0.14);
   color: #fff7ef;
+}
+
+.hero-v4__copy--open .hero-pill {
+  background: rgba(255, 251, 246, 0.2);
 }
 
 .hero-v4__copy .button--secondary {
@@ -1310,6 +1323,12 @@ h3,
     padding: 0.95rem;
     border-radius: 1.1rem;
     backdrop-filter: blur(6px);
+  }
+
+  .hero-v4__copy--open {
+    padding: 0 0 1.4rem;
+    border-radius: 0;
+    backdrop-filter: none;
   }
 
   .hero-v4__copy h1,
