@@ -74,6 +74,18 @@ function Header({ isScrolled, menuOpen, setMenuOpen, route }) {
   )
 }
 
+function SectionIntro({ eyebrow, title, text, split = false }) {
+  return (
+    <div className={`section-heading ${split ? 'section-heading--split' : ''}`}>
+      <div>
+        <p className="eyebrow">{eyebrow}</p>
+        <h2>{title}</h2>
+      </div>
+      {text ? <p>{text}</p> : null}
+    </div>
+  )
+}
+
 function HomePage() {
   return (
     <>
@@ -120,15 +132,11 @@ function HomePage() {
 
       <section className="section-block section-block--tinted">
         <div className="container">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Colección destacada</p>
-              <h2>Piezas creadas con calma, para durar</h2>
-            </div>
-            <p>
-              Una selección pensada para descubrir el universo del atelier a través de bordados, texturas suaves y detalles hechos a mano.
-            </p>
-          </div>
+          <SectionIntro
+            eyebrow="Colección destacada"
+            title="Piezas creadas con calma, para durar"
+            text="Una selección pensada para descubrir el universo del atelier a través de bordados, texturas suaves y detalles hechos a mano."
+          />
 
           <div className="collection-grid collection-grid--featured-v3">
             {collectionPreview.map((item, index) => (
@@ -191,15 +199,12 @@ function HomePage() {
 
       <section className="section-block section-block--soft">
         <div className="container">
-          <div className="section-heading section-heading--split">
-            <div>
-              <p className="eyebrow">Diario del taller</p>
-              <h2>Historias del taller, entre luz y materia</h2>
-            </div>
-            <p>
-              Un espacio para compartir procesos, inspiración y escenas cotidianas del oficio artesanal.
-            </p>
-          </div>
+          <SectionIntro
+            split
+            eyebrow="Diario del taller"
+            title="Historias del taller, entre luz y materia"
+            text="Un espacio para compartir procesos, inspiración y escenas cotidianas del oficio artesanal."
+          />
 
           <div className="journal-grid journal-grid--editorial">
             {journalEntries.map((entry) => (
@@ -280,10 +285,8 @@ function CollectionPage() {
             <div>
               <p className="eyebrow">Selección curada</p>
               <h2>Piezas para regalar, guardar y recordar</h2>
-            <p>
-              Diseños bordados a mano que combinan materiales suaves, acabados delicados y una presencia serena.
-            </p>
-          </div>
+              <p>Diseños bordados a mano que combinan materiales suaves, acabados delicados y una presencia serena.</p>
+            </div>
             <img src={mediaConfig.visualLead} alt="Mesa del atelier con piezas bordadas y luz natural" />
           </article>
         </div>
