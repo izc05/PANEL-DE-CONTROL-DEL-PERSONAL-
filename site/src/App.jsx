@@ -143,7 +143,7 @@ function HomePage() {
         </div>
         <div className="hero-v4__veil" />
         <div className="container hero-v4__grid">
-          <div className="hero-v4__copy">
+          <div className="hero-v4__copy hero-v4__copy--open">
             <p className="eyebrow">Atelier francés · bordado artesanal</p>
             <h1>Donde el hilo cuenta historias</h1>
             <p className="hero-v4__lead">
