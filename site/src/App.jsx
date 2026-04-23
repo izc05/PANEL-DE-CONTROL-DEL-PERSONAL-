@@ -318,14 +318,25 @@ function PageHero({ eyebrow, title, text, image, alt, actions = [] }) {
 }
 
 function CollectionPage({ onAddToCart, productsList }) {
-  const categories = getShopCategories(productsList)
+  const [localProducts, setLocalProducts] = useState([])
+  const [uploadForm, setUploadForm] = useState({
+    title: '',
+    price: '',
+    category: '',
+    description: '',
+    file: null
+  })
+  const [uploadMessage, setUploadMessage] = useState('')
+  const [fileInputKey, setFileInputKey] = useState(0)
+  const allProducts = [...localProducts, ...productsList]
+  const categories = getShopCategories(allProducts)
   const [activeCategory, setActiveCategory] = useState('Todos')
   const filteredProducts = activeCategory === 'Todos'
-    ? productsList
-    : productsList.filter((product) => product.category === activeCategory)
+    ? allProducts
+    : allProducts.filter((product) => product.category === activeCategory)
   const sortedProducts = [...filteredProducts].sort((a, b) => (a.featuredRank ?? 999) - (b.featuredRank ?? 999))
-  const featuredProducts = [...productsList].sort((a, b) => (a.featuredRank ?? 999) - (b.featuredRank ?? 999)).slice(0, 3)
-  const categoryCounts = productsList.reduce((acc, product) => {
+  const featuredProducts = [...allProducts].sort((a, b) => (a.featuredRank ?? 999) - (b.featuredRank ?? 999)).slice(0, 3)
+  const categoryCounts = allProducts.reduce((acc, product) => {
     if (!product.category) return acc
     acc[product.category] = (acc[product.category] ?? 0) + 1
     return acc
@@ -334,6 +345,62 @@ function CollectionPage({ onAddToCart, productsList }) {
   const scrollToPieces = () => {
     document.getElementById('piezas-disponibles')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
+
+  const handleUploadFieldChange = (event) => {
+    const { name, value, files } = event.target
+    if (name === 'file') {
+      setUploadForm((current) => ({ ...current, file: files?.[0] ?? null }))
+      return
+    }
+    setUploadForm((current) => ({ ...current, [name]: value }))
+  }
+
+  const handleUploadSubmit = (event) => {
+    event.preventDefault()
+    if (!uploadForm.title || !uploadForm.price || !uploadForm.category || !uploadForm.file) {
+      setUploadMessage('Completa título, precio, categoría y adjunta una imagen o vídeo para publicar.')
+      return
+    }
+
+    const slug = `${uploadForm.title.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}-${Date.now()}`
+    const localUrl = URL.createObjectURL(uploadForm.file)
+    const isVideo = uploadForm.file.type.startsWith('video/')
+
+    setLocalProducts((items) => [
+      {
+        slug,
+        title: uploadForm.title,
+        price: uploadForm.price,
+        category: uploadForm.category,
+        description: uploadForm.description || 'Pieza subida desde tu ordenador.',
+        image: isVideo ? mediaConfig.heroPoster : localUrl,
+        alt: uploadForm.title,
+        tag: uploadForm.category,
+        badge: 'Nuevo',
+        localVideo: isVideo ? localUrl : null,
+        featuredRank: 0
+      },
+      ...items
+    ])
+    setUploadMessage(`“${uploadForm.title}” añadido correctamente desde tu PC.`)
+    setUploadForm({
+      title: '',
+      price: '',
+      category: '',
+      description: '',
+      file: null
+    })
+    setFileInputKey((value) => value + 1)
+  }
+
+  useEffect(() => {
+    return () => {
+      localProducts.forEach((product) => {
+        if (product.image?.startsWith?.('blob:')) URL.revokeObjectURL(product.image)
+        if (product.localVideo?.startsWith?.('blob:')) URL.revokeObjectURL(product.localVideo)
+      })
+    }
+  }, [localProducts])
 
   return (
     <>
@@ -374,7 +441,7 @@ function CollectionPage({ onAddToCart, productsList }) {
             </div>
             <div className="collection-intro-panel__stats">
               <div>
-                <strong>{productsList.length}</strong>
+                <strong>{allProducts.length}</strong>
                 <span>Piezas publicadas</span>
               </div>
               <div>
@@ -388,10 +455,60 @@ function CollectionPage({ onAddToCart, productsList }) {
             </div>
           </article>
 
+          <article className="collection-upload-panel">
+            <div>
+              <p className="eyebrow">Cargar desde PC</p>
+              <h3>Sube un artículo nuevo en segundos</h3>
+              <p>
+                Esta carga es local (solo en tu navegador). Si te gusta el resultado, después lo pasamos al archivo
+                <code> public/data/shop-products.json </code>
+                y guardamos el recurso en
+                <code> public/uploads </code>.
+              </p>
+            </div>
+            <form className="collection-upload-form" onSubmit={handleUploadSubmit}>
+              <input
+                type="text"
+                name="title"
+                value={uploadForm.title}
+                onChange={handleUploadFieldChange}
+                placeholder="Título del artículo"
+              />
+              <input
+                type="text"
+                name="price"
+                value={uploadForm.price}
+                onChange={handleUploadFieldChange}
+                placeholder="Precio (ej. 120 €)"
+              />
+              <input
+                type="text"
+                name="category"
+                value={uploadForm.category}
+                onChange={handleUploadFieldChange}
+                placeholder="Categoría (ej. Bolsos)"
+              />
+              <textarea
+                name="description"
+                value={uploadForm.description}
+                onChange={handleUploadFieldChange}
+                placeholder="Descripción corta de la pieza"
+                rows={3}
+              />
+              <input key={fileInputKey} type="file" name="file" onChange={handleUploadFieldChange} accept="image/*,video/*" />
+              <button type="submit" className="button button--primary">Añadir desde mi PC</button>
+              {uploadMessage ? <p className="collection-upload-form__message">{uploadMessage}</p> : null}
+            </form>
+          </article>
+
           <div className="collection-featured-strip">
             {featuredProducts.map((product) => (
               <article key={`${product.slug}-featured`} className="collection-featured-item">
-                <img src={product.image} alt={product.alt} loading="lazy" />
+                {product.localVideo ? (
+                  <SmartVideo className="collection-featured-item__video" primarySrc={product.localVideo} controls />
+                ) : (
+                  <img src={product.image} alt={product.alt} loading="lazy" />
+                )}
                 <div>
                   <p className="collection-card__tag">{product.tag ?? product.category}</p>
                   <h3>{product.title}</h3>
@@ -412,7 +529,7 @@ function CollectionPage({ onAddToCart, productsList }) {
               >
                 {category}
                 <span className="editorial-pill__count">
-                  {category === 'Todos' ? productsList.length : (categoryCounts[category] ?? 0)}
+                  {category === 'Todos' ? allProducts.length : (categoryCounts[category] ?? 0)}
                 </span>
               </button>
             ))}
@@ -443,7 +560,11 @@ function CollectionPage({ onAddToCart, productsList }) {
           <div className="product-grid product-grid--shop">
             {sortedProducts.length > 0 ? sortedProducts.map((product) => (
               <article key={product.slug} className="product-card product-card--shop">
-                <img src={product.image} alt={product.alt} />
+                {product.localVideo ? (
+                  <SmartVideo className="product-card__video" primarySrc={product.localVideo} controls />
+                ) : (
+                  <img src={product.image} alt={product.alt} />
+                )}
                 <div className="product-card__body">
                   <div className="product-card__labels">
                     <p className="collection-card__tag">{product.category}</p>

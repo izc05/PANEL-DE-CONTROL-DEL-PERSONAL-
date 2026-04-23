@@ -923,6 +923,8 @@ h3,
 
 .collection-card--featured img,
 .product-card img,
+.product-card__video,
+.collection-featured-item__video,
 .journal-card img,
 .boutique-panel img,
 .boutique-panel video,
@@ -974,6 +976,48 @@ h3,
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
+}
+
+.collection-upload-panel {
+  margin: 1rem 0 1.5rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(260px, 0.9fr);
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(163, 121, 75, 0.22);
+  border-radius: 1.25rem;
+  background: #fffaf4;
+}
+
+.collection-upload-panel h3 {
+  margin: 0.3rem 0 0.45rem;
+}
+
+.collection-upload-panel p code {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.82em;
+}
+
+.collection-upload-form {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.collection-upload-form input,
+.collection-upload-form textarea {
+  width: 100%;
+  border: 1px solid rgba(118, 90, 63, 0.25);
+  border-radius: 0.8rem;
+  padding: 0.65rem 0.75rem;
+  font: inherit;
+  background: #fffcf8;
+}
+
+.collection-upload-form__message {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #7e5a36;
+  font-weight: 600;
 }
 
 .product-grid--shop {
@@ -1367,7 +1411,8 @@ h3,
   .collection-intro-panel,
   .collection-intro-panel__stats,
   .collection-featured-strip,
-  .collection-service-cta {
+  .collection-service-cta,
+  .collection-upload-panel {
     grid-template-columns: 1fr;
   }
 
