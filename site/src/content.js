@@ -1,9 +1,10 @@
 const withBaseMedia = (filename) => `${import.meta.env.BASE_URL}media/${encodeURIComponent(filename)}`
+const withBaseUpload = (filename) => `${import.meta.env.BASE_URL}uploads/${encodeURIComponent(filename)}`
 
 export const mediaConfig = {
   heroVideoEnabled: true,
   heroVideoSrc: withBaseMedia('atelier-video.mp4'),
-  collectionVideoSrc: withBaseMedia('video_musica_desde_050-1.mp4'),
+  collectionVideoSrc: withBaseUpload('Video para portada de colección.mp4'),
   heroPoster: withBaseMedia('atelier-hero.png'),
   visualLead: withBaseMedia('atelier-wide.png'),
   visualDetailA: withBaseMedia('atelier-materials.png'),

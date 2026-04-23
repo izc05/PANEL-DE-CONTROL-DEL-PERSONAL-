@@ -153,7 +153,7 @@ function HomePage({ productsList }) {
         <div className="hero-v4__media-wrap">
           <figure className="hero-v4__media">
             {mediaConfig.heroVideoEnabled ? (
-              <SmartVideo autoPlay loop muted controls={false} poster={mediaConfig.heroPoster} primarySrc={mediaConfig.heroVideoSrc} fallbackSrc={mediaConfig.atelierVideo} />
+              <SmartVideo autoPlay loop muted controls={false} poster={mediaConfig.heroPoster} primarySrc={mediaConfig.collectionVideoSrc} fallbackSrc={mediaConfig.atelierVideo} />
             ) : (
               <img src={mediaConfig.heroPoster} alt="Artesana bordando junto a una ventana luminosa" />
             )}
@@ -324,6 +324,12 @@ function CollectionPage({ onAddToCart, productsList }) {
     ? productsList
     : productsList.filter((product) => product.category === activeCategory)
   const sortedProducts = [...filteredProducts].sort((a, b) => (a.featuredRank ?? 999) - (b.featuredRank ?? 999))
+  const featuredProducts = [...productsList].sort((a, b) => (a.featuredRank ?? 999) - (b.featuredRank ?? 999)).slice(0, 3)
+  const categoryCounts = productsList.reduce((acc, product) => {
+    if (!product.category) return acc
+    acc[product.category] = (acc[product.category] ?? 0) + 1
+    return acc
+  }, {})
 
   const scrollToPieces = () => {
     document.getElementById('piezas-disponibles')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -358,6 +364,43 @@ function CollectionPage({ onAddToCart, productsList }) {
 
       <PageSection id="piezas-disponibles">
         <div className="container">
+          <article className="collection-intro-panel">
+            <div>
+              <p className="eyebrow">Selección curada</p>
+              <h2>Piezas listas para comprar o personalizar</h2>
+              <p>
+                Filtra por categoría y recorre cada ficha con una vista más limpia de materiales, acabados y disponibilidad.
+              </p>
+            </div>
+            <div className="collection-intro-panel__stats">
+              <div>
+                <strong>{productsList.length}</strong>
+                <span>Piezas publicadas</span>
+              </div>
+              <div>
+                <strong>{categories.length - 1}</strong>
+                <span>Categorías activas</span>
+              </div>
+              <div>
+                <strong>48h</strong>
+                <span>Respuesta estimada</span>
+              </div>
+            </div>
+          </article>
+
+          <div className="collection-featured-strip">
+            {featuredProducts.map((product) => (
+              <article key={`${product.slug}-featured`} className="collection-featured-item">
+                <img src={product.image} alt={product.alt} loading="lazy" />
+                <div>
+                  <p className="collection-card__tag">{product.tag ?? product.category}</p>
+                  <h3>{product.title}</h3>
+                  <p>{product.description}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+
           <div className="pill-list pill-list--shop">
             {categories.map((category) => (
               <button
@@ -369,7 +412,7 @@ function CollectionPage({ onAddToCart, productsList }) {
               >
                 {category}
                 <span className="editorial-pill__count">
-                  {category === 'Todos' ? productsList.length : productsList.filter((product) => product.category === category).length}
+                  {category === 'Todos' ? productsList.length : (categoryCounts[category] ?? 0)}
                 </span>
               </button>
             ))}
@@ -438,6 +481,20 @@ function CollectionPage({ onAddToCart, productsList }) {
               </article>
             )}
           </div>
+
+          <article className="collection-service-cta">
+            <div>
+              <p className="eyebrow">Asesoría del atelier</p>
+              <h3>¿Dudas entre varias piezas?</h3>
+              <p>
+                Te ayudo a elegir formato, paleta y acabado según el espacio, regalo o tipo de uso que tengas en mente.
+              </p>
+            </div>
+            <div className="collection-service-cta__actions">
+              <a className="button button--primary" href="#/contacto">Pedir recomendación</a>
+              <a className="button button--secondary" href="#/encargos">Encargo personalizado</a>
+            </div>
+          </article>
         </div>
       </PageSection>
     </>
