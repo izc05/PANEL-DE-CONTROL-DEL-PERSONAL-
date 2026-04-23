@@ -32,12 +32,28 @@ const getRouteClass = (route) => {
   return `route-${route.replace(/^\//, '').replace(/\//g, '-')}`
 }
 
-const collectionPreview = products.slice(0, 4)
-const categories = ['Todos', 'Bolsos bordados', 'Prendas bordadas', 'Piezas únicas', 'Accesorios', 'Encargos']
 const whatsappHrefForProduct = (product) => {
   const text = `Hola, me interesa ${product.title} (${product.price}). ¿Me das más información?`
   return `https://wa.me/34612345678?text=${encodeURIComponent(text)}`
 }
+
+const getShopCategories = (productList) => [
+  'Todos',
+  ...Array.from(new Set(productList.map((product) => product.category).filter(Boolean)))
+]
+
+const normalizeAssetPath = (value) => {
+  if (typeof value !== 'string' || value.length === 0) return value
+  if (/^(https?:)?\/\//.test(value)) return value
+  if (value.startsWith('/')) return `${import.meta.env.BASE_URL}${value.replace(/^\//, '')}`
+  if (value.startsWith('./')) return `${import.meta.env.BASE_URL}${value.replace(/^\.\//, '')}`
+  return value
+}
+
+const normalizeShopProduct = (product) => ({
+  ...product,
+  image: normalizeAssetPath(product.image)
+})
 
 
 function Header({ isScrolled, menuOpen, setMenuOpen, route, cartCount }) {
@@ -128,7 +144,9 @@ function SmartVideo({ primarySrc, fallbackSrc, poster, className = '', controls 
   )
 }
 
-function HomePage() {
+function HomePage({ productsList }) {
+  const collectionPreview = productsList.slice(0, 4)
+
   return (
     <>
       <section id="inicio" className="hero-v4 hero-v4--clean">
@@ -143,7 +161,7 @@ function HomePage() {
         </div>
         <div className="hero-v4__veil" />
         <div className="container hero-v4__grid">
-          <div className="hero-v4__copy">
+          <div className="hero-v4__copy hero-v4__copy--open">
             <p className="eyebrow">Atelier francés · bordado artesanal</p>
             <h1>Donde el hilo cuenta historias</h1>
             <p className="hero-v4__lead">
@@ -299,9 +317,12 @@ function PageHero({ eyebrow, title, text, image, alt, actions = [] }) {
   )
 }
 
-function CollectionPage({ onAddToCart }) {
+function CollectionPage({ onAddToCart, productsList }) {
+  const categories = getShopCategories(productsList)
   const [activeCategory, setActiveCategory] = useState('Todos')
-  const filteredProducts = activeCategory === 'Todos' ? products : products.filter((product) => product.category === activeCategory)
+  const filteredProducts = activeCategory === 'Todos'
+    ? productsList
+    : productsList.filter((product) => product.category === activeCategory)
   const sortedProducts = [...filteredProducts].sort((a, b) => (a.featuredRank ?? 999) - (b.featuredRank ?? 999))
 
   const scrollToPieces = () => {
@@ -348,7 +369,7 @@ function CollectionPage({ onAddToCart }) {
               >
                 {category}
                 <span className="editorial-pill__count">
-                  {category === 'Todos' ? products.length : products.filter((product) => product.category === category).length}
+                  {category === 'Todos' ? productsList.length : productsList.filter((product) => product.category === category).length}
                 </span>
               </button>
             ))}
@@ -423,8 +444,25 @@ function CollectionPage({ onAddToCart }) {
   )
 }
 
-function ProductPage({ onAddToCart }) {
-  const featured = products[0]
+function ProductPage({ onAddToCart, productsList }) {
+  const featured = productsList[0]
+
+  if (!featured) {
+    return (
+      <PageSection className="section-block--soft">
+        <div className="container">
+          <article className="quote-panel quote-panel--signature">
+            <p className="eyebrow">Sin productos</p>
+            <h3>Aún no hay productos configurados</h3>
+            <p>
+              Sube productos editando <code>public/data/shop-products.json</code> y sus imágenes/vídeos en <code>public/uploads</code>.
+            </p>
+          </article>
+        </div>
+      </PageSection>
+    )
+  }
+
   return (
     <>
       <PageHero
@@ -496,10 +534,10 @@ function ProductPage({ onAddToCart }) {
   )
 }
 
-function CartPage({ cartItems, onAddToCart }) {
+function CartPage({ cartItems, onAddToCart, productsList }) {
   const lines = cartItems
     .map((line) => {
-      const product = products.find((item) => item.slug === line.slug)
+      const product = productsList.find((item) => item.slug === line.slug)
       return product ? { ...line, product } : null
     })
     .filter(Boolean)
@@ -850,6 +888,7 @@ export default function App() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [route, setRoute] = useState(getRouteFromHash(window.location.hash))
   const [cartItems, setCartItems] = useState([])
+  const [shopProducts, setShopProducts] = useState(products)
 
   const cartCount = cartItems.reduce((total, item) => total + item.qty, 0)
 
@@ -883,13 +922,30 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    const loadShopProducts = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.BASE_URL}data/shop-products.json`)
+        if (!response.ok) return
+        const payload = await response.json()
+        if (Array.isArray(payload?.products) && payload.products.length > 0) {
+          setShopProducts(payload.products.map(normalizeShopProduct))
+        }
+      } catch {
+        // Si falla la carga remota, usamos el catálogo local por defecto.
+      }
+    }
+
+    loadShopProducts()
+  }, [])
+
+  useEffect(() => {
     document.title = routeTitles[route] || 'Atelier Lumière'
   }, [route])
 
-  let page = <HomePage />
-  if (route === '/coleccion') page = <CollectionPage onAddToCart={handleAddToCart} />
-  if (route === '/producto') page = <ProductPage onAddToCart={handleAddToCart} />
-  if (route === '/carrito') page = <CartPage cartItems={cartItems} onAddToCart={handleAddToCart} />
+  let page = <HomePage productsList={shopProducts} />
+  if (route === '/coleccion') page = <CollectionPage onAddToCart={handleAddToCart} productsList={shopProducts} />
+  if (route === '/producto') page = <ProductPage onAddToCart={handleAddToCart} productsList={shopProducts} />
+  if (route === '/carrito') page = <CartPage cartItems={cartItems} onAddToCart={handleAddToCart} productsList={shopProducts} />
   if (route === '/acceder') page = <LoginPage />
   if (route === '/encargos') page = <OrdersPage />
   if (route === '/diario') page = <JournalPage />
