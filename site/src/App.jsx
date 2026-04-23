@@ -481,6 +481,20 @@ function CollectionPage({ onAddToCart, productsList }) {
               </article>
             )}
           </div>
+
+          <article className="collection-service-cta">
+            <div>
+              <p className="eyebrow">Asesoría del atelier</p>
+              <h3>¿Dudas entre varias piezas?</h3>
+              <p>
+                Te ayudo a elegir formato, paleta y acabado según el espacio, regalo o tipo de uso que tengas en mente.
+              </p>
+            </div>
+            <div className="collection-service-cta__actions">
+              <a className="button button--primary" href="#/contacto">Pedir recomendación</a>
+              <a className="button button--secondary" href="#/encargos">Encargo personalizado</a>
+            </div>
+          </article>
         </div>
       </PageSection>
     </>

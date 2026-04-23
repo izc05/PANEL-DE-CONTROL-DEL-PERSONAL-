@@ -737,6 +737,35 @@ h3,
   line-height: 1.65;
 }
 
+.collection-service-cta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 1.3rem;
+  padding: 1.2rem 1.25rem;
+  border: 1px solid rgba(189, 143, 86, 0.24);
+  border-radius: 1.35rem;
+  background: linear-gradient(120deg, rgba(255, 249, 241, 0.9), rgba(244, 229, 216, 0.75));
+}
+
+.collection-service-cta h3 {
+  margin: 0.2rem 0 0.4rem;
+  font-size: clamp(1.9rem, 3vw, 2.6rem);
+  line-height: 0.95;
+}
+
+.collection-service-cta p {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.collection-service-cta__actions {
+  display: grid;
+  gap: 0.65rem;
+  min-width: 15rem;
+}
+
 .page-shell.route-encargos .page-hero__copy .button--primary {
   background: #b7824f;
 }
@@ -1337,7 +1366,8 @@ h3,
 
   .collection-intro-panel,
   .collection-intro-panel__stats,
-  .collection-featured-strip {
+  .collection-featured-strip,
+  .collection-service-cta {
     grid-template-columns: 1fr;
   }
 
