@@ -439,6 +439,29 @@ h3,
   line-height: 1;
 }
 
+.home-map {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.home-map a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.35rem;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 999px;
+  background: rgba(255, 248, 241, 0.08);
+  color: #fff7ef;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
 .hero-v4__media-wrap {
   position: absolute;
   inset: 0;
@@ -1225,6 +1248,10 @@ h3,
   .hero-v4__closing {
     margin-top: 1rem;
     font-size: 1.45rem;
+  }
+
+  .home-map {
+    margin-top: 0.8rem;
   }
 
   .hero-v4__media,

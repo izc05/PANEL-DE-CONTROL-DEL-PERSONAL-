@@ -125,12 +125,18 @@ function HomePage() {
               ))}
             </div>
 
+            <div className="home-map" aria-label="Accesos rápidos de portada">
+              <a href="#home-collection">Colección</a>
+              <a href="#home-orders">Encargos</a>
+              <a href="#home-journal">Diario</a>
+            </div>
+
             <p className="hero-v4__closing">Hecho a mano, creado despacio.</p>
           </div>
         </div>
       </section>
 
-      <section className="section-block section-block--tinted">
+      <section id="home-collection" className="section-block section-block--tinted">
         <div className="container">
           <SectionIntro
             eyebrow="Colección destacada"
@@ -159,7 +165,7 @@ function HomePage() {
         </div>
       </section>
 
-      <section className="section-block">
+      <section id="home-orders" className="section-block">
         <div className="container split-panels split-panels--premium">
           <article className="story-card story-card--premium">
             <img loading="lazy" src={mediaConfig.visualDetailC} alt="Vista del atelier desde la puerta" />
@@ -197,7 +203,7 @@ function HomePage() {
         </div>
       </section>
 
-      <section className="section-block section-block--soft">
+      <section id="home-journal" className="section-block section-block--soft">
         <div className="container">
           <SectionIntro
             split
