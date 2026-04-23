@@ -91,6 +91,14 @@ function SectionIntro({ eyebrow, title, text, split = false }) {
   )
 }
 
+function PageSection({ id, className = '', children }) {
+  return (
+    <section id={id} className={`section-block ${className}`.trim()}>
+      {children}
+    </section>
+  )
+}
+
 function HomePage() {
   return (
     <>
@@ -141,7 +149,7 @@ function HomePage() {
         </div>
       </section>
 
-      <section id="home-collection" className="section-block section-block--tinted">
+      <PageSection id="home-collection" className="section-block--tinted">
         <div className="container">
           <SectionIntro
             eyebrow="Colección destacada"
@@ -168,9 +176,9 @@ function HomePage() {
             ))}
           </div>
         </div>
-      </section>
+      </PageSection>
 
-      <section id="home-orders" className="section-block">
+      <PageSection id="home-orders">
         <div className="container split-panels split-panels--premium">
           <article className="story-card story-card--premium">
             <img loading="lazy" src={mediaConfig.visualDetailC} alt="Vista del atelier desde la puerta" />
@@ -206,9 +214,9 @@ function HomePage() {
             <img loading="lazy" src={mediaConfig.portrait} alt="Retrato cercano de la creadora bordando" />
           </article>
         </div>
-      </section>
+      </PageSection>
 
-      <section id="home-journal" className="section-block section-block--soft">
+      <PageSection id="home-journal" className="section-block--soft">
         <div className="container">
           <SectionIntro
             split
@@ -230,7 +238,7 @@ function HomePage() {
             ))}
           </div>
         </div>
-      </section>
+      </PageSection>
     </>
   )
 }
@@ -290,7 +298,7 @@ function CollectionPage() {
         </div>
       </section>
 
-      <section className="section-block section-block--soft">
+      <PageSection className="section-block--soft">
         <div className="container">
           <article className="boutique-panel boutique-panel--feature">
             <div>
@@ -301,9 +309,9 @@ function CollectionPage() {
             <video controls playsInline preload="metadata" poster={mediaConfig.visualLead} src={mediaConfig.atelierVideo} />
           </article>
         </div>
-      </section>
+      </PageSection>
 
-      <section id="piezas-disponibles" className="section-block">
+      <PageSection id="piezas-disponibles">
         <div className="container">
           <div className="pill-list pill-list--shop">
             {categories.map((category) => (
@@ -376,7 +384,7 @@ function CollectionPage() {
             )}
           </div>
         </div>
-      </section>
+      </PageSection>
     </>
   )
 }
