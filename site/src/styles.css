@@ -834,6 +834,38 @@ h3,
   padding: 1.35rem;
 }
 
+
+.product-card__labels {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.product-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(189, 143, 86, 0.18);
+  color: #7d5834;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.button--whatsapp {
+  background: #1f7a47;
+  border-color: #1f7a47;
+  color: #fff;
+}
+
+.button--whatsapp:hover,
+.button--whatsapp:focus-visible {
+  background: #17653a;
+  border-color: #17653a;
+}
 .collection-card__tag,
 .journal-card__meta {
   margin: 0;

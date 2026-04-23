@@ -34,6 +34,11 @@ const getRouteClass = (route) => {
 
 const collectionPreview = products.slice(0, 4)
 const categories = ['Todos', 'Bolsos bordados', 'Prendas bordadas', 'Piezas únicas', 'Accesorios', 'Encargos']
+const whatsappHrefForProduct = (product) => {
+  const text = `Hola, me interesa ${product.title} (${product.price}). ¿Me das más información?`
+  return `https://wa.me/34612345678?text=${encodeURIComponent(text)}`
+}
+
 
 function Header({ isScrolled, menuOpen, setMenuOpen, route, cartCount }) {
   return (
@@ -278,6 +283,7 @@ function PageHero({ eyebrow, title, text, image, alt, actions = [] }) {
 function CollectionPage({ onAddToCart }) {
   const [activeCategory, setActiveCategory] = useState('Todos')
   const filteredProducts = activeCategory === 'Todos' ? products : products.filter((product) => product.category === activeCategory)
+  const sortedProducts = [...filteredProducts].sort((a, b) => (a.featuredRank ?? 999) - (b.featuredRank ?? 999))
 
   const scrollToPieces = () => {
     document.getElementById('piezas-disponibles')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -340,6 +346,7 @@ function CollectionPage({ onAddToCart }) {
               {activeCategory === 'Todos'
                 ? `Explora ${filteredProducts.length} piezas bordadas, accesorios y encargos personalizados.`
                 : `${filteredProducts.length} pieza(s) en ${activeCategory}.`}
+              {' '}Ordenadas por destacadas para que veas primero los ejemplos más nuevos.
             </p>
             {activeCategory !== 'Todos' ? (
               <div className="shop-toolbar__actions">
@@ -357,11 +364,14 @@ function CollectionPage({ onAddToCart }) {
           </div>
 
           <div className="product-grid product-grid--shop">
-            {filteredProducts.length > 0 ? filteredProducts.map((product) => (
+            {sortedProducts.length > 0 ? sortedProducts.map((product) => (
               <article key={product.slug} className="product-card product-card--shop">
                 <img src={product.image} alt={product.alt} />
                 <div className="product-card__body">
-                  <p className="collection-card__tag">{product.category}</p>
+                  <div className="product-card__labels">
+                    <p className="collection-card__tag">{product.category}</p>
+                    <span className="product-badge">{product.badge ?? 'Atelier'}</span>
+                  </div>
                   <h3>{product.title}</h3>
                   <p>{product.description}</p>
                   <div className="product-card__meta">
@@ -377,6 +387,9 @@ function CollectionPage({ onAddToCart }) {
                     <button type="button" className="button button--primary" onClick={() => onAddToCart(product)}>
                       Añadir al carrito
                     </button>
+                    <a className="button button--dark button--whatsapp" href={whatsappHrefForProduct(product)} target="_blank" rel="noreferrer">
+                      WhatsApp
+                    </a>
                   </div>
                 </div>
               </article>
