@@ -27,6 +27,12 @@ const getRouteFromHash = (hash) => {
 
 const collectionPreview = products.slice(0, 4)
 const categories = ['Todos', 'Bolsos bordados', 'Prendas bordadas', 'Piezas únicas', 'Accesorios', 'Encargos']
+
+const getPriceValue = (price) => {
+  const numeric = Number.parseFloat(price.replace(',', '.').replace(/[^\d.]/g, ''))
+  return Number.isFinite(numeric) ? numeric : Number.POSITIVE_INFINITY
+}
+
 function Header({ isScrolled, menuOpen, setMenuOpen, route }) {
   return (
     <header className={`site-header ${isScrolled ? 'is-scrolled' : ''}`}>
@@ -249,12 +255,14 @@ function CollectionPage() {
   const [activeCategory, setActiveCategory] = useState('Todos')
   const [activeSort, setActiveSort] = useState('Más recientes')
 
-  const filteredProducts =
-    activeCategory === 'Todos' ? products : products.filter((product) => product.category === activeCategory || (activeCategory === 'Encargos' && product.category === 'Encargos'))
+  const filteredProducts = activeCategory === 'Todos' ? products : products.filter((product) => product.category === activeCategory)
 
   const sortedProducts =
     activeSort === 'Edición atelier'
-      ? [...filteredProducts].sort((a, b) => Number(!a.tag.toLowerCase().includes('edición')) - Number(!b.tag.toLowerCase().includes('edición')))
+      ? [...filteredProducts].sort((a, b) => {
+          const featuredDelta = Number(!a.tag.toLowerCase().includes('edición')) - Number(!b.tag.toLowerCase().includes('edición'))
+          return featuredDelta !== 0 ? featuredDelta : getPriceValue(a.price) - getPriceValue(b.price)
+        })
       : filteredProducts
 
   const scrollToPieces = () => {
@@ -320,8 +328,12 @@ function CollectionPage() {
                 type="button"
                 className={`editorial-pill editorial-pill--category ${activeCategory === category ? 'is-active' : ''}`}
                 onClick={() => setActiveCategory(category)}
+                aria-pressed={activeCategory === category}
               >
                 {category}
+                <span className="editorial-pill__count">
+                  {category === 'Todos' ? products.length : products.filter((product) => product.category === category).length}
+                </span>
               </button>
             ))}
           </div>
@@ -329,25 +341,38 @@ function CollectionPage() {
           <div className="shop-toolbar">
             <p>
               {activeCategory === 'Todos'
-                ? 'Explora piezas bordadas, accesorios, objetos decorativos y encargos personalizados.'
-                : `Mostrando: ${activeCategory}.`}
+                ? `Explora ${sortedProducts.length} piezas bordadas, accesorios y encargos personalizados.`
+                : `${sortedProducts.length} pieza(s) en ${activeCategory}.`}
             </p>
             <div className="shop-toolbar__actions">
               {['Más recientes', 'Edición atelier'].map((sort) => (
+              <button
+                key={sort}
+                type="button"
+                className={`editorial-pill ${activeSort === sort ? 'editorial-pill--category is-active' : ''}`}
+                onClick={() => setActiveSort(sort)}
+                aria-pressed={activeSort === sort}
+              >
+                {sort}
+              </button>
+            ))}
+              {activeCategory !== 'Todos' || activeSort !== 'Más recientes' ? (
                 <button
-                  key={sort}
                   type="button"
-                  className={`editorial-pill ${activeSort === sort ? 'editorial-pill--category is-active' : ''}`}
-                  onClick={() => setActiveSort(sort)}
+                  className="editorial-pill"
+                  onClick={() => {
+                    setActiveCategory('Todos')
+                    setActiveSort('Más recientes')
+                  }}
                 >
-                  {sort}
+                  Limpiar
                 </button>
-              ))}
+              ) : null}
             </div>
           </div>
 
           <div className="product-grid product-grid--shop">
-            {sortedProducts.map((product) => (
+            {sortedProducts.length > 0 ? sortedProducts.map((product) => (
               <article key={product.slug} className="product-card product-card--shop">
                 <img src={product.image} alt={product.alt} />
                 <div className="product-card__body">
@@ -370,7 +395,13 @@ function CollectionPage() {
                   </div>
                 </div>
               </article>
-            ))}
+            )) : (
+              <article className="quote-panel quote-panel--signature">
+                <p className="eyebrow">Sin resultados</p>
+                <h3>No hay piezas en esta categoría por ahora</h3>
+                <p>Prueba otra selección o vuelve a “Todos” para ver la colección completa.</p>
+              </article>
+            )}
           </div>
         </div>
       </section>

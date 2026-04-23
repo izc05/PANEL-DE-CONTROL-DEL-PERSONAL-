@@ -400,6 +400,7 @@ h3,
 .editorial-pill {
   display: inline-flex;
   align-items: center;
+  gap: 0.45rem;
   padding: 0.7rem 1rem;
   border: 1px solid rgba(47, 39, 34, 0.08);
   border-radius: 999px;
@@ -410,6 +411,24 @@ h3,
 
 .editorial-pill--category.is-active {
   background: var(--gold);
+  color: #fffaf6;
+}
+
+.editorial-pill__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4rem;
+  height: 1.4rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: rgba(47, 39, 34, 0.1);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.editorial-pill--category.is-active .editorial-pill__count {
+  background: rgba(255, 250, 246, 0.26);
   color: #fffaf6;
 }
 
