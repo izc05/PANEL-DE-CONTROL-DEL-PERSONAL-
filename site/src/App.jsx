@@ -317,7 +317,7 @@ function PageHero({ eyebrow, title, text, image, alt, actions = [] }) {
   )
 }
 
-function CollectionPage({ onAddToCart, productsList }) {
+function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
   const LOCAL_PRODUCTS_KEY = 'atelier-local-products-v1'
   const [localProducts, setLocalProducts] = useState([])
   const [uploadForm, setUploadForm] = useState({
@@ -517,6 +517,12 @@ function CollectionPage({ onAddToCart, productsList }) {
     }
   }
 
+  const handleRefreshCatalogNow = async () => {
+    if (!onRefreshCatalog) return
+    const refreshed = await onRefreshCatalog()
+    setUploadMessage(refreshed ? 'Catálogo recargado con la versión más reciente.' : 'No se pudo recargar ahora. Inténtalo en unos segundos.')
+  }
+
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(LOCAL_PRODUCTS_KEY)
@@ -666,6 +672,9 @@ function CollectionPage({ onAddToCart, productsList }) {
               <div className="collection-upload-form__actions">
                 <button type="submit" className="button button--primary">
                   {editingSlug ? 'Guardar cambios' : 'Añadir desde mi PC'}
+                </button>
+                <button type="button" className="button button--secondary" onClick={handleRefreshCatalogNow}>
+                  Forzar actualización
                 </button>
                 {editingSlug ? (
                   <button type="button" className="button button--secondary" onClick={resetUploadForm}>
@@ -1254,6 +1263,7 @@ export default function App() {
   const [route, setRoute] = useState(getRouteFromHash(window.location.hash))
   const [cartItems, setCartItems] = useState([])
   const [shopProducts, setShopProducts] = useState(products)
+  const [catalogRefreshTick, setCatalogRefreshTick] = useState(0)
 
   const cartCount = cartItems.reduce((total, item) => total + item.qty, 0)
 
@@ -1265,6 +1275,25 @@ export default function App() {
       }
       return [...items, { slug: product.slug, qty: 1 }]
     })
+  }
+
+  const loadShopProducts = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.BASE_URL}data/shop-products.json?v=${Date.now()}`, {
+        cache: 'no-store'
+      })
+      if (!response.ok) return false
+      const payload = await response.json()
+      if (Array.isArray(payload?.products) && payload.products.length > 0) {
+        setShopProducts(payload.products.map(normalizeShopProduct))
+        setCatalogRefreshTick((value) => value + 1)
+        return true
+      }
+      return false
+    } catch {
+      // Si falla la carga remota, usamos el catálogo local por defecto.
+      return false
+    }
   }
 
   useEffect(() => {
@@ -1287,19 +1316,6 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    const loadShopProducts = async () => {
-      try {
-        const response = await fetch(`${import.meta.env.BASE_URL}data/shop-products.json`)
-        if (!response.ok) return
-        const payload = await response.json()
-        if (Array.isArray(payload?.products) && payload.products.length > 0) {
-          setShopProducts(payload.products.map(normalizeShopProduct))
-        }
-      } catch {
-        // Si falla la carga remota, usamos el catálogo local por defecto.
-      }
-    }
-
     loadShopProducts()
   }, [])
 
@@ -1308,7 +1324,7 @@ export default function App() {
   }, [route])
 
   let page = <HomePage productsList={shopProducts} />
-  if (route === '/coleccion') page = <CollectionPage onAddToCart={handleAddToCart} productsList={shopProducts} />
+  if (route === '/coleccion') page = <CollectionPage onAddToCart={handleAddToCart} productsList={shopProducts} onRefreshCatalog={loadShopProducts} />
   if (route === '/producto') page = <ProductPage onAddToCart={handleAddToCart} productsList={shopProducts} />
   if (route === '/carrito') page = <CartPage cartItems={cartItems} onAddToCart={handleAddToCart} productsList={shopProducts} />
   if (route === '/acceder') page = <LoginPage />
@@ -1324,7 +1340,7 @@ export default function App() {
       </a>
 
       <Header isScrolled={isScrolled} menuOpen={menuOpen} setMenuOpen={setMenuOpen} route={route} cartCount={cartCount} />
-      <main id="main-content">{page}</main>
+      <main id="main-content" data-catalog-refresh={catalogRefreshTick}>{page}</main>
       <Footer />
     </div>
   )
