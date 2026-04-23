@@ -7,10 +7,7 @@ import {
   mediaConfig,
   navItems,
   processSteps,
-  products,
-  signatureQuote,
-  valuePoints,
-  visualNarrative
+  products
 } from './content'
 
 const routeTitles = {
@@ -120,63 +117,6 @@ function HomePage() {
         </div>
       </section>
 
-      <section className="section-block section-block--soft section-block--compact-top">
-        <div className="container">
-          <article className="quote-panel quote-panel--signature">
-            <p className="eyebrow">Atelier Lumière</p>
-            <h3>{signatureQuote.title}</h3>
-            <p>{signatureQuote.text}</p>
-          </article>
-        </div>
-      </section>
-
-      <section className="value-ribbon value-ribbon--premium" aria-label="Valores del atelier">
-        <div className="container value-ribbon__grid">
-          {valuePoints.map((item) => (
-            <article key={item.title} className="value-card value-card--premium">
-              <h2>{item.title}</h2>
-              <p>{item.text}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="section-block section-block--editorial">
-        <div className="container">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Narrativa visual</p>
-              <h2>Escenas del atelier entre luz, hilo y textura</h2>
-            </div>
-            <p>
-              Una pausa visual para descubrir el proceso artesanal antes de entrar en colección y encargos.
-            </p>
-          </div>
-
-          <div className="editorial-collage editorial-collage--v3">
-            <article className="editorial-collage__feature editorial-collage__feature--v3">
-              <img src={visualNarrative[0].image} alt={visualNarrative[0].alt} />
-              <div className="editorial-collage__copy">
-                <p className="collection-card__tag">Atelier</p>
-                <h3>{visualNarrative[0].title}</h3>
-              </div>
-            </article>
-
-            <div className="editorial-collage__side editorial-collage__side--v3">
-              {visualNarrative.slice(1).map((item) => (
-                <article key={item.title} className="editorial-mini-card editorial-mini-card--v3">
-                  <img src={item.image} alt={item.alt} />
-                  <div>
-                    <p className="collection-card__tag">Proceso</p>
-                    <h3>{item.title}</h3>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section className="section-block section-block--tinted">
         <div className="container">
           <div className="section-heading">
@@ -206,60 +146,6 @@ function HomePage() {
                 </div>
               </article>
             ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="section-block process-showcase">
-        <div className="container process-showcase__grid">
-          <div className="process-showcase__media">
-            <figure className="process-image process-image--large">
-              <img loading="lazy" src={mediaConfig.visualLead} alt="Vista amplia del atelier lleno de materiales" />
-            </figure>
-            <figure className="process-image process-image--small">
-              <img loading="lazy" src={mediaConfig.visualDetailA} alt="Mesa del atelier con boceto y materiales" />
-            </figure>
-            <figure className="process-image process-image--small">
-              <img loading="lazy" src={mediaConfig.visualDetailB} alt="Detalle de un bordado en proceso" />
-            </figure>
-          </div>
-
-          <div className="process-copy process-copy--premium">
-            <div className="section-heading section-heading--compact">
-              <p className="eyebrow">Proceso artesanal</p>
-              <h2>Cómo nace una pieza</h2>
-              <p>
-                Del primer boceto al último remate, cada etapa se trabaja con precisión y calma para conservar la esencia artesanal.
-              </p>
-            </div>
-
-            <ol className="step-list step-list--premium">
-              {processSteps.map((step) => (
-                <li key={step.number} className="step-list__item">
-                  <span>{step.number}</span>
-                  <div>
-                    <h3>{step.title}</h3>
-                    <p>{step.description}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </div>
-      </section>
-
-      <section className="section-block section-block--soft">
-        <div className="container cinematic-panel cinematic-panel--v3">
-          <div className="cinematic-panel__copy">
-            <p className="eyebrow">El gesto, la luz y el oficio</p>
-            <h2>Cada pieza nace en un proceso lento, íntimo y cuidadosamente elaborado.</h2>
-            <p>
-              Entre bastidores, cada puntada se trabaja con paciencia para que la pieza final conserve presencia, delicadeza y carácter propio.
-            </p>
-          </div>
-
-          <div className="cinematic-panel__media">
-            <video autoPlay loop muted playsInline poster={mediaConfig.heroPoster} src={mediaConfig.atelierVideo} />
           </div>
         </div>
       </section>
@@ -360,6 +246,21 @@ function PageHero({ eyebrow, title, text, image, alt, actions = [] }) {
 }
 
 function CollectionPage() {
+  const [activeCategory, setActiveCategory] = useState('Todos')
+  const [activeSort, setActiveSort] = useState('Más recientes')
+
+  const filteredProducts =
+    activeCategory === 'Todos' ? products : products.filter((product) => product.category === activeCategory || (activeCategory === 'Encargos' && product.category === 'Encargos'))
+
+  const sortedProducts =
+    activeSort === 'Edición atelier'
+      ? [...filteredProducts].sort((a, b) => Number(!a.tag.toLowerCase().includes('edición')) - Number(!b.tag.toLowerCase().includes('edición')))
+      : filteredProducts
+
+  const scrollToPieces = () => {
+    document.getElementById('piezas-disponibles')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
     <>
       <section className="collection-hero">
@@ -370,9 +271,9 @@ function CollectionPage() {
             <p>
               Una selección de bolsos, textiles y creaciones bordadas a mano, pensadas para acompañar momentos especiales con delicadeza y presencia.
             </p>
-            <a className="button button--primary" href="#/producto">
+            <button type="button" className="button button--primary" onClick={scrollToPieces}>
               Ver piezas disponibles
-            </a>
+            </button>
           </div>
           <div className="collection-hero__media">
             <video controls playsInline poster={mediaConfig.heroPoster} src={mediaConfig.collectionVideoSrc} />
@@ -410,26 +311,43 @@ function CollectionPage() {
         </div>
       </section>
 
-      <section className="section-block">
+      <section id="piezas-disponibles" className="section-block">
         <div className="container">
           <div className="pill-list pill-list--shop">
-            {categories.map((category, index) => (
-              <span key={category} className={`editorial-pill editorial-pill--category ${index === 0 ? 'is-active' : ''}`}>
+            {categories.map((category) => (
+              <button
+                key={category}
+                type="button"
+                className={`editorial-pill editorial-pill--category ${activeCategory === category ? 'is-active' : ''}`}
+                onClick={() => setActiveCategory(category)}
+              >
                 {category}
-              </span>
+              </button>
             ))}
           </div>
 
           <div className="shop-toolbar">
-            <p>Explora piezas bordadas, accesorios, objetos decorativos y encargos personalizados.</p>
+            <p>
+              {activeCategory === 'Todos'
+                ? 'Explora piezas bordadas, accesorios, objetos decorativos y encargos personalizados.'
+                : `Mostrando: ${activeCategory}.`}
+            </p>
             <div className="shop-toolbar__actions">
-              <span className="editorial-pill">Más recientes</span>
-              <span className="editorial-pill">Edición atelier</span>
+              {['Más recientes', 'Edición atelier'].map((sort) => (
+                <button
+                  key={sort}
+                  type="button"
+                  className={`editorial-pill ${activeSort === sort ? 'editorial-pill--category is-active' : ''}`}
+                  onClick={() => setActiveSort(sort)}
+                >
+                  {sort}
+                </button>
+              ))}
             </div>
           </div>
 
           <div className="product-grid product-grid--shop">
-            {products.map((product) => (
+            {sortedProducts.map((product) => (
               <article key={product.slug} className="product-card product-card--shop">
                 <img src={product.image} alt={product.alt} />
                 <div className="product-card__body">

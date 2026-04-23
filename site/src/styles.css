@@ -405,6 +405,7 @@ h3,
   border-radius: 999px;
   background: rgba(255, 251, 246, 0.82);
   color: #7f634d;
+  cursor: pointer;
 }
 
 .editorial-pill--category.is-active {
@@ -530,6 +531,7 @@ h3,
   width: 100%;
   min-height: 29rem;
   object-fit: cover;
+  object-position: 54% center;
 }
 
 .hero-v4__card h3,
@@ -1210,6 +1212,11 @@ h3,
     min-height: 100svh;
   }
 
+  .hero-v4__media img,
+  .hero-v4__media video {
+    object-position: 62% center;
+  }
+
   .page-hero__media img,
   .story-card img,
   .editorial-collage__feature img {
@@ -1239,6 +1246,7 @@ h3,
 
   .collection-hero__media video {
     min-height: 18rem;
+    object-position: 68% center;
   }
 
   .hero-actions,
