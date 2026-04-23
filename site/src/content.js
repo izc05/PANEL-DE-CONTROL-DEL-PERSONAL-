@@ -11,7 +11,10 @@ export const mediaConfig = {
   visualDetailC: withBase('/media/atelier-doorway.png'),
   portrait: withBase('/media/atelier-portrait.png'),
   atelierVideo: withBase('/media/atelier-video.mp4'),
-  journalVideo: withBase('/media/atelier-video.mp4')
+  journalVideo: withBase('/media/video_musica_desde_050.mp4'),
+  bagImage: withBase('/media/ChatGPT Image 23 abr 2026, 13_03_07.png'),
+  cushionImage: withBase('/media/ChatGPT Image 23 abr 2026, 13_03_13.png'),
+  embroideredSetImage: withBase('/media/ChatGPT Image 23 abr 2026, 13_03_23.png')
 }
 
 export const navItems = [
@@ -81,41 +84,41 @@ export const products = [
     slug: 'bolso-silvestre',
     title: 'Bolso Silvestre',
     category: 'Bolsos bordados',
-    tag: 'Edición atelier',
+    tag: 'Nueva pieza',
     price: '195 €',
-    description: 'Bolso de lino bordado a mano con flores suaves y un acabado cálido y elegante.',
-    image: mediaConfig.heroPoster,
-    alt: 'Bolso bordado en un entorno cálido de atelier'
+    description: 'Bolso bordado a mano con flores suaves y acabado elegante para uso diario o regalo.',
+    image: mediaConfig.bagImage,
+    alt: 'Bolso bordado artesanal en tonos cálidos'
+  },
+  {
+    slug: 'cojin-jardin-bordado',
+    title: 'Cojín Jardín Bordado',
+    category: 'Piezas únicas',
+    tag: 'Nueva pieza',
+    price: '92 €',
+    description: 'Cojín decorativo con bordado floral pensado para dar textura y calidez a cualquier rincón.',
+    image: mediaConfig.cushionImage,
+    alt: 'Cojín bordado con motivos florales en ambiente acogedor'
+  },
+  {
+    slug: 'set-lino-atelier',
+    title: 'Set Lino Atelier',
+    category: 'Accesorios',
+    tag: 'Edición atelier',
+    price: '68 €',
+    description: 'Conjunto de piezas textiles bordadas con diseño delicado y estilo artesanal contemporáneo.',
+    image: mediaConfig.embroideredSetImage,
+    alt: 'Set de textiles bordados sobre mesa de atelier'
   },
   {
     slug: 'camisa-lumiere',
     title: 'Camisa Lumière',
     category: 'Prendas bordadas',
-    tag: 'Nueva colección',
+    tag: 'Colección atelier',
     price: '145 €',
     description: 'Prenda ligera con bordado floral discreto y una presencia suave, limpia y femenina.',
     image: mediaConfig.portrait,
     alt: 'Creadora con prenda bordada en tonos suaves'
-  },
-  {
-    slug: 'bastidor-peonia',
-    title: 'Bastidor Peonía',
-    category: 'Piezas únicas',
-    tag: 'Pieza única',
-    price: '85 €',
-    description: 'Bordado botánico concebido como objeto decorativo y pequeña pieza de recuerdo.',
-    image: mediaConfig.visualDetailB,
-    alt: 'Bastidor con bordado floral artesanal'
-  },
-  {
-    slug: 'neceser-amour',
-    title: 'Neceser Amour',
-    category: 'Accesorios',
-    tag: 'Accesorio',
-    price: '48 €',
-    description: 'Neceser bordado con aire romántico, ideal para regalo o como detalle de colección.',
-    image: mediaConfig.visualLead,
-    alt: 'Neceser bordado en escena de atelier'
   },
   {
     slug: 'coleccion-atelier',
@@ -123,7 +126,7 @@ export const products = [
     category: 'Bolsos bordados',
     tag: 'Colección destacada',
     price: 'Desde 120 €',
-    description: 'Una selección cuidada de piezas pensadas para abrir la colección principal con más presencia.',
+    description: 'Selección de bolsos y piezas bordadas para abrir la colección principal con más presencia visual.',
     image: mediaConfig.visualDetailC,
     alt: 'Vista íntima del atelier desde la puerta'
   },
@@ -134,8 +137,8 @@ export const products = [
     tag: 'A medida',
     price: 'Consultar',
     description: 'Transformamos una idea, una palabra o un recuerdo en una pieza bordada con significado.',
-    image: mediaConfig.portrait,
-    alt: 'Retrato cálido de la creadora bordando junto a la ventana'
+    image: mediaConfig.visualDetailA,
+    alt: 'Mesa del taller preparada para diseñar encargos personalizados'
   }
 ]
 
@@ -164,28 +167,28 @@ export const processSteps = [
 
 export const journalEntries = [
   {
-    slug: 'inspiracion-del-atelier',
-    title: 'La inspiración del atelier',
-    meta: 'Diario del taller',
-    text: 'Flores, luz filtrada y materiales suaves como punto de partida para cada nueva pieza.',
-    image: mediaConfig.visualLead,
-    alt: 'Vista amplia del atelier con ventana luminosa'
+    slug: 'podcast-puntada-01',
+    title: 'Podcast breve · Puntada 01',
+    meta: 'Audio + historia',
+    text: 'Cómo nació el primer bolso de la colección: una anécdota corta sobre luz, materiales y primeras pruebas.',
+    image: mediaConfig.bagImage,
+    alt: 'Bolso bordado protagonista del primer episodio del diario'
   },
   {
-    slug: 'por-que-bordamos-a-mano',
-    title: 'Por qué bordamos a mano',
-    meta: 'Oficio',
-    text: 'El detalle manual convierte cada bordado en una presencia única, lenta y auténtica.',
-    image: mediaConfig.visualDetailB,
-    alt: 'Detalle de la aguja y el hilo sobre la tela'
+    slug: 'podcast-puntada-02',
+    title: 'Podcast breve · Puntada 02',
+    meta: 'Detrás de la pieza',
+    text: 'Un episodio pequeño sobre cojines bordados, elección de paleta y ritmo lento de producción artesanal.',
+    image: mediaConfig.cushionImage,
+    alt: 'Cojín bordado mostrado como parte del segundo episodio'
   },
   {
-    slug: 'mesa-de-trabajo',
-    title: 'Lo que cuenta una mesa de trabajo',
-    meta: 'Materiales',
-    text: 'Hilos, tijeras, bocetos y bastidores construyen el lenguaje visual del atelier.',
-    image: mediaConfig.visualDetailA,
-    alt: 'Mesa del taller con herramientas y boceto floral'
+    slug: 'podcast-puntada-03',
+    title: 'Podcast breve · Puntada 03',
+    meta: 'Dato del taller',
+    text: 'Historia corta del set bordado: materiales, tiempos reales y un dato útil para cuidar cada pieza.',
+    image: mediaConfig.embroideredSetImage,
+    alt: 'Set de piezas bordadas para el tercer episodio del diario'
   }
 ]
 
