@@ -3,6 +3,7 @@ const withBase = (path) => `${import.meta.env.BASE_URL}${path.replace(/^\//, '')
 export const mediaConfig = {
   heroVideoEnabled: true,
   heroVideoSrc: withBase('/media/atelier-video.mp4'),
+  collectionVideoSrc: withBase('/media/video_musica_desde_050.mp4'),
   heroPoster: withBase('/media/atelier-hero.png'),
   visualLead: withBase('/media/atelier-wide.png'),
   visualDetailA: withBase('/media/atelier-materials.png'),
@@ -190,8 +191,8 @@ export const journalEntries = [
 
 export const aboutNotes = [
   'Cada pieza nace entre lino, luz cálida y pequeños gestos hechos a mano.',
-  'La portada ya está preparada para crecer con colección, producto y encargos.',
-  'Los textos, productos y artículos pueden ampliarse editando este archivo.'
+  'El atelier trabaja en series pequeñas para cuidar cada detalle sin prisas.',
+  'Cada encargo se diseña con intención para convertir un recuerdo en una pieza única.'
 ]
 
 export const contactDetails = [
