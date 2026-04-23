@@ -726,6 +726,13 @@ h3,
   margin-bottom: 1.9rem;
 }
 
+#home-collection,
+#home-orders,
+#home-journal,
+#piezas-disponibles {
+  scroll-margin-top: 7rem;
+}
+
 .section-heading--split {
   max-width: none;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
@@ -1269,6 +1276,13 @@ h3,
     line-height: 1.65;
   }
 
+  .section-heading h2,
+  .story-card__body h2,
+  .boutique-panel h2 {
+    font-size: clamp(2rem, 9vw, 3rem);
+    line-height: 0.96;
+  }
+
   .hero-actions {
     margin-top: 1.1rem;
     gap: 0.65rem;
@@ -1336,6 +1350,10 @@ h3,
   .shop-toolbar {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .quote-panel--signature .button {
+    width: 100%;
   }
 
   .section-block--compact-top {

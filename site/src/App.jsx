@@ -380,6 +380,9 @@ function CollectionPage() {
                 <p className="eyebrow">Sin resultados</p>
                 <h3>No hay piezas en esta categoría por ahora</h3>
                 <p>Prueba otra selección o vuelve a “Todos” para ver la colección completa.</p>
+                <a className="button button--secondary" href="#/encargos">
+                  Solicitar pieza a medida
+                </a>
               </article>
             )}
           </div>
