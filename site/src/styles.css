@@ -1003,6 +1003,13 @@ h3,
   gap: 0.65rem;
 }
 
+.collection-upload-form label {
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #5f4430;
+}
+
 .collection-upload-form input,
 .collection-upload-form textarea {
   width: 100%;
@@ -1011,6 +1018,24 @@ h3,
   padding: 0.65rem 0.75rem;
   font: inherit;
   background: #fffcf8;
+}
+
+.collection-upload-form input[aria-invalid='true'],
+.collection-upload-form textarea[aria-invalid='true'] {
+  border-color: #c44a3a;
+  background: #fff5f3;
+}
+
+.collection-upload-form__error {
+  margin: -0.2rem 0 0.1rem;
+  font-size: 0.82rem;
+  color: #b13a2a;
+}
+
+.collection-upload-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
 }
 
 .collection-upload-form__message {

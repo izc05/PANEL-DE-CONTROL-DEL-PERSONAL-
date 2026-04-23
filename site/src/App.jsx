@@ -318,6 +318,7 @@ function PageHero({ eyebrow, title, text, image, alt, actions = [] }) {
 }
 
 function CollectionPage({ onAddToCart, productsList }) {
+  const LOCAL_PRODUCTS_KEY = 'atelier-local-products-v1'
   const [localProducts, setLocalProducts] = useState([])
   const [uploadForm, setUploadForm] = useState({
     title: '',
@@ -327,7 +328,9 @@ function CollectionPage({ onAddToCart, productsList }) {
     file: null
   })
   const [uploadMessage, setUploadMessage] = useState('')
+  const [uploadErrors, setUploadErrors] = useState({})
   const [fileInputKey, setFileInputKey] = useState(0)
+  const [editingSlug, setEditingSlug] = useState(null)
   const allProducts = [...localProducts, ...productsList]
   const categories = getShopCategories(allProducts)
   const [activeCategory, setActiveCategory] = useState('Todos')
@@ -346,43 +349,55 @@ function CollectionPage({ onAddToCart, productsList }) {
     document.getElementById('piezas-disponibles')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  const handleUploadFieldChange = (event) => {
-    const { name, value, files } = event.target
-    if (name === 'file') {
-      setUploadForm((current) => ({ ...current, file: files?.[0] ?? null }))
-      return
-    }
-    setUploadForm((current) => ({ ...current, [name]: value }))
+  const scrollToUploader = () => {
+    document.getElementById('cargar-articulo')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  const handleUploadSubmit = (event) => {
-    event.preventDefault()
-    if (!uploadForm.title || !uploadForm.price || !uploadForm.category || !uploadForm.file) {
-      setUploadMessage('Completa título, precio, categoría y adjunta una imagen o vídeo para publicar.')
-      return
+  const fileToDataUrl = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo.'))
+    reader.readAsDataURL(file)
+  })
+
+  const validateUploadForm = (formData) => {
+    const errors = {}
+
+    if (!formData.title || formData.title.trim().length < 3) {
+      errors.title = 'Escribe un título de al menos 3 caracteres.'
     }
 
-    const slug = `${uploadForm.title.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}-${Date.now()}`
-    const localUrl = URL.createObjectURL(uploadForm.file)
-    const isVideo = uploadForm.file.type.startsWith('video/')
+    if (!formData.price || !/^\d+(?:[.,]\d{1,2})?\s?€?$/.test(formData.price.trim())) {
+      errors.price = 'Usa un precio válido. Ejemplo: 120 o 120 €.'
+    }
 
-    setLocalProducts((items) => [
-      {
-        slug,
-        title: uploadForm.title,
-        price: uploadForm.price,
-        category: uploadForm.category,
-        description: uploadForm.description || 'Pieza subida desde tu ordenador.',
-        image: isVideo ? mediaConfig.heroPoster : localUrl,
-        alt: uploadForm.title,
-        tag: uploadForm.category,
-        badge: 'Nuevo',
-        localVideo: isVideo ? localUrl : null,
-        featuredRank: 0
-      },
-      ...items
-    ])
-    setUploadMessage(`“${uploadForm.title}” añadido correctamente desde tu PC.`)
+    if (!formData.category || formData.category.trim().length < 2) {
+      errors.category = 'Indica una categoría válida.'
+    }
+
+    if (formData.description && formData.description.length > 240) {
+      errors.description = 'La descripción no puede superar 240 caracteres.'
+    }
+
+    const needsFile = !editingSlug
+    if (needsFile && !formData.file) {
+      errors.file = 'Selecciona una imagen o un vídeo.'
+    }
+
+    if (formData.file) {
+      if (!formData.file.type.startsWith('image/') && !formData.file.type.startsWith('video/')) {
+        errors.file = 'Solo se permiten imágenes o vídeos.'
+      }
+
+      if (formData.file.size > 15 * 1024 * 1024) {
+        errors.file = 'El archivo no puede superar 15 MB.'
+      }
+    }
+
+    return errors
+  }
+
+  const resetUploadForm = () => {
     setUploadForm({
       title: '',
       price: '',
@@ -391,14 +406,134 @@ function CollectionPage({ onAddToCart, productsList }) {
       file: null
     })
     setFileInputKey((value) => value + 1)
+    setEditingSlug(null)
+    setUploadErrors({})
+  }
+
+  const handleUploadFieldChange = (event) => {
+    const { name, value, files } = event.target
+
+    if (name === 'file') {
+      setUploadForm((current) => ({ ...current, file: files?.[0] ?? null }))
+      setUploadErrors((current) => ({ ...current, file: undefined }))
+      return
+    }
+
+    setUploadForm((current) => ({ ...current, [name]: value }))
+    setUploadErrors((current) => ({ ...current, [name]: undefined }))
+  }
+
+  const startEditLocalProduct = (product) => {
+    setEditingSlug(product.slug)
+    setUploadForm({
+      title: product.title,
+      price: product.price,
+      category: product.category,
+      description: product.description ?? '',
+      file: null
+    })
+    setUploadErrors({})
+    setUploadMessage(`Editando “${product.title}”. Puedes cambiar texto y opcionalmente el archivo.`)
+    scrollToUploader()
+  }
+
+  const handleDeleteLocalProduct = (product) => {
+    setLocalProducts((items) => items.filter((item) => item.slug !== product.slug))
+    if (editingSlug === product.slug) resetUploadForm()
+    setUploadMessage(`“${product.title}” eliminado del catálogo local.`)
+  }
+
+  const handleUploadSubmit = async (event) => {
+    event.preventDefault()
+    const errors = validateUploadForm(uploadForm)
+
+    if (Object.keys(errors).length > 0) {
+      setUploadErrors(errors)
+      setUploadMessage('Revisa los campos marcados para continuar.')
+      return
+    }
+
+    try {
+      let mediaType = 'image'
+      let mediaSrc = ''
+
+      if (uploadForm.file) {
+        mediaType = uploadForm.file.type.startsWith('video/') ? 'video' : 'image'
+        mediaSrc = await fileToDataUrl(uploadForm.file)
+      }
+
+      if (editingSlug) {
+        setLocalProducts((items) => items.map((item) => {
+          if (item.slug !== editingSlug) return item
+          const nextMediaType = mediaSrc ? mediaType : item.mediaType
+          const nextMediaSrc = mediaSrc || item.mediaSrc
+
+          return {
+            ...item,
+            title: uploadForm.title.trim(),
+            price: uploadForm.price.trim(),
+            category: uploadForm.category.trim(),
+            description: uploadForm.description.trim() || 'Pieza subida desde tu ordenador.',
+            tag: uploadForm.category.trim(),
+            mediaType: nextMediaType,
+            mediaSrc: nextMediaSrc,
+            image: nextMediaType === 'video' ? mediaConfig.heroPoster : nextMediaSrc,
+            localVideo: nextMediaType === 'video' ? nextMediaSrc : null
+          }
+        }))
+
+        setUploadMessage(`Cambios guardados para “${uploadForm.title.trim()}”.`)
+        resetUploadForm()
+        return
+      }
+
+      const slug = `${uploadForm.title.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}-${Date.now()}`
+
+      setLocalProducts((items) => [
+        {
+          slug,
+          title: uploadForm.title.trim(),
+          price: uploadForm.price.trim(),
+          category: uploadForm.category.trim(),
+          description: uploadForm.description.trim() || 'Pieza subida desde tu ordenador.',
+          image: mediaType === 'video' ? mediaConfig.heroPoster : mediaSrc,
+          alt: uploadForm.title.trim(),
+          tag: uploadForm.category.trim(),
+          badge: 'Nuevo',
+          localVideo: mediaType === 'video' ? mediaSrc : null,
+          mediaType,
+          mediaSrc,
+          isLocal: true,
+          createdAt: new Date().toISOString(),
+          featuredRank: 0
+        },
+        ...items
+      ])
+
+      setUploadMessage(`“${uploadForm.title.trim()}” añadido correctamente desde tu PC.`)
+      resetUploadForm()
+    } catch {
+      setUploadMessage('No se pudo procesar el archivo. Prueba con otro recurso.')
+    }
   }
 
   useEffect(() => {
-    return () => {
-      localProducts.forEach((product) => {
-        if (product.image?.startsWith?.('blob:')) URL.revokeObjectURL(product.image)
-        if (product.localVideo?.startsWith?.('blob:')) URL.revokeObjectURL(product.localVideo)
-      })
+    try {
+      const raw = window.localStorage.getItem(LOCAL_PRODUCTS_KEY)
+      if (!raw) return
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return
+      setLocalProducts(parsed)
+    } catch {
+      // Si falla la lectura, mantenemos el catálogo en memoria.
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(LOCAL_PRODUCTS_KEY, JSON.stringify(localProducts))
+    } catch {
+      // Si falla el guardado, la sesión seguirá funcionando en memoria.
     }
   }, [localProducts])
 
@@ -455,49 +590,91 @@ function CollectionPage({ onAddToCart, productsList }) {
             </div>
           </article>
 
-          <article className="collection-upload-panel">
+          <article id="cargar-articulo" className="collection-upload-panel">
             <div>
               <p className="eyebrow">Cargar desde PC</p>
-              <h3>Sube un artículo nuevo en segundos</h3>
+              <h3>{editingSlug ? 'Edita tu artículo local' : 'Sube un artículo nuevo en segundos'}</h3>
               <p>
-                Esta carga es local (solo en tu navegador). Si te gusta el resultado, después lo pasamos al archivo
+                Tus artículos locales se guardan en este navegador para que no se pierdan al recargar. Cuando quieras publicarlos,
+                pásalos al archivo
                 <code> public/data/shop-products.json </code>
-                y guardamos el recurso en
+                y guarda recursos finales en
                 <code> public/uploads </code>.
               </p>
             </div>
-            <form className="collection-upload-form" onSubmit={handleUploadSubmit}>
+            <form className="collection-upload-form" onSubmit={handleUploadSubmit} noValidate>
+              <label htmlFor="upload-title">Título</label>
               <input
+                id="upload-title"
                 type="text"
                 name="title"
                 value={uploadForm.title}
                 onChange={handleUploadFieldChange}
                 placeholder="Título del artículo"
+                aria-invalid={Boolean(uploadErrors.title)}
               />
+              {uploadErrors.title ? <p className="collection-upload-form__error">{uploadErrors.title}</p> : null}
+
+              <label htmlFor="upload-price">Precio</label>
               <input
+                id="upload-price"
                 type="text"
                 name="price"
                 value={uploadForm.price}
                 onChange={handleUploadFieldChange}
-                placeholder="Precio (ej. 120 €)"
+                placeholder="Ej. 120 €"
+                aria-invalid={Boolean(uploadErrors.price)}
               />
+              {uploadErrors.price ? <p className="collection-upload-form__error">{uploadErrors.price}</p> : null}
+
+              <label htmlFor="upload-category">Categoría</label>
               <input
+                id="upload-category"
                 type="text"
                 name="category"
                 value={uploadForm.category}
                 onChange={handleUploadFieldChange}
-                placeholder="Categoría (ej. Bolsos)"
+                placeholder="Ej. Bolsos"
+                aria-invalid={Boolean(uploadErrors.category)}
               />
+              {uploadErrors.category ? <p className="collection-upload-form__error">{uploadErrors.category}</p> : null}
+
+              <label htmlFor="upload-description">Descripción</label>
               <textarea
+                id="upload-description"
                 name="description"
                 value={uploadForm.description}
                 onChange={handleUploadFieldChange}
                 placeholder="Descripción corta de la pieza"
                 rows={3}
+                aria-invalid={Boolean(uploadErrors.description)}
               />
-              <input key={fileInputKey} type="file" name="file" onChange={handleUploadFieldChange} accept="image/*,video/*" />
-              <button type="submit" className="button button--primary">Añadir desde mi PC</button>
-              {uploadMessage ? <p className="collection-upload-form__message">{uploadMessage}</p> : null}
+              {uploadErrors.description ? <p className="collection-upload-form__error">{uploadErrors.description}</p> : null}
+
+              <label htmlFor="upload-file">Archivo (imagen o vídeo)</label>
+              <input
+                key={fileInputKey}
+                id="upload-file"
+                type="file"
+                name="file"
+                onChange={handleUploadFieldChange}
+                accept="image/*,video/*"
+                aria-invalid={Boolean(uploadErrors.file)}
+              />
+              {uploadErrors.file ? <p className="collection-upload-form__error">{uploadErrors.file}</p> : null}
+
+              <div className="collection-upload-form__actions">
+                <button type="submit" className="button button--primary">
+                  {editingSlug ? 'Guardar cambios' : 'Añadir desde mi PC'}
+                </button>
+                {editingSlug ? (
+                  <button type="button" className="button button--secondary" onClick={resetUploadForm}>
+                    Cancelar edición
+                  </button>
+                ) : null}
+              </div>
+
+              {uploadMessage ? <p className="collection-upload-form__message" role="status">{uploadMessage}</p> : null}
             </form>
           </article>
 
@@ -588,6 +765,16 @@ function CollectionPage({ onAddToCart, productsList }) {
                     <a className="button button--dark button--whatsapp" href={whatsappHrefForProduct(product)} target="_blank" rel="noreferrer">
                       WhatsApp
                     </a>
+                    {product.isLocal ? (
+                      <>
+                        <button type="button" className="button button--secondary" onClick={() => startEditLocalProduct(product)}>
+                          Editar local
+                        </button>
+                        <button type="button" className="button button--secondary" onClick={() => handleDeleteLocalProduct(product)}>
+                          Eliminar local
+                        </button>
+                      </>
+                    ) : null}
                   </div>
                 </div>
               </article>
