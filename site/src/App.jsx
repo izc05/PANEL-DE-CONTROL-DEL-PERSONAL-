@@ -28,11 +28,6 @@ const getRouteFromHash = (hash) => {
 const collectionPreview = products.slice(0, 4)
 const categories = ['Todos', 'Bolsos bordados', 'Prendas bordadas', 'Piezas únicas', 'Accesorios', 'Encargos']
 
-const getPriceValue = (price) => {
-  const numeric = Number.parseFloat(price.replace(',', '.').replace(/[^\d.]/g, ''))
-  return Number.isFinite(numeric) ? numeric : Number.POSITIVE_INFINITY
-}
-
 function Header({ isScrolled, menuOpen, setMenuOpen, route }) {
   return (
     <header className={`site-header ${isScrolled ? 'is-scrolled' : ''}`}>
@@ -253,17 +248,7 @@ function PageHero({ eyebrow, title, text, image, alt, actions = [] }) {
 
 function CollectionPage() {
   const [activeCategory, setActiveCategory] = useState('Todos')
-  const [activeSort, setActiveSort] = useState('Más recientes')
-
   const filteredProducts = activeCategory === 'Todos' ? products : products.filter((product) => product.category === activeCategory)
-
-  const sortedProducts =
-    activeSort === 'Edición atelier'
-      ? [...filteredProducts].sort((a, b) => {
-          const featuredDelta = Number(!a.tag.toLowerCase().includes('edición')) - Number(!b.tag.toLowerCase().includes('edición'))
-          return featuredDelta !== 0 ? featuredDelta : getPriceValue(a.price) - getPriceValue(b.price)
-        })
-      : filteredProducts
 
   const scrollToPieces = () => {
     document.getElementById('piezas-disponibles')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -290,32 +275,17 @@ function CollectionPage() {
       </section>
 
       <section className="section-block section-block--soft">
-        <div className="container boutique-intro">
+        <div className="container">
           <article className="boutique-panel boutique-panel--feature">
             <div>
               <p className="eyebrow">Selección curada</p>
               <h2>Piezas para regalar, guardar y recordar</h2>
-              <p>
-                Diseños bordados a mano que combinan materiales suaves, acabados delicados y una presencia serena.
-              </p>
-            </div>
-            <video controls playsInline preload="metadata" poster={mediaConfig.heroPoster} src={mediaConfig.collectionVideoSrc} />
-          </article>
-
-          <div className="boutique-stats">
-            <article className="mini-stat-card">
-              <strong>06</strong>
-              <span>Piezas iniciales</span>
-            </article>
-            <article className="mini-stat-card">
-              <strong>01</strong>
-              <span>Encargo a medida</span>
-            </article>
-            <article className="mini-stat-card">
-              <strong>100%</strong>
-              <span>Trabajo artesanal</span>
-            </article>
+            <p>
+              Diseños bordados a mano que combinan materiales suaves, acabados delicados y una presencia serena.
+            </p>
           </div>
+            <img src={mediaConfig.visualLead} alt="Mesa del atelier con piezas bordadas y luz natural" />
+          </article>
         </div>
       </section>
 
@@ -341,38 +311,26 @@ function CollectionPage() {
           <div className="shop-toolbar">
             <p>
               {activeCategory === 'Todos'
-                ? `Explora ${sortedProducts.length} piezas bordadas, accesorios y encargos personalizados.`
-                : `${sortedProducts.length} pieza(s) en ${activeCategory}.`}
+                ? `Explora ${filteredProducts.length} piezas bordadas, accesorios y encargos personalizados.`
+                : `${filteredProducts.length} pieza(s) en ${activeCategory}.`}
             </p>
-            <div className="shop-toolbar__actions">
-              {['Más recientes', 'Edición atelier'].map((sort) => (
-              <button
-                key={sort}
-                type="button"
-                className={`editorial-pill ${activeSort === sort ? 'editorial-pill--category is-active' : ''}`}
-                onClick={() => setActiveSort(sort)}
-                aria-pressed={activeSort === sort}
-              >
-                {sort}
-              </button>
-            ))}
-              {activeCategory !== 'Todos' || activeSort !== 'Más recientes' ? (
+            {activeCategory !== 'Todos' ? (
+              <div className="shop-toolbar__actions">
                 <button
                   type="button"
                   className="editorial-pill"
                   onClick={() => {
                     setActiveCategory('Todos')
-                    setActiveSort('Más recientes')
                   }}
                 >
                   Limpiar
                 </button>
-              ) : null}
-            </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="product-grid product-grid--shop">
-            {sortedProducts.length > 0 ? sortedProducts.map((product) => (
+            {filteredProducts.length > 0 ? filteredProducts.map((product) => (
               <article key={product.slug} className="product-card product-card--shop">
                 <img src={product.image} alt={product.alt} />
                 <div className="product-card__body">
