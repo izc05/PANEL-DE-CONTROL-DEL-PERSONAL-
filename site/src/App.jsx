@@ -25,6 +25,11 @@ const getRouteFromHash = (hash) => {
   return value.startsWith('/') ? value : `/${value}`
 }
 
+const getRouteClass = (route) => {
+  if (route === '/') return 'route-home'
+  return `route-${route.replace(/^\//, '').replace(/\//g, '-')}`
+}
+
 const collectionPreview = products.slice(0, 4)
 const categories = ['Todos', 'Bolsos bordados', 'Prendas bordadas', 'Piezas únicas', 'Accesorios', 'Encargos']
 
@@ -293,7 +298,7 @@ function CollectionPage() {
               <h2>Piezas para regalar, guardar y recordar</h2>
               <p>Diseños bordados a mano que combinan materiales suaves, acabados delicados y una presencia serena.</p>
             </div>
-            <img src={mediaConfig.visualLead} alt="Mesa del atelier con piezas bordadas y luz natural" />
+            <video controls playsInline preload="metadata" poster={mediaConfig.visualLead} src={mediaConfig.atelierVideo} />
           </article>
         </div>
       </section>
@@ -742,7 +747,7 @@ export default function App() {
   if (route === '/contacto') page = <ContactPage />
 
   return (
-    <div className="page-shell">
+    <div className={`page-shell ${getRouteClass(route)}`}>
       <a className="skip-link" href="#main-content">
         Saltar al contenido
       </a>

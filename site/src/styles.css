@@ -72,6 +72,30 @@ code {
   overflow-x: clip;
 }
 
+.page-shell.route-home {
+  background:
+    radial-gradient(circle at 10% 8%, rgba(236, 211, 201, 0.22), transparent 28%),
+    linear-gradient(180deg, #fffdf9 0%, var(--cream) 100%);
+}
+
+.page-shell.route-coleccion {
+  background:
+    radial-gradient(circle at 85% 8%, rgba(189, 143, 86, 0.15), transparent 30%),
+    linear-gradient(180deg, #fffdf8 0%, #f9f1e9 100%);
+}
+
+.page-shell.route-encargos {
+  background:
+    radial-gradient(circle at 12% 6%, rgba(216, 176, 127, 0.14), transparent 28%),
+    linear-gradient(180deg, #fffdf8 0%, #f8f0ea 100%);
+}
+
+.page-shell.route-diario {
+  background:
+    radial-gradient(circle at 80% 10%, rgba(47, 39, 34, 0.08), transparent 30%),
+    linear-gradient(180deg, #fffdf9 0%, #f6efe8 100%);
+}
+
 .container {
   width: min(1200px, calc(100vw - 2rem));
   margin: 0 auto;
@@ -574,6 +598,15 @@ h3,
   min-height: 29rem;
   object-fit: cover;
   object-position: 54% center;
+}
+
+.page-shell.route-coleccion .collection-hero__copy {
+  background: rgba(255, 248, 239, 0.9);
+  border-color: rgba(189, 143, 86, 0.2);
+}
+
+.page-shell.route-encargos .page-hero__copy .button--primary {
+  background: #b7824f;
 }
 
 .hero-v4__card h3,
