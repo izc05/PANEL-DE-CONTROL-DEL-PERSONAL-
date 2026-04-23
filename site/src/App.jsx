@@ -319,6 +319,8 @@ function PageHero({ eyebrow, title, text, image, alt, actions = [] }) {
 
 function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
   const LOCAL_PRODUCTS_KEY = 'atelier-local-products-v1'
+  const EDITOR_SESSION_KEY = 'atelier-editor-session-v1'
+  const EDITOR_PIN = 'atelier-privado-2026'
   const [localProducts, setLocalProducts] = useState([])
   const [uploadForm, setUploadForm] = useState({
     title: '',
@@ -331,6 +333,9 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
   const [uploadErrors, setUploadErrors] = useState({})
   const [fileInputKey, setFileInputKey] = useState(0)
   const [editingSlug, setEditingSlug] = useState(null)
+  const [editorPinInput, setEditorPinInput] = useState('')
+  const [isEditorUnlocked, setIsEditorUnlocked] = useState(false)
+  const [editorAccessError, setEditorAccessError] = useState('')
   const allProducts = [...localProducts, ...productsList]
   const categories = getShopCategories(allProducts)
   const [activeCategory, setActiveCategory] = useState('Todos')
@@ -523,6 +528,26 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
     setUploadMessage(refreshed ? 'Catálogo recargado con la versión más reciente.' : 'No se pudo recargar ahora. Inténtalo en unos segundos.')
   }
 
+  const handleUnlockEditor = (event) => {
+    event.preventDefault()
+    if (editorPinInput.trim() !== EDITOR_PIN) {
+      setEditorAccessError('Clave incorrecta. Solo la propietaria puede subir artículos.')
+      return
+    }
+
+    setIsEditorUnlocked(true)
+    setEditorAccessError('')
+    setEditorPinInput('')
+    window.localStorage.setItem(EDITOR_SESSION_KEY, 'open')
+  }
+
+  const handleLockEditor = () => {
+    setIsEditorUnlocked(false)
+    setEditorPinInput('')
+    setEditorAccessError('')
+    window.localStorage.removeItem(EDITOR_SESSION_KEY)
+  }
+
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(LOCAL_PRODUCTS_KEY)
@@ -533,6 +558,10 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
     } catch {
       // Si falla la lectura, mantenemos el catálogo en memoria.
     }
+  }, [])
+
+  useEffect(() => {
+    setIsEditorUnlocked(window.localStorage.getItem(EDITOR_SESSION_KEY) === 'open')
   }, [])
 
   useEffect(() => {
@@ -608,83 +637,111 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
                 <code> public/uploads </code>.
               </p>
             </div>
-            <form className="collection-upload-form" onSubmit={handleUploadSubmit} noValidate>
-              <label htmlFor="upload-title">Título</label>
-              <input
-                id="upload-title"
-                type="text"
-                name="title"
-                value={uploadForm.title}
-                onChange={handleUploadFieldChange}
-                placeholder="Título del artículo"
-                aria-invalid={Boolean(uploadErrors.title)}
-              />
-              {uploadErrors.title ? <p className="collection-upload-form__error">{uploadErrors.title}</p> : null}
-
-              <label htmlFor="upload-price">Precio</label>
-              <input
-                id="upload-price"
-                type="text"
-                name="price"
-                value={uploadForm.price}
-                onChange={handleUploadFieldChange}
-                placeholder="Ej. 120 €"
-                aria-invalid={Boolean(uploadErrors.price)}
-              />
-              {uploadErrors.price ? <p className="collection-upload-form__error">{uploadErrors.price}</p> : null}
-
-              <label htmlFor="upload-category">Categoría</label>
-              <input
-                id="upload-category"
-                type="text"
-                name="category"
-                value={uploadForm.category}
-                onChange={handleUploadFieldChange}
-                placeholder="Ej. Bolsos"
-                aria-invalid={Boolean(uploadErrors.category)}
-              />
-              {uploadErrors.category ? <p className="collection-upload-form__error">{uploadErrors.category}</p> : null}
-
-              <label htmlFor="upload-description">Descripción</label>
-              <textarea
-                id="upload-description"
-                name="description"
-                value={uploadForm.description}
-                onChange={handleUploadFieldChange}
-                placeholder="Descripción corta de la pieza"
-                rows={3}
-                aria-invalid={Boolean(uploadErrors.description)}
-              />
-              {uploadErrors.description ? <p className="collection-upload-form__error">{uploadErrors.description}</p> : null}
-
-              <label htmlFor="upload-file">Archivo (imagen o vídeo)</label>
-              <input
-                key={fileInputKey}
-                id="upload-file"
-                type="file"
-                name="file"
-                onChange={handleUploadFieldChange}
-                accept="image/*,video/*"
-                aria-invalid={Boolean(uploadErrors.file)}
-              />
-              {uploadErrors.file ? <p className="collection-upload-form__error">{uploadErrors.file}</p> : null}
-
-              <div className="collection-upload-form__actions">
-                <button type="submit" className="button button--primary">
-                  {editingSlug ? 'Guardar cambios' : 'Añadir desde mi PC'}
-                </button>
-                <button type="button" className="button button--secondary" onClick={handleRefreshCatalogNow}>
-                  Forzar actualización
-                </button>
-                {editingSlug ? (
-                  <button type="button" className="button button--secondary" onClick={resetUploadForm}>
-                    Cancelar edición
+            {!isEditorUnlocked ? (
+              <form className="collection-upload-form" onSubmit={handleUnlockEditor}>
+                <label htmlFor="editor-pin">Acceso privado para editar catálogo</label>
+                <input
+                  id="editor-pin"
+                  type="password"
+                  value={editorPinInput}
+                  onChange={(event) => {
+                    setEditorPinInput(event.target.value)
+                    setEditorAccessError('')
+                  }}
+                  placeholder="Introduce tu clave"
+                  aria-invalid={Boolean(editorAccessError)}
+                />
+                <div className="collection-upload-form__actions">
+                  <button type="submit" className="button button--primary">Entrar como propietaria</button>
+                  <button type="button" className="button button--secondary" onClick={handleRefreshCatalogNow}>
+                    Forzar actualización
                   </button>
-                ) : null}
-              </div>
+                </div>
+                {editorAccessError ? <p className="collection-upload-form__error">{editorAccessError}</p> : null}
+                {uploadMessage ? <p className="collection-upload-form__message" role="status">{uploadMessage}</p> : null}
+              </form>
+            ) : (
+              <form className="collection-upload-form" onSubmit={handleUploadSubmit} noValidate>
+                <label htmlFor="upload-title">Título</label>
+                <input
+                  id="upload-title"
+                  type="text"
+                  name="title"
+                  value={uploadForm.title}
+                  onChange={handleUploadFieldChange}
+                  placeholder="Título del artículo"
+                  aria-invalid={Boolean(uploadErrors.title)}
+                />
+                {uploadErrors.title ? <p className="collection-upload-form__error">{uploadErrors.title}</p> : null}
 
-              {uploadMessage ? <p className="collection-upload-form__message" role="status">{uploadMessage}</p> : null}
-            </form>
+                <label htmlFor="upload-price">Precio</label>
+                <input
+                  id="upload-price"
+                  type="text"
+                  name="price"
+                  value={uploadForm.price}
+                  onChange={handleUploadFieldChange}
+                  placeholder="Ej. 120 €"
+                  aria-invalid={Boolean(uploadErrors.price)}
+                />
+                {uploadErrors.price ? <p className="collection-upload-form__error">{uploadErrors.price}</p> : null}
+
+                <label htmlFor="upload-category">Categoría</label>
+                <input
+                  id="upload-category"
+                  type="text"
+                  name="category"
+                  value={uploadForm.category}
+                  onChange={handleUploadFieldChange}
+                  placeholder="Ej. Bolsos"
+                  aria-invalid={Boolean(uploadErrors.category)}
+                />
+                {uploadErrors.category ? <p className="collection-upload-form__error">{uploadErrors.category}</p> : null}
+
+                <label htmlFor="upload-description">Descripción</label>
+                <textarea
+                  id="upload-description"
+                  name="description"
+                  value={uploadForm.description}
+                  onChange={handleUploadFieldChange}
+                  placeholder="Descripción corta de la pieza"
+                  rows={3}
+                  aria-invalid={Boolean(uploadErrors.description)}
+                />
+                {uploadErrors.description ? <p className="collection-upload-form__error">{uploadErrors.description}</p> : null}
+
+                <label htmlFor="upload-file">Archivo (imagen o vídeo)</label>
+                <input
+                  key={fileInputKey}
+                  id="upload-file"
+                  type="file"
+                  name="file"
+                  onChange={handleUploadFieldChange}
+                  accept="image/*,video/*"
+                  aria-invalid={Boolean(uploadErrors.file)}
+                />
+                {uploadErrors.file ? <p className="collection-upload-form__error">{uploadErrors.file}</p> : null}
+
+                <div className="collection-upload-form__actions">
+                  <button type="submit" className="button button--primary">
+                    {editingSlug ? 'Guardar cambios' : 'Añadir desde mi PC'}
+                  </button>
+                  <button type="button" className="button button--secondary" onClick={handleRefreshCatalogNow}>
+                    Forzar actualización
+                  </button>
+                  {editingSlug ? (
+                    <button type="button" className="button button--secondary" onClick={resetUploadForm}>
+                      Cancelar edición
+                    </button>
+                  ) : null}
+                  <button type="button" className="button button--secondary" onClick={handleLockEditor}>
+                    Cerrar sesión de edición
+                  </button>
+                </div>
+
+                {uploadMessage ? <p className="collection-upload-form__message" role="status">{uploadMessage}</p> : null}
+              </form>
+            )}
           </article>
 
           <div className="collection-featured-strip">
@@ -774,7 +831,7 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
                     <a className="button button--dark button--whatsapp" href={whatsappHrefForProduct(product)} target="_blank" rel="noreferrer">
                       WhatsApp
                     </a>
-                    {product.isLocal ? (
+                    {product.isLocal && isEditorUnlocked ? (
                       <>
                         <button type="button" className="button button--secondary" onClick={() => startEditLocalProduct(product)}>
                           Editar local
