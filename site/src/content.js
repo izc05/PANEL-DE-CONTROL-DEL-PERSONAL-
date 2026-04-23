@@ -3,7 +3,7 @@ const withBaseMedia = (filename) => `${import.meta.env.BASE_URL}media/${encodeUR
 export const mediaConfig = {
   heroVideoEnabled: true,
   heroVideoSrc: withBaseMedia('atelier-video.mp4'),
-  collectionVideoSrc: withBaseMedia('video_musica_desde_050.mp4'),
+  collectionVideoSrc: withBaseMedia('video_musica_desde_050-1.mp4'),
   heroPoster: withBaseMedia('atelier-hero.png'),
   visualLead: withBaseMedia('atelier-wide.png'),
   visualDetailA: withBaseMedia('atelier-materials.png'),
@@ -11,7 +11,7 @@ export const mediaConfig = {
   visualDetailC: withBaseMedia('atelier-doorway.png'),
   portrait: withBaseMedia('atelier-portrait.png'),
   atelierVideo: withBaseMedia('atelier-video.mp4'),
-  journalVideo: withBaseMedia('video_musica_desde_050.mp4'),
+  journalVideo: withBaseMedia('video_musica_desde_050-1.mp4'),
   bagImage: withBaseMedia('ChatGPT Image 23 abr 2026, 13_03_07.png'),
   cushionImage: withBaseMedia('ChatGPT Image 23 abr 2026, 13_03_13.png'),
   embroideredSetImage: withBaseMedia('ChatGPT Image 23 abr 2026, 13_03_23.png')
