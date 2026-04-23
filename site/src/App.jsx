@@ -172,7 +172,6 @@ function HomePage() {
               <div className="editorial-collage__copy">
                 <p className="collection-card__tag">Atelier</p>
                 <h3>{visualNarrative[0].title}</h3>
-                <p>Una escena amplia que abre el mundo visual antes de entrar en producto y encargos.</p>
               </div>
             </article>
 
@@ -243,7 +242,7 @@ function HomePage() {
               <p className="eyebrow">Proceso artesanal</p>
               <h2>Cómo nace una pieza</h2>
               <p>
-                Una explicación visual y clara para que el visitante entienda rápido el valor del proceso y la diferencia entre una pieza hecha a mano y una tienda sin relato.
+                Del primer boceto al último remate, cada etapa se trabaja con precisión y calma para conservar la esencia artesanal.
               </p>
             </div>
 
@@ -553,7 +552,7 @@ function OrdersPage() {
       <PageHero
         eyebrow="Encargos personalizados"
         title="Tu historia bordada con intención"
-        text="Esta subpágina abre el servicio de encargos con un tono más emocional y una explicación clara del proceso para convertirlo después en una sección realmente útil para clientes."
+        text="Un espacio pensado para transformar nombres, fechas y recuerdos en una pieza bordada creada a mano para ti."
         image={mediaConfig.portrait}
         alt="Creadora bordando una pieza personalizada junto a la ventana"
         actions={[{ label: 'Escribir ahora', href: 'mailto:atelier@atelierlumiere.com' }]}
@@ -566,7 +565,7 @@ function OrdersPage() {
               <p className="eyebrow">Cómo funciona</p>
               <h2>Del recuerdo al bordado final</h2>
               <p>
-                La estructura queda lista para explicar el servicio con claridad: idea, boceto, selección de materiales, bordado y entrega cuidada.
+                Te acompañamos desde la idea inicial hasta la entrega final, cuidando materiales, dibujo y acabado en cada encargo.
               </p>
             </div>
             <ol className="step-list step-list--premium">
@@ -586,7 +585,7 @@ function OrdersPage() {
             <p className="eyebrow">Encargo a medida</p>
             <h3>Piezas creadas para bodas, recuerdos, homenajes o regalos</h3>
             <p>
-              Aquí después podremos añadir formulario, ejemplos de encargos y condiciones sin perder la estética premium del conjunto.
+              Piezas creadas para bodas, nacimientos, homenajes o regalos con significado, siempre con un ritmo lento y cuidado.
             </p>
             <a className="button button--dark" href="mailto:atelier@atelierlumiere.com">
               Solicitar un encargo

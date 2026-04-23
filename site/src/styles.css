@@ -125,7 +125,6 @@ h2,
 h3,
 .hero-v4__closing,
 .contact-list strong,
-.hero-v4__card h3,
 .contact-card h3,
 .quote-panel h3,
 .mini-stat-card strong,
@@ -471,7 +470,7 @@ h3,
 
 .hero-v4__media img,
 .hero-v4__media video {
-  object-position: 58% center;
+  object-position: 50% 45%;
 }
 
 .page-hero__media img {
@@ -1110,7 +1109,7 @@ h3,
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   .container {
     width: min(1200px, calc(100vw - 1.2rem));
   }
@@ -1214,6 +1213,10 @@ h3,
   .story-card img,
   .editorial-collage__feature img {
     min-height: 50vh;
+  }
+
+  .editorial-collage__copy {
+    display: none;
   }
 
   .collection-hero {
