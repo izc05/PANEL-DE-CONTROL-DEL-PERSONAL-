@@ -30,8 +30,6 @@ const getRouteFromHash = (hash) => {
 
 const collectionPreview = products.slice(0, 4)
 const categories = ['Todos', 'Bolsos bordados', 'Prendas bordadas', 'Piezas únicas', 'Accesorios', 'Encargos']
-const atmosphereLayers = ['Lino y luz suave', 'Oficio lento', 'Pequeñas series artesanales']
-
 function Header({ isScrolled, menuOpen, setMenuOpen, route }) {
   return (
     <header className={`site-header ${isScrolled ? 'is-scrolled' : ''}`}>
@@ -143,26 +141,15 @@ function HomePage() {
         </div>
       </section>
 
-      <section className="section-block section-block--ornament">
-        <div className="container ornament-band">
-          {atmosphereLayers.map((item) => (
-            <div key={item} className="ornament-chip">
-              <span className="ornament-chip__dot" />
-              <p>{item}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
       <section className="section-block section-block--editorial">
         <div className="container">
-          <div className="section-heading section-heading--split">
+          <div className="section-heading">
             <div>
               <p className="eyebrow">Narrativa visual</p>
-              <h2>Una secuencia visual para entrar en el universo del atelier</h2>
+              <h2>Escenas del atelier entre luz, hilo y textura</h2>
             </div>
             <p>
-              La luz del taller, los materiales y el gesto del bordado crean una entrada serena antes de descubrir cada pieza.
+              Una pausa visual para descubrir el proceso artesanal antes de entrar en colección y encargos.
             </p>
           </div>
 
@@ -192,7 +179,7 @@ function HomePage() {
 
       <section className="section-block section-block--tinted">
         <div className="container">
-          <div className="section-heading section-heading--split">
+          <div className="section-heading">
             <div>
               <p className="eyebrow">Colección destacada</p>
               <h2>Piezas creadas con calma, para durar</h2>
