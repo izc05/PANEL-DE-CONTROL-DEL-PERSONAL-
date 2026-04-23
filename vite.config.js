@@ -9,6 +9,14 @@ export default defineConfig({
   plugins: [react()],
   build: {
     outDir: fileURLToPath(new URL('./dist', import.meta.url)),
-    emptyOutDir: true
+    emptyOutDir: true,
+    cssCodeSplit: false,
+    rollupOptions: {
+      output: {
+        entryFileNames: 'assets/app.js',
+        chunkFileNames: 'assets/chunk-[name].js',
+        assetFileNames: (assetInfo) => (assetInfo.name?.endsWith('.css') ? 'assets/app.css' : 'assets/[name][extname]')
+      }
+    }
   }
 })
