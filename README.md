@@ -106,6 +106,15 @@ Si este JSON no existe o falla, la app usa el catálogo por defecto de `site/src
 - Vista “Mis pedidos” para cliente autenticado con estado y copia de referencia.
 - Estados visuales (badge) para seguimiento rápido de cada pedido.
 
+#### Avance fase 3.4 (actual)
+- Consulta de pedidos en Firestore filtrada por `ownerId` desde servidor (sin traer pedidos de otros usuarios).
+- Archivo `firestore.rules` añadido para endurecer acceso por usuario autenticado.
+
+##### Deploy rápido de reglas
+```bash
+firebase deploy --only firestore:rules
+```
+
 ### Fase 4 · Cierre de tienda (2 a 3 semanas)
 - Checkout más completo (pasarela o confirmación guiada).
 - Gestión de stock/disponibilidad básica.

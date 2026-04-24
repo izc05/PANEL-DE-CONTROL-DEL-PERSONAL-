@@ -1872,14 +1872,37 @@ export default function App() {
 
   const fetchOrdersFromFirestore = async (currentUser) => {
     if (!FIREBASE_PROJECT_ID || !currentUser?.idToken || !currentUser?.localId) return []
-    const response = await fetch(`https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/orders?pageSize=100`, {
+    const response = await fetch(`https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents:runQuery`, {
+      method: 'POST',
       headers: {
-        Authorization: `Bearer ${currentUser.idToken}`
-      }
+        Authorization: `Bearer ${currentUser.idToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId: 'orders' }],
+          where: {
+            fieldFilter: {
+              field: { fieldPath: 'ownerId' },
+              op: 'EQUAL',
+              value: toFirestoreString(currentUser.localId)
+            }
+          },
+          orderBy: [
+            {
+              field: { fieldPath: 'createdAt' },
+              direction: 'DESCENDING'
+            }
+          ],
+          limit: 100
+        }
+      })
     })
     if (!response.ok) return []
     const payload = await response.json()
-    const docs = Array.isArray(payload?.documents) ? payload.documents : []
+    const docs = Array.isArray(payload)
+      ? payload.map((entry) => entry.document).filter(Boolean)
+      : []
 
     return docs
       .map((doc) => ({
