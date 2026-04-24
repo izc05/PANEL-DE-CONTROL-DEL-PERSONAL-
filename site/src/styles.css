@@ -640,6 +640,35 @@ h3,
   border-color: transparent;
 }
 
+.collection-hero--journal {
+  min-height: 82svh;
+}
+
+.collection-hero--journal .collection-hero__grid {
+  min-height: calc(82svh - 7.8rem);
+}
+
+.collection-hero--journal .collection-hero__media video {
+  min-height: 82svh;
+  object-position: 50% 50%;
+}
+
+.collection-hero--journal .collection-hero__copy h2 {
+  margin: 0;
+  font-size: clamp(2.4rem, 5.2vw, 4.2rem);
+  line-height: 0.96;
+  max-width: 12ch;
+}
+
+.collection-hero--journal .collection-hero__copy p:not(.eyebrow) {
+  max-width: 35rem;
+}
+
+.page-shell.route-diario .collection-hero__copy {
+  background: none;
+  border-color: transparent;
+}
+
 .collection-intro-panel {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);

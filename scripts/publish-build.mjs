@@ -6,7 +6,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const distDir = path.join(repoRoot, 'dist')
 
 const filesToCopy = ['index.html']
-const directoriesToCopy = ['assets', 'media']
+const directoriesToCopy = ['assets', 'media', 'data']
 
 for (const fileName of filesToCopy) {
   await cp(path.join(distDir, fileName), path.join(repoRoot, fileName), { force: true })

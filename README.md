@@ -42,3 +42,25 @@ El catálogo de tienda se carga desde:
 Ahí puedes añadir, quitar o editar productos (`title`, `description`, `price`, `category`, `image`, etc.) sin tocar JSX.
 
 Si este JSON no existe o falla, la app usa el catálogo por defecto de `site/src/content.js`.
+
+## Roadmap de trabajo (fases + tiempos orientativos)
+
+### Fase 1 · Base funcional (completada)
+- Estructura de páginas, navegación y diseño responsive.
+- Catálogo simple + carrito + checkout por WhatsApp.
+- Publicación estable con `npm run build`.
+
+### Fase 2 · Experiencia y contenido (1 a 2 semanas)
+- Ajustes visuales por secciones (colección/diario/sobre mí).
+- Integración de vídeos largos en bloques inmersivos.
+- Optimización de copy, imágenes y llamadas a la acción.
+
+### Fase 3 · Cuenta cliente y datos (1 a 2 semanas)
+- Login/registro real (Firebase).
+- Persistencia de sesión y página de estado de pedidos.
+- Validaciones de formulario y feedback de errores.
+
+### Fase 4 · Cierre de tienda (2 a 3 semanas)
+- Checkout más completo (pasarela o confirmación guiada).
+- Gestión de stock/disponibilidad básica.
+- Métricas, SEO técnico y rendimiento final.
