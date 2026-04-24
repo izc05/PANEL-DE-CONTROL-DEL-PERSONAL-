@@ -10,6 +10,10 @@ import {
   products
 } from './content'
 
+const FIREBASE_API_KEY = import.meta.env.VITE_FIREBASE_API_KEY
+const isFirebaseConfigured = Boolean(FIREBASE_API_KEY)
+const AUTH_STORAGE_KEY = 'atelier-auth-v1'
+
 const routeTitles = {
   '/': 'Atelier Lumière',
   '/coleccion': 'Colección · Atelier Lumière',
@@ -34,6 +38,19 @@ const getRouteClass = (route) => {
 
 const whatsappHrefForProduct = (product) => {
   const text = `Hola, me interesa ${product.title} (${product.price}). ¿Me das más información?`
+  return `https://wa.me/34612345678?text=${encodeURIComponent(text)}`
+}
+
+const whatsappHrefForCart = (lines) => {
+  if (!Array.isArray(lines) || lines.length === 0) {
+    return 'https://wa.me/34612345678'
+  }
+
+  const summary = lines
+    .map((line) => `• ${line.product.title} x${line.qty} (${line.product.price})`)
+    .join('\n')
+
+  const text = `Hola, quiero finalizar mi solicitud con estas piezas:\n${summary}\n\n¿Me confirmas disponibilidad y siguientes pasos?`
   return `https://wa.me/34612345678?text=${encodeURIComponent(text)}`
 }
 
@@ -1051,13 +1068,14 @@ function CartPage({ cartItems, onAddToCart, productsList }) {
       return product ? { ...line, product } : null
     })
     .filter(Boolean)
+  const checkoutWhatsappHref = whatsappHrefForCart(lines)
 
   return (
     <>
       <PageHero
         eyebrow="Carrito"
         title="Tu selección del atelier"
-        text="Revisa tus piezas y continúa con tu solicitud. Este flujo quedará preparado para checkout en la siguiente fase."
+        text="Revisa tus piezas y finaliza tu solicitud por WhatsApp para confirmar disponibilidad, tiempos y entrega."
         image={mediaConfig.visualLead}
         alt="Mesa del atelier con piezas seleccionadas"
       />
@@ -1090,8 +1108,8 @@ function CartPage({ cartItems, onAddToCart, productsList }) {
                       <button type="button" className="button button--secondary" onClick={() => onAddToCart(line.product)}>
                         Añadir otra
                       </button>
-                      <a className="button button--primary" href="#/contacto">
-                        Finalizar solicitud
+                      <a className="button button--primary" href={checkoutWhatsappHref} target="_blank" rel="noreferrer">
+                        Finalizar por WhatsApp
                       </a>
                     </div>
                   </div>
@@ -1105,7 +1123,19 @@ function CartPage({ cartItems, onAddToCart, productsList }) {
   )
 }
 
-function LoginPage() {
+function LoginPage({ user, authReady, authError, authMessage, onLogin, onRegister, onLogout }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+
+  const handleLoginSubmit = async (event) => {
+    event.preventDefault()
+    await onLogin(email, password)
+  }
+
+  const handleRegister = async () => {
+    await onRegister(email, password)
+  }
+
   return (
     <>
       <PageHero
@@ -1117,20 +1147,67 @@ function LoginPage() {
       />
       <PageSection className="section-block--soft">
         <div className="container split-panels split-panels--single">
-          <form className="contact-form">
-            <h2>Iniciar sesión</h2>
-            <label>
-              Correo electrónico
-              <input type="email" placeholder="tu@email.com" />
-            </label>
-            <label>
-              Contraseña
-              <input type="password" placeholder="••••••••" />
-            </label>
-            <button type="button" className="button button--primary">
-              Acceder
-            </button>
-          </form>
+          {!isFirebaseConfigured ? (
+            <article className="quote-panel quote-panel--signature">
+              <p className="eyebrow">Configurar Firebase</p>
+              <h2>Falta conectar las credenciales de autenticación</h2>
+              <p>
+                Añade las variables <code>VITE_FIREBASE_*</code> en tu entorno para habilitar login real de clientes.
+              </p>
+              <p>
+                Variables mínimas: <code>VITE_FIREBASE_API_KEY</code>, <code>VITE_FIREBASE_AUTH_DOMAIN</code>, <code>VITE_FIREBASE_PROJECT_ID</code> y <code>VITE_FIREBASE_APP_ID</code>.
+              </p>
+            </article>
+          ) : (
+            <form className="contact-form" onSubmit={handleLoginSubmit}>
+              <h2>{user ? 'Sesión activa' : 'Iniciar sesión'}</h2>
+              {user ? (
+                <p>Conectada como {user.email}</p>
+              ) : (
+                <>
+                  <label>
+                    Correo electrónico
+                    <input
+                      type="email"
+                      placeholder="tu@email.com"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      required
+                    />
+                  </label>
+                  <label>
+                    Contraseña
+                    <input
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      minLength={6}
+                      required
+                    />
+                  </label>
+                </>
+              )}
+
+              {authError ? <p className="collection-upload-form__error">{authError}</p> : null}
+              {authMessage ? <p className="collection-upload-form__message">{authMessage}</p> : null}
+
+              {user ? (
+                <button type="button" className="button button--secondary" onClick={onLogout}>
+                  Cerrar sesión
+                </button>
+              ) : (
+                <div className="product-card__actions product-card__actions--shop">
+                  <button type="submit" className="button button--primary" disabled={!authReady}>
+                    Entrar
+                  </button>
+                  <button type="button" className="button button--secondary" onClick={handleRegister} disabled={!authReady}>
+                    Crear cuenta
+                  </button>
+                </div>
+              )}
+            </form>
+          )}
         </div>
       </PageSection>
     </>
@@ -1394,12 +1471,17 @@ function Footer() {
 }
 
 export default function App() {
+  const CART_STORAGE_KEY = 'atelier-cart-v1'
   const [menuOpen, setMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [route, setRoute] = useState(getRouteFromHash(window.location.hash))
   const [cartItems, setCartItems] = useState([])
   const [shopProducts, setShopProducts] = useState(products)
   const [catalogRefreshTick, setCatalogRefreshTick] = useState(0)
+  const [authUser, setAuthUser] = useState(null)
+  const [authReady, setAuthReady] = useState(true)
+  const [authError, setAuthError] = useState('')
+  const [authMessage, setAuthMessage] = useState('')
 
   const cartCount = cartItems.reduce((total, item) => total + item.qty, 0)
 
@@ -1432,6 +1514,103 @@ export default function App() {
     }
   }
 
+  const callFirebaseAuth = async (endpoint, email, password) => {
+    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/${endpoint}?key=${FIREBASE_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email.trim(),
+        password,
+        returnSecureToken: true
+      })
+    })
+
+    const payload = await response.json()
+    if (!response.ok) {
+      const message = payload?.error?.message || 'No se pudo completar la autenticación.'
+      throw new Error(message)
+    }
+
+    return payload
+  }
+
+  const handleLogin = async (email, password) => {
+    if (!isFirebaseConfigured) return
+    setAuthError('')
+    setAuthMessage('')
+    setAuthReady(false)
+    try {
+      const payload = await callFirebaseAuth('accounts:signInWithPassword', email, password)
+      const nextUser = {
+        email: payload.email,
+        idToken: payload.idToken,
+        localId: payload.localId
+      }
+      setAuthUser(nextUser)
+      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
+      setAuthMessage('Sesión iniciada correctamente.')
+    } catch (error) {
+      setAuthError(error?.message ?? 'No se pudo iniciar sesión.')
+    } finally {
+      setAuthReady(true)
+    }
+  }
+
+  const handleRegister = async (email, password) => {
+    if (!isFirebaseConfigured) return
+    setAuthError('')
+    setAuthMessage('')
+    setAuthReady(false)
+    try {
+      const payload = await callFirebaseAuth('accounts:signUp', email, password)
+      const nextUser = {
+        email: payload.email,
+        idToken: payload.idToken,
+        localId: payload.localId
+      }
+      setAuthUser(nextUser)
+      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
+      setAuthMessage('Cuenta creada correctamente.')
+    } catch (error) {
+      setAuthError(error?.message ?? 'No se pudo crear la cuenta.')
+    } finally {
+      setAuthReady(true)
+    }
+  }
+
+  const handleLogout = async () => {
+    setAuthError('')
+    setAuthMessage('')
+    setAuthUser(null)
+    window.localStorage.removeItem(AUTH_STORAGE_KEY)
+    setAuthMessage('Sesión cerrada.')
+  }
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(CART_STORAGE_KEY)
+      if (!saved) return
+      const parsed = JSON.parse(saved)
+      if (!Array.isArray(parsed)) return
+      const normalized = parsed
+        .filter((line) => line && typeof line.slug === 'string' && Number.isFinite(line.qty))
+        .map((line) => ({ slug: line.slug, qty: Math.max(1, Math.floor(line.qty)) }))
+      if (normalized.length > 0) {
+        setCartItems(normalized)
+      }
+    } catch {
+      // Si falla lectura, usamos carrito en memoria.
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems))
+    } catch {
+      // Si falla guardado, el carrito sigue funcionando en memoria.
+    }
+  }, [cartItems])
+
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 18)
     const onHashChange = () => {
@@ -1452,6 +1631,19 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    if (!isFirebaseConfigured) return
+    try {
+      const savedAuth = window.localStorage.getItem(AUTH_STORAGE_KEY)
+      if (!savedAuth) return
+      const parsed = JSON.parse(savedAuth)
+      if (!parsed?.email || !parsed?.idToken) return
+      setAuthUser(parsed)
+    } catch {
+      // Si falla, no restauramos sesión.
+    }
+  }, [])
+
+  useEffect(() => {
     loadShopProducts()
   }, [])
 
@@ -1463,7 +1655,19 @@ export default function App() {
   if (route === '/coleccion') page = <CollectionPage onAddToCart={handleAddToCart} productsList={shopProducts} onRefreshCatalog={loadShopProducts} />
   if (route === '/producto') page = <ProductPage onAddToCart={handleAddToCart} productsList={shopProducts} />
   if (route === '/carrito') page = <CartPage cartItems={cartItems} onAddToCart={handleAddToCart} productsList={shopProducts} />
-  if (route === '/acceder') page = <LoginPage />
+  if (route === '/acceder') {
+    page = (
+      <LoginPage
+        user={authUser}
+        authReady={authReady}
+        authError={authError}
+        authMessage={authMessage}
+        onLogin={handleLogin}
+        onRegister={handleRegister}
+        onLogout={handleLogout}
+      />
+    )
+  }
   if (route === '/encargos') page = <OrdersPage />
   if (route === '/diario') page = <JournalPage />
   if (route === '/sobre-mi') page = <AboutPage />
