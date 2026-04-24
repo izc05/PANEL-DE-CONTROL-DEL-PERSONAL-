@@ -1316,6 +1316,28 @@ function JournalPage() {
         </div>
       </section>
 
+      <section className="section-block section-block--soft journal-conversion">
+        <div className="container journal-conversion__grid">
+          <article className="journal-conversion__card">
+            <p className="eyebrow">Después del vídeo</p>
+            <h3>¿Quieres una pieza inspirada en este proceso?</h3>
+            <p>Cuéntame tu idea y te propongo formato, paleta y acabado en menos de 48h.</p>
+            <a className="button button--primary" href="#/encargos">
+              Pedir encargo
+            </a>
+          </article>
+
+          <article className="journal-conversion__card journal-conversion__card--secondary">
+            <p className="eyebrow">Siguiente paso</p>
+            <h3>Ver colección completa</h3>
+            <p>Si prefieres empezar por una pieza ya disponible, revisa la colección y añade al carrito.</p>
+            <a className="button button--secondary" href="#/coleccion">
+              Ir a colección
+            </a>
+          </article>
+        </div>
+      </section>
+
       <section id="diario-entradas" className="section-block">
         <div className="container journal-grid journal-grid--large">
           {journalEntries.map((entry) => (
