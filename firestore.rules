@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Cada cliente solo puede leer/escribir sus propios pedidos
+    match /orders/{orderId} {
+      allow create: if request.auth != null
+        && request.resource.data.ownerId == request.auth.uid;
+
+      allow read, update, delete: if request.auth != null
+        && resource.data.ownerId == request.auth.uid
+        && (!('ownerId' in request.resource.data) || request.resource.data.ownerId == resource.data.ownerId);
+    }
+  }
+}
