@@ -16,6 +16,24 @@ npm install
 npm run dev
 ```
 
+## Configuración Firebase (fase 3+)
+
+1. Copia el ejemplo de variables:
+
+```bash
+cp .env.example .env.local
+```
+
+2. Rellena en `.env.local` al menos:
+
+- `VITE_FIREBASE_API_KEY`
+- `VITE_FIREBASE_PROJECT_ID`
+
+3. Reinicia `npm run dev`.
+
+> Seguridad: no subas nunca `.env.local` al repositorio.  
+> Si una clave se comparte por error, rota esa clave desde Firebase Console.
+
 ## Build de producción
 
 ```bash
