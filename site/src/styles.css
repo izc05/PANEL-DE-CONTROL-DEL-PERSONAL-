@@ -824,6 +824,18 @@ h3,
   background: #fff;
 }
 
+.login-orders-panel__actions {
+  margin-top: 0.75rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.login-orders-panel__actions p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+}
+
 .collection-intro-panel {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);

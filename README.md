@@ -76,6 +76,10 @@ Si este JSON no existe o falla, la app usa el catálogo por defecto de `site/src
 - Guardado local de solicitudes de encargo desde Diario.
 - Panel en Acceder para gestionar estado de cada solicitud (recibido/en proceso/listo).
 
+#### Avance fase 3.1 (actual)
+- Sincronización manual de solicitudes con Firestore (Firebase) desde Acceder.
+- Requisito: configurar `VITE_FIREBASE_API_KEY` y `VITE_FIREBASE_PROJECT_ID`.
+
 ### Fase 4 · Cierre de tienda (2 a 3 semanas)
 - Checkout más completo (pasarela o confirmación guiada).
 - Gestión de stock/disponibilidad básica.

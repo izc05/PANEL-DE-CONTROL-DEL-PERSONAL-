@@ -11,6 +11,7 @@ import {
 } from './content'
 
 const FIREBASE_API_KEY = import.meta.env.VITE_FIREBASE_API_KEY
+const FIREBASE_PROJECT_ID = import.meta.env.VITE_FIREBASE_PROJECT_ID
 const isFirebaseConfigured = Boolean(FIREBASE_API_KEY)
 const AUTH_STORAGE_KEY = 'atelier-auth-v1'
 const JOURNAL_CTA_METRICS_KEY = 'atelier-journal-cta-metrics-v1'
@@ -82,6 +83,15 @@ const getJournalOrderCtaVariant = () => {
   } catch {
     return 'A'
   }
+}
+
+const toFirestoreString = (value) => ({ stringValue: String(value ?? '') })
+
+const fromFirestoreString = (value) => {
+  if (!value) return ''
+  if (typeof value.stringValue === 'string') return value.stringValue
+  if (typeof value.timestampValue === 'string') return value.timestampValue
+  return ''
 }
 
 const getShopCategories = (productList) => [
@@ -1153,7 +1163,20 @@ function CartPage({ cartItems, onAddToCart, productsList }) {
   )
 }
 
-function LoginPage({ user, authReady, authError, authMessage, onLogin, onRegister, onLogout, orders, onUpdateOrderStatus }) {
+function LoginPage({
+  user,
+  authReady,
+  authError,
+  authMessage,
+  onLogin,
+  onRegister,
+  onLogout,
+  orders,
+  onUpdateOrderStatus,
+  onSyncOrders,
+  syncMessage,
+  isSyncing
+}) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [journalMetrics, setJournalMetrics] = useState(null)
@@ -1308,6 +1331,12 @@ function LoginPage({ user, authReady, authError, authMessage, onLogin, onRegiste
                 ))}
               </div>
             )}
+            <div className="login-orders-panel__actions">
+              <button type="button" className="button button--secondary" onClick={onSyncOrders} disabled={!user || isSyncing}>
+                {isSyncing ? 'Sincronizando...' : 'Sincronizar con Firebase'}
+              </button>
+              {syncMessage ? <p>{syncMessage}</p> : null}
+            </div>
           </article>
         </div>
       </PageSection>
@@ -1686,6 +1715,8 @@ export default function App() {
   const [authReady, setAuthReady] = useState(true)
   const [authError, setAuthError] = useState('')
   const [authMessage, setAuthMessage] = useState('')
+  const [syncMessage, setSyncMessage] = useState('')
+  const [isSyncing, setIsSyncing] = useState(false)
 
   const cartCount = cartItems.reduce((total, item) => total + item.qty, 0)
 
@@ -1736,6 +1767,71 @@ export default function App() {
     }
 
     return payload
+  }
+
+  const saveOrderToFirestore = async (order, currentUser) => {
+    if (!FIREBASE_PROJECT_ID || !currentUser?.idToken || !currentUser?.localId) return
+
+    await fetch(`https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/orders?documentId=${encodeURIComponent(order.id)}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${currentUser.idToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        fields: {
+          id: toFirestoreString(order.id),
+          name: toFirestoreString(order.name),
+          whatsapp: toFirestoreString(order.whatsapp),
+          idea: toFirestoreString(order.idea),
+          source: toFirestoreString(order.source),
+          status: toFirestoreString(order.status),
+          createdAt: toFirestoreString(order.createdAt),
+          ownerId: toFirestoreString(currentUser.localId)
+        }
+      })
+    })
+  }
+
+  const patchOrderStatusToFirestore = async (order, currentUser) => {
+    if (!FIREBASE_PROJECT_ID || !currentUser?.idToken) return
+    await fetch(`https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/orders/${encodeURIComponent(order.id)}?updateMask.fieldPaths=status`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${currentUser.idToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        fields: {
+          status: toFirestoreString(order.status)
+        }
+      })
+    })
+  }
+
+  const fetchOrdersFromFirestore = async (currentUser) => {
+    if (!FIREBASE_PROJECT_ID || !currentUser?.idToken || !currentUser?.localId) return []
+    const response = await fetch(`https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/orders?pageSize=100`, {
+      headers: {
+        Authorization: `Bearer ${currentUser.idToken}`
+      }
+    })
+    if (!response.ok) return []
+    const payload = await response.json()
+    const docs = Array.isArray(payload?.documents) ? payload.documents : []
+
+    return docs
+      .map((doc) => ({
+        id: fromFirestoreString(doc.fields?.id) || doc.name?.split('/').pop(),
+        name: fromFirestoreString(doc.fields?.name),
+        whatsapp: fromFirestoreString(doc.fields?.whatsapp),
+        idea: fromFirestoreString(doc.fields?.idea),
+        source: fromFirestoreString(doc.fields?.source) || 'firebase_sync',
+        status: fromFirestoreString(doc.fields?.status) || 'Recibido',
+        createdAt: fromFirestoreString(doc.fields?.createdAt) || new Date().toISOString(),
+        ownerId: fromFirestoreString(doc.fields?.ownerId)
+      }))
+      .filter((item) => item.ownerId === currentUser.localId)
   }
 
   const handleLogin = async (email, password) => {
@@ -1791,21 +1887,60 @@ export default function App() {
   }
 
   const handleCreateOrder = (orderDraft) => {
-    setOrders((items) => [
-      {
-        id: `order-${Date.now()}`,
-        status: 'Recibido',
-        createdAt: new Date().toISOString(),
-        ...orderDraft
-      },
-      ...items
-    ])
+    const nextOrder = {
+      id: `order-${Date.now()}`,
+      status: 'Recibido',
+      createdAt: new Date().toISOString(),
+      ...orderDraft
+    }
+    setOrders((items) => [nextOrder, ...items])
+    if (authUser) {
+      saveOrderToFirestore(nextOrder, authUser).catch(() => {})
+    }
   }
 
   const handleUpdateOrderStatus = (orderId, nextStatus) => {
-    setOrders((items) => items.map((order) => (
-      order.id === orderId ? { ...order, status: nextStatus } : order
-    )))
+    setOrders((items) => {
+      const updated = items.map((order) => (
+        order.id === orderId ? { ...order, status: nextStatus } : order
+      ))
+      if (authUser) {
+        const changed = updated.find((order) => order.id === orderId)
+        if (changed) {
+          patchOrderStatusToFirestore(changed, authUser).catch(() => {})
+        }
+      }
+      return updated
+    })
+  }
+
+  const handleSyncOrders = async () => {
+    if (!authUser) {
+      setSyncMessage('Inicia sesión para sincronizar pedidos.')
+      return
+    }
+    if (!FIREBASE_PROJECT_ID) {
+      setSyncMessage('Falta VITE_FIREBASE_PROJECT_ID para sincronizar con Firestore.')
+      return
+    }
+    setIsSyncing(true)
+    setSyncMessage('')
+    try {
+      for (const order of orders) {
+        await saveOrderToFirestore(order, authUser)
+      }
+      const remoteOrders = await fetchOrdersFromFirestore(authUser)
+      const localMap = new Map(orders.map((order) => [order.id, order]))
+      for (const remoteOrder of remoteOrders) {
+        localMap.set(remoteOrder.id, remoteOrder)
+      }
+      setOrders(Array.from(localMap.values()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
+      setSyncMessage('Pedidos sincronizados con Firebase correctamente.')
+    } catch {
+      setSyncMessage('No se pudo completar la sincronización con Firebase.')
+    } finally {
+      setIsSyncing(false)
+    }
   }
 
   useEffect(() => {
@@ -1909,6 +2044,9 @@ export default function App() {
         onLogout={handleLogout}
         orders={orders}
         onUpdateOrderStatus={handleUpdateOrderStatus}
+        onSyncOrders={handleSyncOrders}
+        syncMessage={syncMessage}
+        isSyncing={isSyncing}
       />
     )
   }
