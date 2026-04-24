@@ -72,6 +72,10 @@ Si este JSON no existe o falla, la app usa el catálogo por defecto de `site/src
 - Persistencia de sesión y página de estado de pedidos.
 - Validaciones de formulario y feedback de errores.
 
+#### Avance fase 3.0 (actual)
+- Guardado local de solicitudes de encargo desde Diario.
+- Panel en Acceder para gestionar estado de cada solicitud (recibido/en proceso/listo).
+
 ### Fase 4 · Cierre de tienda (2 a 3 semanas)
 - Checkout más completo (pasarela o confirmación guiada).
 - Gestión de stock/disponibilidad básica.

@@ -788,6 +788,42 @@ h3,
   margin-top: 0.8rem;
 }
 
+.login-orders-panel {
+  margin-top: 1rem;
+}
+
+.login-orders-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.login-orders-item {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.9rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(142, 107, 69, 0.2);
+  background: rgba(255, 251, 246, 0.92);
+}
+
+.login-orders-item small {
+  color: var(--ink-soft);
+}
+
+.login-orders-item label {
+  display: grid;
+  gap: 0.3rem;
+  color: #6f5340;
+}
+
+.login-orders-item select {
+  border: 1px solid rgba(142, 107, 69, 0.22);
+  border-radius: 0.8rem;
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+  background: #fff;
+}
+
 .collection-intro-panel {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);

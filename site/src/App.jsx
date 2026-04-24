@@ -15,6 +15,7 @@ const isFirebaseConfigured = Boolean(FIREBASE_API_KEY)
 const AUTH_STORAGE_KEY = 'atelier-auth-v1'
 const JOURNAL_CTA_METRICS_KEY = 'atelier-journal-cta-metrics-v1'
 const JOURNAL_CTA_VARIANT_KEY = 'atelier-journal-cta-variant-v1'
+const ORDERS_STORAGE_KEY = 'atelier-orders-v1'
 
 const routeTitles = {
   '/': 'Atelier Lumière',
@@ -1152,7 +1153,7 @@ function CartPage({ cartItems, onAddToCart, productsList }) {
   )
 }
 
-function LoginPage({ user, authReady, authError, authMessage, onLogin, onRegister, onLogout }) {
+function LoginPage({ user, authReady, authError, authMessage, onLogin, onRegister, onLogout, orders, onUpdateOrderStatus }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [journalMetrics, setJournalMetrics] = useState(null)
@@ -1276,6 +1277,38 @@ function LoginPage({ user, authReady, authError, authMessage, onLogin, onRegiste
               Reiniciar métricas
             </button>
           </article>
+
+          <article className="quote-panel quote-panel--signature login-orders-panel">
+            <p className="eyebrow">Fase 3 · Solicitudes</p>
+            <h3>Mis solicitudes recibidas</h3>
+            {!user ? <p>Inicia sesión para gestionar y actualizar el estado de pedidos.</p> : null}
+            {orders.length === 0 ? (
+              <p>Aún no hay solicitudes guardadas desde el formulario rápido del Diario.</p>
+            ) : (
+              <div className="login-orders-list">
+                {orders.map((order) => (
+                  <article key={order.id} className="login-orders-item">
+                    <strong>{order.name}</strong>
+                    <span>{order.whatsapp}</span>
+                    <p>{order.idea}</p>
+                    <small>{new Date(order.createdAt).toLocaleString('es-ES')}</small>
+                    {user ? (
+                      <label>
+                        Estado
+                        <select value={order.status} onChange={(event) => onUpdateOrderStatus(order.id, event.target.value)}>
+                          <option value="Recibido">Recibido</option>
+                          <option value="En proceso">En proceso</option>
+                          <option value="Listo para entregar">Listo para entregar</option>
+                        </select>
+                      </label>
+                    ) : (
+                      <p>Estado: {order.status}</p>
+                    )}
+                  </article>
+                ))}
+              </div>
+            )}
+          </article>
         </div>
       </PageSection>
     </>
@@ -1333,7 +1366,7 @@ function OrdersPage() {
   )
 }
 
-function JournalPage() {
+function JournalPage({ onCreateOrder }) {
   const [orderCtaVariant] = useState(getJournalOrderCtaVariant)
   const [quickOrderForm, setQuickOrderForm] = useState({
     name: '',
@@ -1354,6 +1387,12 @@ function JournalPage() {
     }
 
     trackJournalCtaClick('quick_order_submit')
+    onCreateOrder({
+      name,
+      whatsapp,
+      idea,
+      source: 'journal_quick_form'
+    })
 
     const text = `Hola, soy ${name}. Mi WhatsApp es ${whatsapp}. Idea de encargo: ${idea}`
     window.open(`https://wa.me/34612345678?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
@@ -1642,6 +1681,7 @@ export default function App() {
   const [cartItems, setCartItems] = useState([])
   const [shopProducts, setShopProducts] = useState(products)
   const [catalogRefreshTick, setCatalogRefreshTick] = useState(0)
+  const [orders, setOrders] = useState([])
   const [authUser, setAuthUser] = useState(null)
   const [authReady, setAuthReady] = useState(true)
   const [authError, setAuthError] = useState('')
@@ -1750,6 +1790,24 @@ export default function App() {
     setAuthMessage('Sesión cerrada.')
   }
 
+  const handleCreateOrder = (orderDraft) => {
+    setOrders((items) => [
+      {
+        id: `order-${Date.now()}`,
+        status: 'Recibido',
+        createdAt: new Date().toISOString(),
+        ...orderDraft
+      },
+      ...items
+    ])
+  }
+
+  const handleUpdateOrderStatus = (orderId, nextStatus) => {
+    setOrders((items) => items.map((order) => (
+      order.id === orderId ? { ...order, status: nextStatus } : order
+    )))
+  }
+
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(CART_STORAGE_KEY)
@@ -1769,11 +1827,31 @@ export default function App() {
 
   useEffect(() => {
     try {
+      const savedOrders = window.localStorage.getItem(ORDERS_STORAGE_KEY)
+      if (!savedOrders) return
+      const parsed = JSON.parse(savedOrders)
+      if (!Array.isArray(parsed)) return
+      setOrders(parsed)
+    } catch {
+      // Si falla lectura, seguimos sin pedidos persistidos.
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
       window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems))
     } catch {
       // Si falla guardado, el carrito sigue funcionando en memoria.
     }
   }, [cartItems])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders))
+    } catch {
+      // Si falla guardado, pedidos siguen en memoria.
+    }
+  }, [orders])
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 18)
@@ -1829,11 +1907,13 @@ export default function App() {
         onLogin={handleLogin}
         onRegister={handleRegister}
         onLogout={handleLogout}
+        orders={orders}
+        onUpdateOrderStatus={handleUpdateOrderStatus}
       />
     )
   }
   if (route === '/encargos') page = <OrdersPage />
-  if (route === '/diario') page = <JournalPage />
+  if (route === '/diario') page = <JournalPage onCreateOrder={handleCreateOrder} />
   if (route === '/sobre-mi') page = <AboutPage />
   if (route === '/contacto') page = <ContactPage />
 
