@@ -10,6 +10,14 @@ import {
   products
 } from './content'
 
+const FIREBASE_API_KEY = import.meta.env.VITE_FIREBASE_API_KEY
+const FIREBASE_PROJECT_ID = import.meta.env.VITE_FIREBASE_PROJECT_ID
+const isFirebaseConfigured = Boolean(FIREBASE_API_KEY)
+const AUTH_STORAGE_KEY = 'atelier-auth-v1'
+const JOURNAL_CTA_METRICS_KEY = 'atelier-journal-cta-metrics-v1'
+const JOURNAL_CTA_VARIANT_KEY = 'atelier-journal-cta-variant-v1'
+const ORDERS_STORAGE_KEY = 'atelier-orders-v1'
+
 const routeTitles = {
   '/': 'Atelier Lumière',
   '/coleccion': 'Colección · Atelier Lumière',
@@ -35,6 +43,55 @@ const getRouteClass = (route) => {
 const whatsappHrefForProduct = (product) => {
   const text = `Hola, me interesa ${product.title} (${product.price}). ¿Me das más información?`
   return `https://wa.me/34612345678?text=${encodeURIComponent(text)}`
+}
+
+const whatsappHrefForCart = (lines) => {
+  if (!Array.isArray(lines) || lines.length === 0) {
+    return 'https://wa.me/34612345678'
+  }
+
+  const summary = lines
+    .map((line) => `• ${line.product.title} x${line.qty} (${line.product.price})`)
+    .join('\n')
+
+  const text = `Hola, quiero finalizar mi solicitud con estas piezas:\n${summary}\n\n¿Me confirmas disponibilidad y siguientes pasos?`
+  return `https://wa.me/34612345678?text=${encodeURIComponent(text)}`
+}
+
+const trackJournalCtaClick = (ctaName) => {
+  try {
+    const raw = window.localStorage.getItem(JOURNAL_CTA_METRICS_KEY)
+    const current = raw ? JSON.parse(raw) : {}
+    const next = {
+      ...current,
+      [ctaName]: (current?.[ctaName] ?? 0) + 1,
+      lastClickedAt: new Date().toISOString()
+    }
+    window.localStorage.setItem(JOURNAL_CTA_METRICS_KEY, JSON.stringify(next))
+  } catch {
+    // Si falla, no bloqueamos la acción principal.
+  }
+}
+
+const getJournalOrderCtaVariant = () => {
+  try {
+    const saved = window.localStorage.getItem(JOURNAL_CTA_VARIANT_KEY)
+    if (saved === 'A' || saved === 'B') return saved
+    const nextVariant = Math.random() > 0.5 ? 'A' : 'B'
+    window.localStorage.setItem(JOURNAL_CTA_VARIANT_KEY, nextVariant)
+    return nextVariant
+  } catch {
+    return 'A'
+  }
+}
+
+const toFirestoreString = (value) => ({ stringValue: String(value ?? '') })
+
+const fromFirestoreString = (value) => {
+  if (!value) return ''
+  if (typeof value.stringValue === 'string') return value.stringValue
+  if (typeof value.timestampValue === 'string') return value.timestampValue
+  return ''
 }
 
 const getShopCategories = (productList) => [
@@ -336,12 +393,9 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
   const [editorPinInput, setEditorPinInput] = useState('')
   const [isEditorUnlocked, setIsEditorUnlocked] = useState(false)
   const [editorAccessError, setEditorAccessError] = useState('')
-<<<<<<< codex/add-article-upload-feature
   const [isEditorPinConfigured, setIsEditorPinConfigured] = useState(false)
   const [editorSetupPin, setEditorSetupPin] = useState('')
   const [editorSetupPinConfirm, setEditorSetupPinConfirm] = useState('')
-=======
->>>>>>> main
   const allProducts = [...localProducts, ...productsList]
   const categories = getShopCategories(allProducts)
   const [activeCategory, setActiveCategory] = useState('Todos')
@@ -534,7 +588,6 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
     setUploadMessage(refreshed ? 'Catálogo recargado con la versión más reciente.' : 'No se pudo recargar ahora. Inténtalo en unos segundos.')
   }
 
-<<<<<<< codex/add-article-upload-feature
   const hashPin = async (value) => {
     const normalized = value.trim()
     const encoder = new TextEncoder()
@@ -574,11 +627,6 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
 
     const pinHash = await hashPin(editorPinInput)
     if (pinHash !== storedHash) {
-=======
-  const handleUnlockEditor = (event) => {
-    event.preventDefault()
-    if (editorPinInput.trim() !== EDITOR_PIN) {
->>>>>>> main
       setEditorAccessError('Clave incorrecta. Solo la propietaria puede subir artículos.')
       return
     }
@@ -610,10 +658,7 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
 
   useEffect(() => {
     setIsEditorUnlocked(window.localStorage.getItem(EDITOR_SESSION_KEY) === 'open')
-<<<<<<< codex/add-article-upload-feature
     setIsEditorPinConfigured(Boolean(window.localStorage.getItem(EDITOR_PIN_HASH_KEY)))
-=======
->>>>>>> main
   }, [])
 
   useEffect(() => {
@@ -691,7 +736,6 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
             </div>
             {!isEditorUnlocked ? (
               <form className="collection-upload-form" onSubmit={handleUnlockEditor}>
-<<<<<<< codex/add-article-upload-feature
                 {!isEditorPinConfigured ? (
                   <>
                     <label htmlFor="editor-pin-setup">Crea tu clave privada (solo una vez)</label>
@@ -749,26 +793,6 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
                     </div>
                   </>
                 )}
-=======
-                <label htmlFor="editor-pin">Acceso privado para editar catálogo</label>
-                <input
-                  id="editor-pin"
-                  type="password"
-                  value={editorPinInput}
-                  onChange={(event) => {
-                    setEditorPinInput(event.target.value)
-                    setEditorAccessError('')
-                  }}
-                  placeholder="Introduce tu clave"
-                  aria-invalid={Boolean(editorAccessError)}
-                />
-                <div className="collection-upload-form__actions">
-                  <button type="submit" className="button button--primary">Entrar como propietaria</button>
-                  <button type="button" className="button button--secondary" onClick={handleRefreshCatalogNow}>
-                    Forzar actualización
-                  </button>
-                </div>
->>>>>>> main
                 {editorAccessError ? <p className="collection-upload-form__error">{editorAccessError}</p> : null}
                 {uploadMessage ? <p className="collection-upload-form__message" role="status">{uploadMessage}</p> : null}
               </form>
@@ -1084,13 +1108,14 @@ function CartPage({ cartItems, onAddToCart, productsList }) {
       return product ? { ...line, product } : null
     })
     .filter(Boolean)
+  const checkoutWhatsappHref = whatsappHrefForCart(lines)
 
   return (
     <>
       <PageHero
         eyebrow="Carrito"
         title="Tu selección del atelier"
-        text="Revisa tus piezas y continúa con tu solicitud. Este flujo quedará preparado para checkout en la siguiente fase."
+        text="Revisa tus piezas y finaliza tu solicitud por WhatsApp para confirmar disponibilidad, tiempos y entrega."
         image={mediaConfig.visualLead}
         alt="Mesa del atelier con piezas seleccionadas"
       />
@@ -1123,8 +1148,8 @@ function CartPage({ cartItems, onAddToCart, productsList }) {
                       <button type="button" className="button button--secondary" onClick={() => onAddToCart(line.product)}>
                         Añadir otra
                       </button>
-                      <a className="button button--primary" href="#/contacto">
-                        Finalizar solicitud
+                      <a className="button button--primary" href={checkoutWhatsappHref} target="_blank" rel="noreferrer">
+                        Finalizar por WhatsApp
                       </a>
                     </div>
                   </div>
@@ -1138,7 +1163,76 @@ function CartPage({ cartItems, onAddToCart, productsList }) {
   )
 }
 
-function LoginPage() {
+function LoginPage({
+  user,
+  authReady,
+  authError,
+  authMessage,
+  onLogin,
+  onRegister,
+  onLogout,
+  orders,
+  onUpdateOrderStatus,
+  onSyncOrders,
+  syncMessage,
+  isSyncing
+}) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [journalMetrics, setJournalMetrics] = useState(null)
+  const [journalVariant, setJournalVariant] = useState('A')
+  const [orderStatusFilter, setOrderStatusFilter] = useState('Todos')
+  const [copyMessage, setCopyMessage] = useState('')
+
+  useEffect(() => {
+    try {
+      const metricsRaw = window.localStorage.getItem(JOURNAL_CTA_METRICS_KEY)
+      const variantRaw = window.localStorage.getItem(JOURNAL_CTA_VARIANT_KEY)
+      setJournalMetrics(metricsRaw ? JSON.parse(metricsRaw) : null)
+      setJournalVariant(variantRaw === 'B' ? 'B' : 'A')
+    } catch {
+      setJournalMetrics(null)
+      setJournalVariant('A')
+    }
+  }, [])
+
+  const resetJournalMetrics = () => {
+    try {
+      window.localStorage.removeItem(JOURNAL_CTA_METRICS_KEY)
+      window.localStorage.removeItem(JOURNAL_CTA_VARIANT_KEY)
+      setJournalMetrics(null)
+      setJournalVariant('A')
+    } catch {
+      // Sin bloqueo si falla limpieza.
+    }
+  }
+
+  const handleLoginSubmit = async (event) => {
+    event.preventDefault()
+    await onLogin(email, password)
+  }
+
+  const handleRegister = async () => {
+    await onRegister(email, password)
+  }
+
+  const visibleOrders = orderStatusFilter === 'Todos'
+    ? orders
+    : orders.filter((order) => order.status === orderStatusFilter)
+  const customerOrders = user
+    ? orders.filter((order) => order.ownerId === user.localId)
+    : []
+
+  const handleCopyReference = async (reference) => {
+    if (!reference) return
+    try {
+      await navigator.clipboard.writeText(reference)
+      setCopyMessage(`Referencia ${reference} copiada.`)
+    } catch {
+      setCopyMessage('No se pudo copiar en este navegador.')
+    }
+  }
+
   return (
     <>
       <PageHero
@@ -1150,20 +1244,160 @@ function LoginPage() {
       />
       <PageSection className="section-block--soft">
         <div className="container split-panels split-panels--single">
-          <form className="contact-form">
-            <h2>Iniciar sesión</h2>
-            <label>
-              Correo electrónico
-              <input type="email" placeholder="tu@email.com" />
-            </label>
-            <label>
-              Contraseña
-              <input type="password" placeholder="••••••••" />
-            </label>
-            <button type="button" className="button button--primary">
-              Acceder
+          {!isFirebaseConfigured ? (
+            <article className="quote-panel quote-panel--signature">
+              <p className="eyebrow">Configurar Firebase</p>
+              <h2>Falta conectar las credenciales de autenticación</h2>
+              <p>
+                Añade las variables <code>VITE_FIREBASE_*</code> en tu entorno para habilitar login real de clientes.
+              </p>
+              <p>
+                Variables mínimas: <code>VITE_FIREBASE_API_KEY</code>, <code>VITE_FIREBASE_AUTH_DOMAIN</code>, <code>VITE_FIREBASE_PROJECT_ID</code> y <code>VITE_FIREBASE_APP_ID</code>.
+              </p>
+            </article>
+          ) : (
+            <form className="contact-form" onSubmit={handleLoginSubmit}>
+              <h2>{user ? 'Sesión activa' : 'Iniciar sesión'}</h2>
+              {user ? (
+                <p>Conectada como {user.email}</p>
+              ) : (
+                <>
+                  <label>
+                    Correo electrónico
+                    <input
+                      type="email"
+                      placeholder="tu@email.com"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      required
+                    />
+                  </label>
+                  <label>
+                    Contraseña
+                    <input
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      minLength={6}
+                      required
+                    />
+                  </label>
+                </>
+              )}
+
+              {authError ? <p className="collection-upload-form__error">{authError}</p> : null}
+              {authMessage ? <p className="collection-upload-form__message">{authMessage}</p> : null}
+
+              {user ? (
+                <button type="button" className="button button--secondary" onClick={onLogout}>
+                  Cerrar sesión
+                </button>
+              ) : (
+                <div className="product-card__actions product-card__actions--shop">
+                  <button type="submit" className="button button--primary" disabled={!authReady}>
+                    Entrar
+                  </button>
+                  <button type="button" className="button button--secondary" onClick={handleRegister} disabled={!authReady}>
+                    Crear cuenta
+                  </button>
+                </div>
+              )}
+            </form>
+          )}
+
+          <article className="quote-panel quote-panel--signature login-metrics-panel">
+            <p className="eyebrow">Métricas rápidas · Diario</p>
+            <h3>Panel local de conversión</h3>
+            <p>Variante A/B activa para CTA principal: <strong>{journalVariant}</strong>.</p>
+            <ul className="note-list">
+              <li>Clicks CTA encargo: {journalMetrics?.journal_order_cta_A ?? 0} (A) / {journalMetrics?.journal_order_cta_B ?? 0} (B)</li>
+              <li>Clicks CTA colección: {journalMetrics?.journal_collection_cta ?? 0}</li>
+              <li>Solicitudes rápidas enviadas: {journalMetrics?.quick_order_submit ?? 0}</li>
+            </ul>
+            <button type="button" className="button button--secondary" onClick={resetJournalMetrics}>
+              Reiniciar métricas
             </button>
-          </form>
+          </article>
+
+          <article className="quote-panel quote-panel--signature login-orders-panel">
+            <p className="eyebrow">Fase 3 · Solicitudes</p>
+            <h3>Mis solicitudes recibidas</h3>
+            {!user ? <p>Inicia sesión para gestionar y actualizar el estado de pedidos.</p> : null}
+            {orders.length > 0 ? (
+              <label>
+                Filtrar por estado
+                <select value={orderStatusFilter} onChange={(event) => setOrderStatusFilter(event.target.value)}>
+                  <option value="Todos">Todos</option>
+                  <option value="Recibido">Recibido</option>
+                  <option value="En proceso">En proceso</option>
+                  <option value="Listo para entregar">Listo para entregar</option>
+                </select>
+              </label>
+            ) : null}
+            {visibleOrders.length === 0 ? (
+              <p>Aún no hay solicitudes guardadas desde el formulario rápido del Diario.</p>
+            ) : (
+              <div className="login-orders-list">
+                {visibleOrders.map((order) => (
+                  <article key={order.id} className="login-orders-item">
+                    <strong>{order.name}</strong>
+                    <span className="login-orders-item__reference">Ref: {order.reference ?? 'Sin referencia'}</span>
+                    <span>{order.whatsapp}</span>
+                    <p>{order.idea}</p>
+                    <small>{new Date(order.createdAt).toLocaleString('es-ES')}</small>
+                    {user ? (
+                      <label>
+                        Estado
+                        <select value={order.status} onChange={(event) => onUpdateOrderStatus(order.id, event.target.value)}>
+                          <option value="Recibido">Recibido</option>
+                          <option value="En proceso">En proceso</option>
+                          <option value="Listo para entregar">Listo para entregar</option>
+                        </select>
+                      </label>
+                    ) : (
+                      <p>Estado: {order.status}</p>
+                    )}
+                  </article>
+                ))}
+              </div>
+            )}
+            <div className="login-orders-panel__actions">
+              <button type="button" className="button button--secondary" onClick={onSyncOrders} disabled={!user || isSyncing}>
+                {isSyncing ? 'Sincronizando...' : 'Sincronizar con Firebase'}
+              </button>
+              {syncMessage ? <p>{syncMessage}</p> : null}
+            </div>
+          </article>
+
+          {user ? (
+            <article className="quote-panel quote-panel--signature login-customer-orders">
+              <p className="eyebrow">Cliente · Mis pedidos</p>
+              <h3>Seguimiento rápido de tus referencias</h3>
+              {customerOrders.length === 0 ? (
+                <p>Aún no hay pedidos asociados a tu cuenta.</p>
+              ) : (
+                <div className="login-orders-list">
+                  {customerOrders.map((order) => (
+                    <article key={`customer-${order.id}`} className="login-orders-item">
+                      <div className="login-orders-item__header">
+                        <strong>{order.reference ?? 'Sin referencia'}</strong>
+                        <span className={`order-status-badge order-status-badge--${order.status.replace(/\s+/g, '-').toLowerCase()}`}>
+                          {order.status}
+                        </span>
+                      </div>
+                      <p>{order.idea}</p>
+                      <small>{new Date(order.createdAt).toLocaleString('es-ES')}</small>
+                      <button type="button" className="button button--secondary" onClick={() => handleCopyReference(order.reference)}>
+                        Copiar referencia
+                      </button>
+                    </article>
+                  ))}
+                </div>
+              )}
+              {copyMessage ? <p>{copyMessage}</p> : null}
+            </article>
+          ) : null}
         </div>
       </PageSection>
     </>
@@ -1221,7 +1455,39 @@ function OrdersPage() {
   )
 }
 
-function JournalPage() {
+function JournalPage({ onCreateOrder }) {
+  const [orderCtaVariant] = useState(getJournalOrderCtaVariant)
+  const [quickOrderForm, setQuickOrderForm] = useState({
+    name: '',
+    whatsapp: '',
+    idea: ''
+  })
+  const [quickOrderMessage, setQuickOrderMessage] = useState('')
+
+  const handleQuickOrderSubmit = (event) => {
+    event.preventDefault()
+    const name = quickOrderForm.name.trim()
+    const whatsapp = quickOrderForm.whatsapp.trim()
+    const idea = quickOrderForm.idea.trim()
+
+    if (name.length < 2 || whatsapp.length < 6 || idea.length < 10) {
+      setQuickOrderMessage('Completa nombre, WhatsApp y una idea breve (mínimo 10 caracteres).')
+      return
+    }
+
+    trackJournalCtaClick('quick_order_submit')
+    const createdOrder = onCreateOrder({
+      name,
+      whatsapp,
+      idea,
+      source: 'journal_quick_form'
+    })
+
+    const text = `Hola, soy ${name}. Mi WhatsApp es ${whatsapp}. Referencia: ${createdOrder.reference}. Idea de encargo: ${idea}`
+    window.open(`https://wa.me/34612345678?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
+    setQuickOrderMessage(`Te redirigí a WhatsApp. Referencia de seguimiento: ${createdOrder.reference}.`)
+  }
+
   return (
     <>
       <PageHero
@@ -1245,28 +1511,98 @@ function JournalPage() {
         </div>
       </section>
 
-      <section className="section-block section-block--soft">
-        <div className="container cinematic-panel cinematic-panel--v3">
-          <div className="cinematic-panel__copy">
-            <p className="eyebrow">Podcast del diario</p>
-            <h2>Un formato mini podcast para contar historias reales</h2>
+      <section className="collection-hero collection-hero--journal">
+        <div className="collection-hero__media">
+          <SmartVideo
+            controls={false}
+            autoPlay
+            loop
+            muted
+            poster={mediaConfig.heroPoster}
+            primarySrc={mediaConfig.journalVideo}
+            fallbackSrc={mediaConfig.atelierVideo}
+          />
+        </div>
+        <div className="collection-hero__veil" />
+        <div className="container collection-hero__grid">
+          <div className="collection-hero__copy">
+            <p className="eyebrow">Vídeo del diario · 50 segundos</p>
+            <h2>Una cápsula completa para vivir el taller en movimiento</h2>
             <p>
-              Cápsulas de menos de un minuto para contar procesos, datos y pequeñas anécdotas del atelier con imagen y voz.
+              Integramos el vídeo largo en formato inmersivo para mantener la misma estética potente de la colección y reforzar la sección Diario.
             </p>
-            <ul className="feature-list">
-              <li>Formato ágil para contenido tipo podcast visual.</li>
-              <li>Incluye historia breve, dato útil y detalle del proceso.</li>
-              <li>Perfecto para dar más vida a la sección Diario.</li>
-            </ul>
-          </div>
-
-          <div className="cinematic-panel__media">
-            <SmartVideo poster={mediaConfig.heroPoster} primarySrc={mediaConfig.journalVideo} fallbackSrc={mediaConfig.atelierVideo} />
+            <a className="button button--primary" href="#/diario#diario-entradas">
+              Ver entradas del diario
+            </a>
           </div>
         </div>
       </section>
 
-      <section className="section-block">
+      <section className="section-block section-block--soft journal-conversion">
+        <div className="container journal-conversion__grid">
+          <article className="journal-conversion__card">
+            <p className="eyebrow">Después del vídeo</p>
+            <h3>¿Quieres una pieza inspirada en este proceso?</h3>
+            <p>Cuéntame tu idea y te propongo formato, paleta y acabado en menos de 48h.</p>
+            <a
+              className="button button--primary"
+              href="#/encargos"
+              onClick={() => trackJournalCtaClick(`journal_order_cta_${orderCtaVariant}`)}
+            >
+              {orderCtaVariant === 'B' ? 'Quiero mi pieza' : 'Pedir encargo'}
+            </a>
+          </article>
+
+          <article className="journal-conversion__card journal-conversion__card--secondary">
+            <p className="eyebrow">Siguiente paso</p>
+            <h3>Ver colección completa</h3>
+            <p>Si prefieres empezar por una pieza ya disponible, revisa la colección y añade al carrito.</p>
+            <a className="button button--secondary" href="#/coleccion" onClick={() => trackJournalCtaClick('journal_collection_cta')}>
+              Ir a colección
+            </a>
+          </article>
+        </div>
+
+        <form className="journal-quick-form" onSubmit={handleQuickOrderSubmit}>
+          <h3>Solicitud rápida de encargo</h3>
+          <p>Déjame una idea y te llevo directamente a WhatsApp con el mensaje ya preparado.</p>
+          <div className="journal-quick-form__grid">
+            <label>
+              Nombre
+              <input
+                type="text"
+                value={quickOrderForm.name}
+                onChange={(event) => setQuickOrderForm((current) => ({ ...current, name: event.target.value }))}
+                placeholder="Tu nombre"
+              />
+            </label>
+            <label>
+              WhatsApp
+              <input
+                type="text"
+                value={quickOrderForm.whatsapp}
+                onChange={(event) => setQuickOrderForm((current) => ({ ...current, whatsapp: event.target.value }))}
+                placeholder="+34..."
+              />
+            </label>
+          </div>
+          <label>
+            Idea del encargo
+            <textarea
+              rows={3}
+              value={quickOrderForm.idea}
+              onChange={(event) => setQuickOrderForm((current) => ({ ...current, idea: event.target.value }))}
+              placeholder="Ejemplo: cojín bordado para regalo con iniciales y fecha"
+            />
+          </label>
+          <button type="submit" className="button button--primary">
+            Enviar a WhatsApp
+          </button>
+          {quickOrderMessage ? <p className="journal-quick-form__message">{quickOrderMessage}</p> : null}
+        </form>
+      </section>
+
+      <section id="diario-entradas" className="section-block">
         <div className="container journal-grid journal-grid--large">
           {journalEntries.map((entry) => (
             <article key={entry.slug} className="journal-card journal-card--editorial">
@@ -1427,12 +1763,20 @@ function Footer() {
 }
 
 export default function App() {
+  const CART_STORAGE_KEY = 'atelier-cart-v1'
   const [menuOpen, setMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [route, setRoute] = useState(getRouteFromHash(window.location.hash))
   const [cartItems, setCartItems] = useState([])
   const [shopProducts, setShopProducts] = useState(products)
   const [catalogRefreshTick, setCatalogRefreshTick] = useState(0)
+  const [orders, setOrders] = useState([])
+  const [authUser, setAuthUser] = useState(null)
+  const [authReady, setAuthReady] = useState(true)
+  const [authError, setAuthError] = useState('')
+  const [authMessage, setAuthMessage] = useState('')
+  const [syncMessage, setSyncMessage] = useState('')
+  const [isSyncing, setIsSyncing] = useState(false)
 
   const cartCount = cartItems.reduce((total, item) => total + item.qty, 0)
 
@@ -1465,6 +1809,251 @@ export default function App() {
     }
   }
 
+  const callFirebaseAuth = async (endpoint, email, password) => {
+    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/${endpoint}?key=${FIREBASE_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email.trim(),
+        password,
+        returnSecureToken: true
+      })
+    })
+
+    const payload = await response.json()
+    if (!response.ok) {
+      const message = payload?.error?.message || 'No se pudo completar la autenticación.'
+      throw new Error(message)
+    }
+
+    return payload
+  }
+
+  const saveOrderToFirestore = async (order, currentUser) => {
+    if (!FIREBASE_PROJECT_ID || !currentUser?.idToken || !currentUser?.localId) return
+
+    await fetch(`https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/orders?documentId=${encodeURIComponent(order.id)}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${currentUser.idToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        fields: {
+          id: toFirestoreString(order.id),
+          name: toFirestoreString(order.name),
+          whatsapp: toFirestoreString(order.whatsapp),
+          idea: toFirestoreString(order.idea),
+          source: toFirestoreString(order.source),
+          status: toFirestoreString(order.status),
+          createdAt: toFirestoreString(order.createdAt),
+          reference: toFirestoreString(order.reference),
+          ownerId: toFirestoreString(currentUser.localId)
+        }
+      })
+    })
+  }
+
+  const patchOrderStatusToFirestore = async (order, currentUser) => {
+    if (!FIREBASE_PROJECT_ID || !currentUser?.idToken) return
+    await fetch(`https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/orders/${encodeURIComponent(order.id)}?updateMask.fieldPaths=status`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${currentUser.idToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        fields: {
+          status: toFirestoreString(order.status)
+        }
+      })
+    })
+  }
+
+  const fetchOrdersFromFirestore = async (currentUser) => {
+    if (!FIREBASE_PROJECT_ID || !currentUser?.idToken || !currentUser?.localId) return []
+    const response = await fetch(`https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/orders?pageSize=100`, {
+      headers: {
+        Authorization: `Bearer ${currentUser.idToken}`
+      }
+    })
+    if (!response.ok) return []
+    const payload = await response.json()
+    const docs = Array.isArray(payload?.documents) ? payload.documents : []
+
+    return docs
+      .map((doc) => ({
+        id: fromFirestoreString(doc.fields?.id) || doc.name?.split('/').pop(),
+        name: fromFirestoreString(doc.fields?.name),
+        whatsapp: fromFirestoreString(doc.fields?.whatsapp),
+        idea: fromFirestoreString(doc.fields?.idea),
+        source: fromFirestoreString(doc.fields?.source) || 'firebase_sync',
+        status: fromFirestoreString(doc.fields?.status) || 'Recibido',
+        createdAt: fromFirestoreString(doc.fields?.createdAt) || new Date().toISOString(),
+        reference: fromFirestoreString(doc.fields?.reference),
+        ownerId: fromFirestoreString(doc.fields?.ownerId)
+      }))
+      .filter((item) => item.ownerId === currentUser.localId)
+  }
+
+  const handleLogin = async (email, password) => {
+    if (!isFirebaseConfigured) return
+    setAuthError('')
+    setAuthMessage('')
+    setAuthReady(false)
+    try {
+      const payload = await callFirebaseAuth('accounts:signInWithPassword', email, password)
+      const nextUser = {
+        email: payload.email,
+        idToken: payload.idToken,
+        localId: payload.localId
+      }
+      setAuthUser(nextUser)
+      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
+      setAuthMessage('Sesión iniciada correctamente.')
+    } catch (error) {
+      setAuthError(error?.message ?? 'No se pudo iniciar sesión.')
+    } finally {
+      setAuthReady(true)
+    }
+  }
+
+  const handleRegister = async (email, password) => {
+    if (!isFirebaseConfigured) return
+    setAuthError('')
+    setAuthMessage('')
+    setAuthReady(false)
+    try {
+      const payload = await callFirebaseAuth('accounts:signUp', email, password)
+      const nextUser = {
+        email: payload.email,
+        idToken: payload.idToken,
+        localId: payload.localId
+      }
+      setAuthUser(nextUser)
+      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
+      setAuthMessage('Cuenta creada correctamente.')
+    } catch (error) {
+      setAuthError(error?.message ?? 'No se pudo crear la cuenta.')
+    } finally {
+      setAuthReady(true)
+    }
+  }
+
+  const handleLogout = async () => {
+    setAuthError('')
+    setAuthMessage('')
+    setAuthUser(null)
+    window.localStorage.removeItem(AUTH_STORAGE_KEY)
+    setAuthMessage('Sesión cerrada.')
+  }
+
+  const handleCreateOrder = (orderDraft) => {
+    const reference = `AL-${Math.floor(1000 + Math.random() * 9000)}`
+    const nextOrder = {
+      id: `order-${Date.now()}`,
+      reference,
+      status: 'Recibido',
+      createdAt: new Date().toISOString(),
+      ownerId: authUser?.localId ?? 'guest',
+      ...orderDraft
+    }
+    setOrders((items) => [nextOrder, ...items])
+    if (authUser) {
+      saveOrderToFirestore(nextOrder, authUser).catch(() => {})
+    }
+    return nextOrder
+  }
+
+  const handleUpdateOrderStatus = (orderId, nextStatus) => {
+    setOrders((items) => {
+      const updated = items.map((order) => (
+        order.id === orderId ? { ...order, status: nextStatus } : order
+      ))
+      if (authUser) {
+        const changed = updated.find((order) => order.id === orderId)
+        if (changed) {
+          patchOrderStatusToFirestore(changed, authUser).catch(() => {})
+        }
+      }
+      return updated
+    })
+  }
+
+  const handleSyncOrders = async () => {
+    if (!authUser) {
+      setSyncMessage('Inicia sesión para sincronizar pedidos.')
+      return
+    }
+    if (!FIREBASE_PROJECT_ID) {
+      setSyncMessage('Falta VITE_FIREBASE_PROJECT_ID para sincronizar con Firestore.')
+      return
+    }
+    setIsSyncing(true)
+    setSyncMessage('')
+    try {
+      for (const order of orders) {
+        await saveOrderToFirestore(order, authUser)
+      }
+      const remoteOrders = await fetchOrdersFromFirestore(authUser)
+      const localMap = new Map(orders.map((order) => [order.id, order]))
+      for (const remoteOrder of remoteOrders) {
+        localMap.set(remoteOrder.id, remoteOrder)
+      }
+      setOrders(Array.from(localMap.values()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
+      setSyncMessage('Pedidos sincronizados con Firebase correctamente.')
+    } catch {
+      setSyncMessage('No se pudo completar la sincronización con Firebase.')
+    } finally {
+      setIsSyncing(false)
+    }
+  }
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(CART_STORAGE_KEY)
+      if (!saved) return
+      const parsed = JSON.parse(saved)
+      if (!Array.isArray(parsed)) return
+      const normalized = parsed
+        .filter((line) => line && typeof line.slug === 'string' && Number.isFinite(line.qty))
+        .map((line) => ({ slug: line.slug, qty: Math.max(1, Math.floor(line.qty)) }))
+      if (normalized.length > 0) {
+        setCartItems(normalized)
+      }
+    } catch {
+      // Si falla lectura, usamos carrito en memoria.
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      const savedOrders = window.localStorage.getItem(ORDERS_STORAGE_KEY)
+      if (!savedOrders) return
+      const parsed = JSON.parse(savedOrders)
+      if (!Array.isArray(parsed)) return
+      setOrders(parsed)
+    } catch {
+      // Si falla lectura, seguimos sin pedidos persistidos.
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems))
+    } catch {
+      // Si falla guardado, el carrito sigue funcionando en memoria.
+    }
+  }, [cartItems])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders))
+    } catch {
+      // Si falla guardado, pedidos siguen en memoria.
+    }
+  }, [orders])
+
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 18)
     const onHashChange = () => {
@@ -1485,6 +2074,19 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    if (!isFirebaseConfigured) return
+    try {
+      const savedAuth = window.localStorage.getItem(AUTH_STORAGE_KEY)
+      if (!savedAuth) return
+      const parsed = JSON.parse(savedAuth)
+      if (!parsed?.email || !parsed?.idToken) return
+      setAuthUser(parsed)
+    } catch {
+      // Si falla, no restauramos sesión.
+    }
+  }, [])
+
+  useEffect(() => {
     loadShopProducts()
   }, [])
 
@@ -1496,9 +2098,26 @@ export default function App() {
   if (route === '/coleccion') page = <CollectionPage onAddToCart={handleAddToCart} productsList={shopProducts} onRefreshCatalog={loadShopProducts} />
   if (route === '/producto') page = <ProductPage onAddToCart={handleAddToCart} productsList={shopProducts} />
   if (route === '/carrito') page = <CartPage cartItems={cartItems} onAddToCart={handleAddToCart} productsList={shopProducts} />
-  if (route === '/acceder') page = <LoginPage />
+  if (route === '/acceder') {
+    page = (
+      <LoginPage
+        user={authUser}
+        authReady={authReady}
+        authError={authError}
+        authMessage={authMessage}
+        onLogin={handleLogin}
+        onRegister={handleRegister}
+        onLogout={handleLogout}
+        orders={orders}
+        onUpdateOrderStatus={handleUpdateOrderStatus}
+        onSyncOrders={handleSyncOrders}
+        syncMessage={syncMessage}
+        isSyncing={isSyncing}
+      />
+    )
+  }
   if (route === '/encargos') page = <OrdersPage />
-  if (route === '/diario') page = <JournalPage />
+  if (route === '/diario') page = <JournalPage onCreateOrder={handleCreateOrder} />
   if (route === '/sobre-mi') page = <AboutPage />
   if (route === '/contacto') page = <ContactPage />
 
