@@ -336,12 +336,9 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
   const [editorPinInput, setEditorPinInput] = useState('')
   const [isEditorUnlocked, setIsEditorUnlocked] = useState(false)
   const [editorAccessError, setEditorAccessError] = useState('')
-<<<<<<< codex/add-article-upload-feature
   const [isEditorPinConfigured, setIsEditorPinConfigured] = useState(false)
   const [editorSetupPin, setEditorSetupPin] = useState('')
   const [editorSetupPinConfirm, setEditorSetupPinConfirm] = useState('')
-=======
->>>>>>> main
   const allProducts = [...localProducts, ...productsList]
   const categories = getShopCategories(allProducts)
   const [activeCategory, setActiveCategory] = useState('Todos')
@@ -534,7 +531,6 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
     setUploadMessage(refreshed ? 'Catálogo recargado con la versión más reciente.' : 'No se pudo recargar ahora. Inténtalo en unos segundos.')
   }
 
-<<<<<<< codex/add-article-upload-feature
   const hashPin = async (value) => {
     const normalized = value.trim()
     const encoder = new TextEncoder()
@@ -574,11 +570,6 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
 
     const pinHash = await hashPin(editorPinInput)
     if (pinHash !== storedHash) {
-=======
-  const handleUnlockEditor = (event) => {
-    event.preventDefault()
-    if (editorPinInput.trim() !== EDITOR_PIN) {
->>>>>>> main
       setEditorAccessError('Clave incorrecta. Solo la propietaria puede subir artículos.')
       return
     }
@@ -610,10 +601,7 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
 
   useEffect(() => {
     setIsEditorUnlocked(window.localStorage.getItem(EDITOR_SESSION_KEY) === 'open')
-<<<<<<< codex/add-article-upload-feature
     setIsEditorPinConfigured(Boolean(window.localStorage.getItem(EDITOR_PIN_HASH_KEY)))
-=======
->>>>>>> main
   }, [])
 
   useEffect(() => {
@@ -691,7 +679,6 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
             </div>
             {!isEditorUnlocked ? (
               <form className="collection-upload-form" onSubmit={handleUnlockEditor}>
-<<<<<<< codex/add-article-upload-feature
                 {!isEditorPinConfigured ? (
                   <>
                     <label htmlFor="editor-pin-setup">Crea tu clave privada (solo una vez)</label>
@@ -749,26 +736,6 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
                     </div>
                   </>
                 )}
-=======
-                <label htmlFor="editor-pin">Acceso privado para editar catálogo</label>
-                <input
-                  id="editor-pin"
-                  type="password"
-                  value={editorPinInput}
-                  onChange={(event) => {
-                    setEditorPinInput(event.target.value)
-                    setEditorAccessError('')
-                  }}
-                  placeholder="Introduce tu clave"
-                  aria-invalid={Boolean(editorAccessError)}
-                />
-                <div className="collection-upload-form__actions">
-                  <button type="submit" className="button button--primary">Entrar como propietaria</button>
-                  <button type="button" className="button button--secondary" onClick={handleRefreshCatalogNow}>
-                    Forzar actualización
-                  </button>
-                </div>
->>>>>>> main
                 {editorAccessError ? <p className="collection-upload-form__error">{editorAccessError}</p> : null}
                 {uploadMessage ? <p className="collection-upload-form__message" role="status">{uploadMessage}</p> : null}
               </form>
