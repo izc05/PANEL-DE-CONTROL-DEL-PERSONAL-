@@ -102,6 +102,10 @@ Si este JSON no existe o falla, la app usa el catálogo por defecto de `site/src
 - Referencia automática por solicitud (ejemplo `AL-1234`) para seguimiento rápido por WhatsApp.
 - Filtro por estado en panel Acceder para gestionar pedidos con más orden.
 
+#### Avance fase 3.3 (actual)
+- Vista “Mis pedidos” para cliente autenticado con estado y copia de referencia.
+- Estados visuales (badge) para seguimiento rápido de cada pedido.
+
 ### Fase 4 · Cierre de tienda (2 a 3 semanas)
 - Checkout más completo (pasarela o confirmación guiada).
 - Gestión de stock/disponibilidad básica.

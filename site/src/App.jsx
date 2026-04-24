@@ -1182,6 +1182,7 @@ function LoginPage({
   const [journalMetrics, setJournalMetrics] = useState(null)
   const [journalVariant, setJournalVariant] = useState('A')
   const [orderStatusFilter, setOrderStatusFilter] = useState('Todos')
+  const [copyMessage, setCopyMessage] = useState('')
 
   useEffect(() => {
     try {
@@ -1218,6 +1219,19 @@ function LoginPage({
   const visibleOrders = orderStatusFilter === 'Todos'
     ? orders
     : orders.filter((order) => order.status === orderStatusFilter)
+  const customerOrders = user
+    ? orders.filter((order) => order.ownerId === user.localId)
+    : []
+
+  const handleCopyReference = async (reference) => {
+    if (!reference) return
+    try {
+      await navigator.clipboard.writeText(reference)
+      setCopyMessage(`Referencia ${reference} copiada.`)
+    } catch {
+      setCopyMessage('No se pudo copiar en este navegador.')
+    }
+  }
 
   return (
     <>
@@ -1355,6 +1369,35 @@ function LoginPage({
               {syncMessage ? <p>{syncMessage}</p> : null}
             </div>
           </article>
+
+          {user ? (
+            <article className="quote-panel quote-panel--signature login-customer-orders">
+              <p className="eyebrow">Cliente · Mis pedidos</p>
+              <h3>Seguimiento rápido de tus referencias</h3>
+              {customerOrders.length === 0 ? (
+                <p>Aún no hay pedidos asociados a tu cuenta.</p>
+              ) : (
+                <div className="login-orders-list">
+                  {customerOrders.map((order) => (
+                    <article key={`customer-${order.id}`} className="login-orders-item">
+                      <div className="login-orders-item__header">
+                        <strong>{order.reference ?? 'Sin referencia'}</strong>
+                        <span className={`order-status-badge order-status-badge--${order.status.replace(/\s+/g, '-').toLowerCase()}`}>
+                          {order.status}
+                        </span>
+                      </div>
+                      <p>{order.idea}</p>
+                      <small>{new Date(order.createdAt).toLocaleString('es-ES')}</small>
+                      <button type="button" className="button button--secondary" onClick={() => handleCopyReference(order.reference)}>
+                        Copiar referencia
+                      </button>
+                    </article>
+                  ))}
+                </div>
+              )}
+              {copyMessage ? <p>{copyMessage}</p> : null}
+            </article>
+          ) : null}
         </div>
       </PageSection>
     </>
@@ -1912,6 +1955,7 @@ export default function App() {
       reference,
       status: 'Recibido',
       createdAt: new Date().toISOString(),
+      ownerId: authUser?.localId ?? 'guest',
       ...orderDraft
     }
     setOrders((items) => [nextOrder, ...items])
