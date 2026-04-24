@@ -59,6 +59,10 @@ Si este JSON no existe o falla, la app usa el catálogo por defecto de `site/src
 - Diario actualizado con bloque inmersivo de vídeo largo y transición visual más cuidada.
 - Añadidos bloques de conversión tras el vídeo para guiar a encargo o colección.
 
+#### Avance fase 2.2 (actual)
+- Formulario rápido de encargo conectado a WhatsApp desde Diario.
+- Métrica simple de clics en CTAs de Diario guardada en `localStorage`.
+
 ### Fase 3 · Cuenta cliente y datos (1 a 2 semanas)
 - Login/registro real (Firebase).
 - Persistencia de sesión y página de estado de pedidos.

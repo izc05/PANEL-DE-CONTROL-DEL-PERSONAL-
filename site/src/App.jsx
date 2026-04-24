@@ -13,6 +13,7 @@ import {
 const FIREBASE_API_KEY = import.meta.env.VITE_FIREBASE_API_KEY
 const isFirebaseConfigured = Boolean(FIREBASE_API_KEY)
 const AUTH_STORAGE_KEY = 'atelier-auth-v1'
+const JOURNAL_CTA_METRICS_KEY = 'atelier-journal-cta-metrics-v1'
 
 const routeTitles = {
   '/': 'Atelier Lumière',
@@ -52,6 +53,21 @@ const whatsappHrefForCart = (lines) => {
 
   const text = `Hola, quiero finalizar mi solicitud con estas piezas:\n${summary}\n\n¿Me confirmas disponibilidad y siguientes pasos?`
   return `https://wa.me/34612345678?text=${encodeURIComponent(text)}`
+}
+
+const trackJournalCtaClick = (ctaName) => {
+  try {
+    const raw = window.localStorage.getItem(JOURNAL_CTA_METRICS_KEY)
+    const current = raw ? JSON.parse(raw) : {}
+    const next = {
+      ...current,
+      [ctaName]: (current?.[ctaName] ?? 0) + 1,
+      lastClickedAt: new Date().toISOString()
+    }
+    window.localStorage.setItem(JOURNAL_CTA_METRICS_KEY, JSON.stringify(next))
+  } catch {
+    // Si falla, no bloqueamos la acción principal.
+  }
 }
 
 const getShopCategories = (productList) => [
@@ -1266,6 +1282,31 @@ function OrdersPage() {
 }
 
 function JournalPage() {
+  const [quickOrderForm, setQuickOrderForm] = useState({
+    name: '',
+    whatsapp: '',
+    idea: ''
+  })
+  const [quickOrderMessage, setQuickOrderMessage] = useState('')
+
+  const handleQuickOrderSubmit = (event) => {
+    event.preventDefault()
+    const name = quickOrderForm.name.trim()
+    const whatsapp = quickOrderForm.whatsapp.trim()
+    const idea = quickOrderForm.idea.trim()
+
+    if (name.length < 2 || whatsapp.length < 6 || idea.length < 10) {
+      setQuickOrderMessage('Completa nombre, WhatsApp y una idea breve (mínimo 10 caracteres).')
+      return
+    }
+
+    trackJournalCtaClick('quick_order_submit')
+
+    const text = `Hola, soy ${name}. Mi WhatsApp es ${whatsapp}. Idea de encargo: ${idea}`
+    window.open(`https://wa.me/34612345678?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
+    setQuickOrderMessage('Te redirigí a WhatsApp con tu solicitud preparada.')
+  }
+
   return (
     <>
       <PageHero
@@ -1322,7 +1363,7 @@ function JournalPage() {
             <p className="eyebrow">Después del vídeo</p>
             <h3>¿Quieres una pieza inspirada en este proceso?</h3>
             <p>Cuéntame tu idea y te propongo formato, paleta y acabado en menos de 48h.</p>
-            <a className="button button--primary" href="#/encargos">
+            <a className="button button--primary" href="#/encargos" onClick={() => trackJournalCtaClick('journal_order_cta')}>
               Pedir encargo
             </a>
           </article>
@@ -1331,11 +1372,49 @@ function JournalPage() {
             <p className="eyebrow">Siguiente paso</p>
             <h3>Ver colección completa</h3>
             <p>Si prefieres empezar por una pieza ya disponible, revisa la colección y añade al carrito.</p>
-            <a className="button button--secondary" href="#/coleccion">
+            <a className="button button--secondary" href="#/coleccion" onClick={() => trackJournalCtaClick('journal_collection_cta')}>
               Ir a colección
             </a>
           </article>
         </div>
+
+        <form className="journal-quick-form" onSubmit={handleQuickOrderSubmit}>
+          <h3>Solicitud rápida de encargo</h3>
+          <p>Déjame una idea y te llevo directamente a WhatsApp con el mensaje ya preparado.</p>
+          <div className="journal-quick-form__grid">
+            <label>
+              Nombre
+              <input
+                type="text"
+                value={quickOrderForm.name}
+                onChange={(event) => setQuickOrderForm((current) => ({ ...current, name: event.target.value }))}
+                placeholder="Tu nombre"
+              />
+            </label>
+            <label>
+              WhatsApp
+              <input
+                type="text"
+                value={quickOrderForm.whatsapp}
+                onChange={(event) => setQuickOrderForm((current) => ({ ...current, whatsapp: event.target.value }))}
+                placeholder="+34..."
+              />
+            </label>
+          </div>
+          <label>
+            Idea del encargo
+            <textarea
+              rows={3}
+              value={quickOrderForm.idea}
+              onChange={(event) => setQuickOrderForm((current) => ({ ...current, idea: event.target.value }))}
+              placeholder="Ejemplo: cojín bordado para regalo con iniciales y fecha"
+            />
+          </label>
+          <button type="submit" className="button button--primary">
+            Enviar a WhatsApp
+          </button>
+          {quickOrderMessage ? <p className="journal-quick-form__message">{quickOrderMessage}</p> : null}
+        </form>
       </section>
 
       <section id="diario-entradas" className="section-block">
