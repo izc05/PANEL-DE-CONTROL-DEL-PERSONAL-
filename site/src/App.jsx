@@ -1289,28 +1289,34 @@ function JournalPage() {
         </div>
       </section>
 
-      <section className="section-block section-block--soft">
-        <div className="container cinematic-panel cinematic-panel--v3">
-          <div className="cinematic-panel__copy">
-            <p className="eyebrow">Podcast del diario</p>
-            <h2>Un formato mini podcast para contar historias reales</h2>
+      <section className="collection-hero collection-hero--journal">
+        <div className="collection-hero__media">
+          <SmartVideo
+            controls={false}
+            autoPlay
+            loop
+            muted
+            poster={mediaConfig.heroPoster}
+            primarySrc={mediaConfig.journalVideo}
+            fallbackSrc={mediaConfig.atelierVideo}
+          />
+        </div>
+        <div className="collection-hero__veil" />
+        <div className="container collection-hero__grid">
+          <div className="collection-hero__copy">
+            <p className="eyebrow">Vídeo del diario · 50 segundos</p>
+            <h2>Una cápsula completa para vivir el taller en movimiento</h2>
             <p>
-              Cápsulas de menos de un minuto para contar procesos, datos y pequeñas anécdotas del atelier con imagen y voz.
+              Integramos el vídeo largo en formato inmersivo para mantener la misma estética potente de la colección y reforzar la sección Diario.
             </p>
-            <ul className="feature-list">
-              <li>Formato ágil para contenido tipo podcast visual.</li>
-              <li>Incluye historia breve, dato útil y detalle del proceso.</li>
-              <li>Perfecto para dar más vida a la sección Diario.</li>
-            </ul>
-          </div>
-
-          <div className="cinematic-panel__media">
-            <SmartVideo poster={mediaConfig.heroPoster} primarySrc={mediaConfig.journalVideo} fallbackSrc={mediaConfig.atelierVideo} />
+            <a className="button button--primary" href="#/diario#diario-entradas">
+              Ver entradas del diario
+            </a>
           </div>
         </div>
       </section>
 
-      <section className="section-block">
+      <section id="diario-entradas" className="section-block">
         <div className="container journal-grid journal-grid--large">
           {journalEntries.map((entry) => (
             <article key={entry.slug} className="journal-card journal-card--editorial">
