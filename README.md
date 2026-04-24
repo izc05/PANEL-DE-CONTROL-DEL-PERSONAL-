@@ -115,6 +115,18 @@ Si este JSON no existe o falla, la app usa el catálogo por defecto de `site/src
 firebase deploy --only firestore:rules
 ```
 
+#### Avance fase 3.5 (actual)
+- Mensajes de error Firebase normalizados para login/registro/sincronización.
+- Manejo de sesión caducada (token inválido/expirado) con cierre de sesión guiado.
+
+#### Avance fase 3.6 (actual)
+- Renovación de sesión con `refresh_token` cuando Firebase devuelve token caducado.
+- Reintento automático de sincronización de pedidos tras renovar sesión (1 intento).
+
+#### Avance fase 3.7 (actual)
+- Cola local de operaciones pendientes de sincronizar (`create` / `status`) cuando hay fallo de red/Firebase.
+- Reintento automático al volver conexión (`online`) y contador de pendientes en panel Acceder.
+
 ### Fase 4 · Cierre de tienda (2 a 3 semanas)
 - Checkout más completo (pasarela o confirmación guiada).
 - Gestión de stock/disponibilidad básica.

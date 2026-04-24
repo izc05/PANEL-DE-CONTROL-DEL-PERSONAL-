@@ -17,6 +17,7 @@ const AUTH_STORAGE_KEY = 'atelier-auth-v1'
 const JOURNAL_CTA_METRICS_KEY = 'atelier-journal-cta-metrics-v1'
 const JOURNAL_CTA_VARIANT_KEY = 'atelier-journal-cta-variant-v1'
 const ORDERS_STORAGE_KEY = 'atelier-orders-v1'
+const ORDERS_SYNC_QUEUE_KEY = 'atelier-orders-sync-queue-v1'
 
 const routeTitles = {
   '/': 'Atelier Lumière',
@@ -93,6 +94,32 @@ const fromFirestoreString = (value) => {
   if (typeof value.timestampValue === 'string') return value.timestampValue
   return ''
 }
+
+const FIREBASE_ERROR_MESSAGES = {
+  EMAIL_NOT_FOUND: 'No existe una cuenta con ese correo.',
+  INVALID_PASSWORD: 'La contraseña no es correcta.',
+  USER_DISABLED: 'La cuenta está deshabilitada.',
+  EMAIL_EXISTS: 'Este correo ya está registrado.',
+  TOO_MANY_ATTEMPTS_TRY_LATER: 'Demasiados intentos. Prueba más tarde.',
+  OPERATION_NOT_ALLOWED: 'Este método de acceso no está habilitado en Firebase.',
+  INVALID_ID_TOKEN: 'La sesión no es válida. Vuelve a iniciar sesión.',
+  TOKEN_EXPIRED: 'La sesión ha caducado. Vuelve a iniciar sesión.',
+  INVALID_REFRESH_TOKEN: 'La sesión no se puede renovar. Inicia sesión de nuevo.',
+  PERMISSION_DENIED: 'No tienes permisos para esta operación.',
+  UNAUTHENTICATED: 'Sesión no autenticada. Inicia sesión de nuevo.'
+}
+
+const normalizeFirebaseErrorMessage = (errorCode) => {
+  if (!errorCode) return 'No se pudo completar la operación en Firebase.'
+  return FIREBASE_ERROR_MESSAGES[errorCode] || `Error Firebase: ${errorCode}`
+}
+
+const isFirebaseTokenError = (errorCode) => (
+  errorCode === 'UNAUTHENTICATED' ||
+  errorCode === 'TOKEN_EXPIRED' ||
+  errorCode === 'INVALID_ID_TOKEN' ||
+  errorCode === 'INVALID_REFRESH_TOKEN'
+)
 
 const getShopCategories = (productList) => [
   'Todos',
@@ -1175,7 +1202,8 @@ function LoginPage({
   onUpdateOrderStatus,
   onSyncOrders,
   syncMessage,
-  isSyncing
+  isSyncing,
+  pendingSyncCount
 }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -1366,6 +1394,7 @@ function LoginPage({
               <button type="button" className="button button--secondary" onClick={onSyncOrders} disabled={!user || isSyncing}>
                 {isSyncing ? 'Sincronizando...' : 'Sincronizar con Firebase'}
               </button>
+              {pendingSyncCount > 0 ? <p>Pendientes de sincronizar: {pendingSyncCount}</p> : null}
               {syncMessage ? <p>{syncMessage}</p> : null}
             </div>
           </article>
@@ -1777,6 +1806,7 @@ export default function App() {
   const [authMessage, setAuthMessage] = useState('')
   const [syncMessage, setSyncMessage] = useState('')
   const [isSyncing, setIsSyncing] = useState(false)
+  const [syncQueue, setSyncQueue] = useState([])
 
   const cartCount = cartItems.reduce((total, item) => total + item.qty, 0)
 
@@ -1809,6 +1839,75 @@ export default function App() {
     }
   }
 
+  const parseFirebaseApiError = async (response) => {
+    try {
+      const payload = await response.json()
+      return payload?.error?.message || `HTTP_${response.status}`
+    } catch {
+      return `HTTP_${response.status}`
+    }
+  }
+
+  const handleAuthSessionExpired = () => {
+    setAuthUser(null)
+    window.localStorage.removeItem(AUTH_STORAGE_KEY)
+    setAuthError('Tu sesión ha caducado. Inicia sesión de nuevo para continuar.')
+  }
+
+  const enqueueSyncAction = (action) => {
+    setSyncQueue((items) => [...items, { id: `sync-${Date.now()}-${Math.random()}`, ...action }])
+  }
+
+  const consumeSyncQueue = async (activeUser) => {
+    if (syncQueue.length === 0) return
+    const pending = []
+
+    for (const action of syncQueue) {
+      try {
+        if (action.type === 'create') {
+          await saveOrderToFirestore(action.order, activeUser)
+        } else if (action.type === 'status' && action.order) {
+          await patchOrderStatusToFirestore(action.order, activeUser)
+        }
+      } catch {
+        pending.push(action)
+      }
+    }
+
+    setSyncQueue(pending)
+  }
+
+  const refreshAuthSession = async (currentUser) => {
+    if (!currentUser?.refreshToken) {
+      throw new Error('INVALID_REFRESH_TOKEN')
+    }
+
+    const response = await fetch(`https://securetoken.googleapis.com/v1/token?key=${FIREBASE_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: currentUser.refreshToken
+      }).toString()
+    })
+
+    if (!response.ok) {
+      const message = await parseFirebaseApiError(response)
+      throw new Error(message)
+    }
+
+    const payload = await response.json()
+    const nextUser = {
+      ...currentUser,
+      idToken: payload.id_token,
+      refreshToken: payload.refresh_token,
+      localId: payload.user_id || currentUser.localId
+    }
+    setAuthUser(nextUser)
+    window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
+    return nextUser
+  }
+
   const callFirebaseAuth = async (endpoint, email, password) => {
     const response = await fetch(`https://identitytoolkit.googleapis.com/v1/${endpoint}?key=${FIREBASE_API_KEY}`, {
       method: 'POST',
@@ -1820,13 +1919,12 @@ export default function App() {
       })
     })
 
-    const payload = await response.json()
     if (!response.ok) {
-      const message = payload?.error?.message || 'No se pudo completar la autenticación.'
+      const message = await parseFirebaseApiError(response)
       throw new Error(message)
     }
 
-    return payload
+    return response.json()
   }
 
   const saveOrderToFirestore = async (order, currentUser) => {
@@ -1851,6 +1949,11 @@ export default function App() {
           ownerId: toFirestoreString(currentUser.localId)
         }
       })
+    }).then(async (response) => {
+      if (!response.ok) {
+        const message = await parseFirebaseApiError(response)
+        throw new Error(message)
+      }
     })
   }
 
@@ -1867,6 +1970,11 @@ export default function App() {
           status: toFirestoreString(order.status)
         }
       })
+    }).then(async (response) => {
+      if (!response.ok) {
+        const message = await parseFirebaseApiError(response)
+        throw new Error(message)
+      }
     })
   }
 
@@ -1898,7 +2006,10 @@ export default function App() {
         }
       })
     })
-    if (!response.ok) return []
+    if (!response.ok) {
+      const message = await parseFirebaseApiError(response)
+      throw new Error(message)
+    }
     const payload = await response.json()
     const docs = Array.isArray(payload)
       ? payload.map((entry) => entry.document).filter(Boolean)
@@ -1929,13 +2040,14 @@ export default function App() {
       const nextUser = {
         email: payload.email,
         idToken: payload.idToken,
-        localId: payload.localId
+        localId: payload.localId,
+        refreshToken: payload.refreshToken
       }
       setAuthUser(nextUser)
       window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
       setAuthMessage('Sesión iniciada correctamente.')
     } catch (error) {
-      setAuthError(error?.message ?? 'No se pudo iniciar sesión.')
+      setAuthError(normalizeFirebaseErrorMessage(error?.message))
     } finally {
       setAuthReady(true)
     }
@@ -1951,13 +2063,14 @@ export default function App() {
       const nextUser = {
         email: payload.email,
         idToken: payload.idToken,
-        localId: payload.localId
+        localId: payload.localId,
+        refreshToken: payload.refreshToken
       }
       setAuthUser(nextUser)
       window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
       setAuthMessage('Cuenta creada correctamente.')
     } catch (error) {
-      setAuthError(error?.message ?? 'No se pudo crear la cuenta.')
+      setAuthError(normalizeFirebaseErrorMessage(error?.message))
     } finally {
       setAuthReady(true)
     }
@@ -1983,7 +2096,15 @@ export default function App() {
     }
     setOrders((items) => [nextOrder, ...items])
     if (authUser) {
-      saveOrderToFirestore(nextOrder, authUser).catch(() => {})
+      saveOrderToFirestore(nextOrder, authUser).catch((error) => {
+        if (isFirebaseTokenError(error?.message)) {
+          handleAuthSessionExpired()
+        } else {
+          enqueueSyncAction({ type: 'create', order: nextOrder })
+        }
+      })
+    } else {
+      enqueueSyncAction({ type: 'create', order: nextOrder })
     }
     return nextOrder
   }
@@ -1996,7 +2117,15 @@ export default function App() {
       if (authUser) {
         const changed = updated.find((order) => order.id === orderId)
         if (changed) {
-          patchOrderStatusToFirestore(changed, authUser).catch(() => {})
+          patchOrderStatusToFirestore(changed, authUser).catch((error) => {
+            if (isFirebaseTokenError(error?.message)) {
+              handleAuthSessionExpired()
+            } else {
+              enqueueSyncAction({ type: 'status', order: changed })
+            }
+          })
+        } else if (changed) {
+          enqueueSyncAction({ type: 'status', order: changed })
         }
       }
       return updated
@@ -2014,19 +2143,36 @@ export default function App() {
     }
     setIsSyncing(true)
     setSyncMessage('')
-    try {
+
+    const runSync = async (activeUser) => {
+      await consumeSyncQueue(activeUser)
       for (const order of orders) {
-        await saveOrderToFirestore(order, authUser)
+        await saveOrderToFirestore(order, activeUser)
       }
-      const remoteOrders = await fetchOrdersFromFirestore(authUser)
+      const remoteOrders = await fetchOrdersFromFirestore(activeUser)
       const localMap = new Map(orders.map((order) => [order.id, order]))
       for (const remoteOrder of remoteOrders) {
         localMap.set(remoteOrder.id, remoteOrder)
       }
       setOrders(Array.from(localMap.values()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
+    }
+
+    try {
+      await runSync(authUser)
       setSyncMessage('Pedidos sincronizados con Firebase correctamente.')
-    } catch {
-      setSyncMessage('No se pudo completar la sincronización con Firebase.')
+    } catch (error) {
+      if (isFirebaseTokenError(error?.message)) {
+        try {
+          const refreshedUser = await refreshAuthSession(authUser)
+          await runSync(refreshedUser)
+          setSyncMessage('Sesión renovada y sincronización completada correctamente.')
+        } catch (refreshError) {
+          setSyncMessage(normalizeFirebaseErrorMessage(refreshError?.message))
+          handleAuthSessionExpired()
+        }
+      } else {
+        setSyncMessage(normalizeFirebaseErrorMessage(error?.message))
+      }
     } finally {
       setIsSyncing(false)
     }
@@ -2063,6 +2209,18 @@ export default function App() {
 
   useEffect(() => {
     try {
+      const savedQueue = window.localStorage.getItem(ORDERS_SYNC_QUEUE_KEY)
+      if (!savedQueue) return
+      const parsed = JSON.parse(savedQueue)
+      if (!Array.isArray(parsed)) return
+      setSyncQueue(parsed)
+    } catch {
+      // Si falla lectura, seguimos sin cola de sincronización.
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
       window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems))
     } catch {
       // Si falla guardado, el carrito sigue funcionando en memoria.
@@ -2076,6 +2234,24 @@ export default function App() {
       // Si falla guardado, pedidos siguen en memoria.
     }
   }, [orders])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(ORDERS_SYNC_QUEUE_KEY, JSON.stringify(syncQueue))
+    } catch {
+      // Si falla guardado, cola sigue en memoria.
+    }
+  }, [syncQueue])
+
+  useEffect(() => {
+    const onOnline = () => {
+      if (authUser && syncQueue.length > 0) {
+        handleSyncOrders()
+      }
+    }
+    window.addEventListener('online', onOnline)
+    return () => window.removeEventListener('online', onOnline)
+  }, [authUser, syncQueue.length])
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 18)
@@ -2136,6 +2312,7 @@ export default function App() {
         onSyncOrders={handleSyncOrders}
         syncMessage={syncMessage}
         isSyncing={isSyncing}
+        pendingSyncCount={syncQueue.length}
       />
     )
   }
