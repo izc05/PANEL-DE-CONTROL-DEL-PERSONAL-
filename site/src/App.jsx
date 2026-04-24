@@ -94,6 +94,24 @@ const fromFirestoreString = (value) => {
   return ''
 }
 
+const FIREBASE_ERROR_MESSAGES = {
+  EMAIL_NOT_FOUND: 'No existe una cuenta con ese correo.',
+  INVALID_PASSWORD: 'La contraseña no es correcta.',
+  USER_DISABLED: 'La cuenta está deshabilitada.',
+  EMAIL_EXISTS: 'Este correo ya está registrado.',
+  TOO_MANY_ATTEMPTS_TRY_LATER: 'Demasiados intentos. Prueba más tarde.',
+  OPERATION_NOT_ALLOWED: 'Este método de acceso no está habilitado en Firebase.',
+  INVALID_ID_TOKEN: 'La sesión no es válida. Vuelve a iniciar sesión.',
+  TOKEN_EXPIRED: 'La sesión ha caducado. Vuelve a iniciar sesión.',
+  PERMISSION_DENIED: 'No tienes permisos para esta operación.',
+  UNAUTHENTICATED: 'Sesión no autenticada. Inicia sesión de nuevo.'
+}
+
+const normalizeFirebaseErrorMessage = (errorCode) => {
+  if (!errorCode) return 'No se pudo completar la operación en Firebase.'
+  return FIREBASE_ERROR_MESSAGES[errorCode] || `Error Firebase: ${errorCode}`
+}
+
 const getShopCategories = (productList) => [
   'Todos',
   ...Array.from(new Set(productList.map((product) => product.category).filter(Boolean)))
@@ -1809,6 +1827,21 @@ export default function App() {
     }
   }
 
+  const parseFirebaseApiError = async (response) => {
+    try {
+      const payload = await response.json()
+      return payload?.error?.message || `HTTP_${response.status}`
+    } catch {
+      return `HTTP_${response.status}`
+    }
+  }
+
+  const handleAuthSessionExpired = () => {
+    setAuthUser(null)
+    window.localStorage.removeItem(AUTH_STORAGE_KEY)
+    setAuthError('Tu sesión ha caducado. Inicia sesión de nuevo para continuar.')
+  }
+
   const callFirebaseAuth = async (endpoint, email, password) => {
     const response = await fetch(`https://identitytoolkit.googleapis.com/v1/${endpoint}?key=${FIREBASE_API_KEY}`, {
       method: 'POST',
@@ -1820,13 +1853,12 @@ export default function App() {
       })
     })
 
-    const payload = await response.json()
     if (!response.ok) {
-      const message = payload?.error?.message || 'No se pudo completar la autenticación.'
+      const message = await parseFirebaseApiError(response)
       throw new Error(message)
     }
 
-    return payload
+    return response.json()
   }
 
   const saveOrderToFirestore = async (order, currentUser) => {
@@ -1851,6 +1883,11 @@ export default function App() {
           ownerId: toFirestoreString(currentUser.localId)
         }
       })
+    }).then(async (response) => {
+      if (!response.ok) {
+        const message = await parseFirebaseApiError(response)
+        throw new Error(message)
+      }
     })
   }
 
@@ -1867,6 +1904,11 @@ export default function App() {
           status: toFirestoreString(order.status)
         }
       })
+    }).then(async (response) => {
+      if (!response.ok) {
+        const message = await parseFirebaseApiError(response)
+        throw new Error(message)
+      }
     })
   }
 
@@ -1898,7 +1940,10 @@ export default function App() {
         }
       })
     })
-    if (!response.ok) return []
+    if (!response.ok) {
+      const message = await parseFirebaseApiError(response)
+      throw new Error(message)
+    }
     const payload = await response.json()
     const docs = Array.isArray(payload)
       ? payload.map((entry) => entry.document).filter(Boolean)
@@ -1935,7 +1980,7 @@ export default function App() {
       window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
       setAuthMessage('Sesión iniciada correctamente.')
     } catch (error) {
-      setAuthError(error?.message ?? 'No se pudo iniciar sesión.')
+      setAuthError(normalizeFirebaseErrorMessage(error?.message))
     } finally {
       setAuthReady(true)
     }
@@ -1957,7 +2002,7 @@ export default function App() {
       window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
       setAuthMessage('Cuenta creada correctamente.')
     } catch (error) {
-      setAuthError(error?.message ?? 'No se pudo crear la cuenta.')
+      setAuthError(normalizeFirebaseErrorMessage(error?.message))
     } finally {
       setAuthReady(true)
     }
@@ -1983,7 +2028,11 @@ export default function App() {
     }
     setOrders((items) => [nextOrder, ...items])
     if (authUser) {
-      saveOrderToFirestore(nextOrder, authUser).catch(() => {})
+      saveOrderToFirestore(nextOrder, authUser).catch((error) => {
+        if (error?.message === 'UNAUTHENTICATED' || error?.message === 'TOKEN_EXPIRED' || error?.message === 'INVALID_ID_TOKEN') {
+          handleAuthSessionExpired()
+        }
+      })
     }
     return nextOrder
   }
@@ -1996,7 +2045,11 @@ export default function App() {
       if (authUser) {
         const changed = updated.find((order) => order.id === orderId)
         if (changed) {
-          patchOrderStatusToFirestore(changed, authUser).catch(() => {})
+          patchOrderStatusToFirestore(changed, authUser).catch((error) => {
+            if (error?.message === 'UNAUTHENTICATED' || error?.message === 'TOKEN_EXPIRED' || error?.message === 'INVALID_ID_TOKEN') {
+              handleAuthSessionExpired()
+            }
+          })
         }
       }
       return updated
@@ -2025,8 +2078,12 @@ export default function App() {
       }
       setOrders(Array.from(localMap.values()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
       setSyncMessage('Pedidos sincronizados con Firebase correctamente.')
-    } catch {
-      setSyncMessage('No se pudo completar la sincronización con Firebase.')
+    } catch (error) {
+      const message = normalizeFirebaseErrorMessage(error?.message)
+      setSyncMessage(message)
+      if (error?.message === 'UNAUTHENTICATED' || error?.message === 'TOKEN_EXPIRED' || error?.message === 'INVALID_ID_TOKEN') {
+        handleAuthSessionExpired()
+      }
     } finally {
       setIsSyncing(false)
     }
