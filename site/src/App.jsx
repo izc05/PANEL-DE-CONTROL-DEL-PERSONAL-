@@ -1181,6 +1181,7 @@ function LoginPage({
   const [password, setPassword] = useState('')
   const [journalMetrics, setJournalMetrics] = useState(null)
   const [journalVariant, setJournalVariant] = useState('A')
+  const [orderStatusFilter, setOrderStatusFilter] = useState('Todos')
 
   useEffect(() => {
     try {
@@ -1213,6 +1214,10 @@ function LoginPage({
   const handleRegister = async () => {
     await onRegister(email, password)
   }
+
+  const visibleOrders = orderStatusFilter === 'Todos'
+    ? orders
+    : orders.filter((order) => order.status === orderStatusFilter)
 
   return (
     <>
@@ -1305,13 +1310,25 @@ function LoginPage({
             <p className="eyebrow">Fase 3 · Solicitudes</p>
             <h3>Mis solicitudes recibidas</h3>
             {!user ? <p>Inicia sesión para gestionar y actualizar el estado de pedidos.</p> : null}
-            {orders.length === 0 ? (
+            {orders.length > 0 ? (
+              <label>
+                Filtrar por estado
+                <select value={orderStatusFilter} onChange={(event) => setOrderStatusFilter(event.target.value)}>
+                  <option value="Todos">Todos</option>
+                  <option value="Recibido">Recibido</option>
+                  <option value="En proceso">En proceso</option>
+                  <option value="Listo para entregar">Listo para entregar</option>
+                </select>
+              </label>
+            ) : null}
+            {visibleOrders.length === 0 ? (
               <p>Aún no hay solicitudes guardadas desde el formulario rápido del Diario.</p>
             ) : (
               <div className="login-orders-list">
-                {orders.map((order) => (
+                {visibleOrders.map((order) => (
                   <article key={order.id} className="login-orders-item">
                     <strong>{order.name}</strong>
+                    <span className="login-orders-item__reference">Ref: {order.reference ?? 'Sin referencia'}</span>
                     <span>{order.whatsapp}</span>
                     <p>{order.idea}</p>
                     <small>{new Date(order.createdAt).toLocaleString('es-ES')}</small>
@@ -1416,16 +1433,16 @@ function JournalPage({ onCreateOrder }) {
     }
 
     trackJournalCtaClick('quick_order_submit')
-    onCreateOrder({
+    const createdOrder = onCreateOrder({
       name,
       whatsapp,
       idea,
       source: 'journal_quick_form'
     })
 
-    const text = `Hola, soy ${name}. Mi WhatsApp es ${whatsapp}. Idea de encargo: ${idea}`
+    const text = `Hola, soy ${name}. Mi WhatsApp es ${whatsapp}. Referencia: ${createdOrder.reference}. Idea de encargo: ${idea}`
     window.open(`https://wa.me/34612345678?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
-    setQuickOrderMessage('Te redirigí a WhatsApp con tu solicitud preparada.')
+    setQuickOrderMessage(`Te redirigí a WhatsApp. Referencia de seguimiento: ${createdOrder.reference}.`)
   }
 
   return (
@@ -1787,6 +1804,7 @@ export default function App() {
           source: toFirestoreString(order.source),
           status: toFirestoreString(order.status),
           createdAt: toFirestoreString(order.createdAt),
+          reference: toFirestoreString(order.reference),
           ownerId: toFirestoreString(currentUser.localId)
         }
       })
@@ -1829,6 +1847,7 @@ export default function App() {
         source: fromFirestoreString(doc.fields?.source) || 'firebase_sync',
         status: fromFirestoreString(doc.fields?.status) || 'Recibido',
         createdAt: fromFirestoreString(doc.fields?.createdAt) || new Date().toISOString(),
+        reference: fromFirestoreString(doc.fields?.reference),
         ownerId: fromFirestoreString(doc.fields?.ownerId)
       }))
       .filter((item) => item.ownerId === currentUser.localId)
@@ -1887,8 +1906,10 @@ export default function App() {
   }
 
   const handleCreateOrder = (orderDraft) => {
+    const reference = `AL-${Math.floor(1000 + Math.random() * 9000)}`
     const nextOrder = {
       id: `order-${Date.now()}`,
+      reference,
       status: 'Recibido',
       createdAt: new Date().toISOString(),
       ...orderDraft
@@ -1897,6 +1918,7 @@ export default function App() {
     if (authUser) {
       saveOrderToFirestore(nextOrder, authUser).catch(() => {})
     }
+    return nextOrder
   }
 
   const handleUpdateOrderStatus = (orderId, nextStatus) => {

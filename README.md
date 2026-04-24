@@ -98,6 +98,10 @@ Si este JSON no existe o falla, la app usa el catálogo por defecto de `site/src
 - Sincronización manual de solicitudes con Firestore (Firebase) desde Acceder.
 - Requisito: configurar `VITE_FIREBASE_API_KEY` y `VITE_FIREBASE_PROJECT_ID`.
 
+#### Avance fase 3.2 (actual)
+- Referencia automática por solicitud (ejemplo `AL-1234`) para seguimiento rápido por WhatsApp.
+- Filtro por estado en panel Acceder para gestionar pedidos con más orden.
+
 ### Fase 4 · Cierre de tienda (2 a 3 semanas)
 - Checkout más completo (pasarela o confirmación guiada).
 - Gestión de stock/disponibilidad básica.
