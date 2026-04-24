@@ -776,6 +776,18 @@ h3,
   color: #6f5340;
 }
 
+.login-metrics-panel {
+  margin-top: 1rem;
+}
+
+.login-metrics-panel .note-list {
+  margin: 0.7rem 0 0;
+}
+
+.login-metrics-panel .button {
+  margin-top: 0.8rem;
+}
+
 .collection-intro-panel {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);

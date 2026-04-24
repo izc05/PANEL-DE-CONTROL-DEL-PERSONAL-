@@ -63,6 +63,10 @@ Si este JSON no existe o falla, la app usa el catálogo por defecto de `site/src
 - Formulario rápido de encargo conectado a WhatsApp desde Diario.
 - Métrica simple de clics en CTAs de Diario guardada en `localStorage`.
 
+#### Avance fase 2.3 (actual)
+- Panel local de métricas en Acceder para revisar conversiones de Diario.
+- Primer test A/B de copy en CTA principal de encargo (A/B persistido en navegador).
+
 ### Fase 3 · Cuenta cliente y datos (1 a 2 semanas)
 - Login/registro real (Firebase).
 - Persistencia de sesión y página de estado de pedidos.

@@ -14,6 +14,7 @@ const FIREBASE_API_KEY = import.meta.env.VITE_FIREBASE_API_KEY
 const isFirebaseConfigured = Boolean(FIREBASE_API_KEY)
 const AUTH_STORAGE_KEY = 'atelier-auth-v1'
 const JOURNAL_CTA_METRICS_KEY = 'atelier-journal-cta-metrics-v1'
+const JOURNAL_CTA_VARIANT_KEY = 'atelier-journal-cta-variant-v1'
 
 const routeTitles = {
   '/': 'Atelier Lumière',
@@ -67,6 +68,18 @@ const trackJournalCtaClick = (ctaName) => {
     window.localStorage.setItem(JOURNAL_CTA_METRICS_KEY, JSON.stringify(next))
   } catch {
     // Si falla, no bloqueamos la acción principal.
+  }
+}
+
+const getJournalOrderCtaVariant = () => {
+  try {
+    const saved = window.localStorage.getItem(JOURNAL_CTA_VARIANT_KEY)
+    if (saved === 'A' || saved === 'B') return saved
+    const nextVariant = Math.random() > 0.5 ? 'A' : 'B'
+    window.localStorage.setItem(JOURNAL_CTA_VARIANT_KEY, nextVariant)
+    return nextVariant
+  } catch {
+    return 'A'
   }
 }
 
@@ -1142,6 +1155,31 @@ function CartPage({ cartItems, onAddToCart, productsList }) {
 function LoginPage({ user, authReady, authError, authMessage, onLogin, onRegister, onLogout }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [journalMetrics, setJournalMetrics] = useState(null)
+  const [journalVariant, setJournalVariant] = useState('A')
+
+  useEffect(() => {
+    try {
+      const metricsRaw = window.localStorage.getItem(JOURNAL_CTA_METRICS_KEY)
+      const variantRaw = window.localStorage.getItem(JOURNAL_CTA_VARIANT_KEY)
+      setJournalMetrics(metricsRaw ? JSON.parse(metricsRaw) : null)
+      setJournalVariant(variantRaw === 'B' ? 'B' : 'A')
+    } catch {
+      setJournalMetrics(null)
+      setJournalVariant('A')
+    }
+  }, [])
+
+  const resetJournalMetrics = () => {
+    try {
+      window.localStorage.removeItem(JOURNAL_CTA_METRICS_KEY)
+      window.localStorage.removeItem(JOURNAL_CTA_VARIANT_KEY)
+      setJournalMetrics(null)
+      setJournalVariant('A')
+    } catch {
+      // Sin bloqueo si falla limpieza.
+    }
+  }
 
   const handleLoginSubmit = async (event) => {
     event.preventDefault()
@@ -1224,6 +1262,20 @@ function LoginPage({ user, authReady, authError, authMessage, onLogin, onRegiste
               )}
             </form>
           )}
+
+          <article className="quote-panel quote-panel--signature login-metrics-panel">
+            <p className="eyebrow">Métricas rápidas · Diario</p>
+            <h3>Panel local de conversión</h3>
+            <p>Variante A/B activa para CTA principal: <strong>{journalVariant}</strong>.</p>
+            <ul className="note-list">
+              <li>Clicks CTA encargo: {journalMetrics?.journal_order_cta_A ?? 0} (A) / {journalMetrics?.journal_order_cta_B ?? 0} (B)</li>
+              <li>Clicks CTA colección: {journalMetrics?.journal_collection_cta ?? 0}</li>
+              <li>Solicitudes rápidas enviadas: {journalMetrics?.quick_order_submit ?? 0}</li>
+            </ul>
+            <button type="button" className="button button--secondary" onClick={resetJournalMetrics}>
+              Reiniciar métricas
+            </button>
+          </article>
         </div>
       </PageSection>
     </>
@@ -1282,6 +1334,7 @@ function OrdersPage() {
 }
 
 function JournalPage() {
+  const [orderCtaVariant] = useState(getJournalOrderCtaVariant)
   const [quickOrderForm, setQuickOrderForm] = useState({
     name: '',
     whatsapp: '',
@@ -1363,8 +1416,12 @@ function JournalPage() {
             <p className="eyebrow">Después del vídeo</p>
             <h3>¿Quieres una pieza inspirada en este proceso?</h3>
             <p>Cuéntame tu idea y te propongo formato, paleta y acabado en menos de 48h.</p>
-            <a className="button button--primary" href="#/encargos" onClick={() => trackJournalCtaClick('journal_order_cta')}>
-              Pedir encargo
+            <a
+              className="button button--primary"
+              href="#/encargos"
+              onClick={() => trackJournalCtaClick(`journal_order_cta_${orderCtaVariant}`)}
+            >
+              {orderCtaVariant === 'B' ? 'Quiero mi pieza' : 'Pedir encargo'}
             </a>
           </article>
 
