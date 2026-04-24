@@ -103,6 +103,7 @@ const FIREBASE_ERROR_MESSAGES = {
   OPERATION_NOT_ALLOWED: 'Este método de acceso no está habilitado en Firebase.',
   INVALID_ID_TOKEN: 'La sesión no es válida. Vuelve a iniciar sesión.',
   TOKEN_EXPIRED: 'La sesión ha caducado. Vuelve a iniciar sesión.',
+  INVALID_REFRESH_TOKEN: 'La sesión no se puede renovar. Inicia sesión de nuevo.',
   PERMISSION_DENIED: 'No tienes permisos para esta operación.',
   UNAUTHENTICATED: 'Sesión no autenticada. Inicia sesión de nuevo.'
 }
@@ -111,6 +112,13 @@ const normalizeFirebaseErrorMessage = (errorCode) => {
   if (!errorCode) return 'No se pudo completar la operación en Firebase.'
   return FIREBASE_ERROR_MESSAGES[errorCode] || `Error Firebase: ${errorCode}`
 }
+
+const isFirebaseTokenError = (errorCode) => (
+  errorCode === 'UNAUTHENTICATED' ||
+  errorCode === 'TOKEN_EXPIRED' ||
+  errorCode === 'INVALID_ID_TOKEN' ||
+  errorCode === 'INVALID_REFRESH_TOKEN'
+)
 
 const getShopCategories = (productList) => [
   'Todos',
@@ -1842,6 +1850,37 @@ export default function App() {
     setAuthError('Tu sesión ha caducado. Inicia sesión de nuevo para continuar.')
   }
 
+  const refreshAuthSession = async (currentUser) => {
+    if (!currentUser?.refreshToken) {
+      throw new Error('INVALID_REFRESH_TOKEN')
+    }
+
+    const response = await fetch(`https://securetoken.googleapis.com/v1/token?key=${FIREBASE_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: currentUser.refreshToken
+      }).toString()
+    })
+
+    if (!response.ok) {
+      const message = await parseFirebaseApiError(response)
+      throw new Error(message)
+    }
+
+    const payload = await response.json()
+    const nextUser = {
+      ...currentUser,
+      idToken: payload.id_token,
+      refreshToken: payload.refresh_token,
+      localId: payload.user_id || currentUser.localId
+    }
+    setAuthUser(nextUser)
+    window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
+    return nextUser
+  }
+
   const callFirebaseAuth = async (endpoint, email, password) => {
     const response = await fetch(`https://identitytoolkit.googleapis.com/v1/${endpoint}?key=${FIREBASE_API_KEY}`, {
       method: 'POST',
@@ -1974,7 +2013,8 @@ export default function App() {
       const nextUser = {
         email: payload.email,
         idToken: payload.idToken,
-        localId: payload.localId
+        localId: payload.localId,
+        refreshToken: payload.refreshToken
       }
       setAuthUser(nextUser)
       window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
@@ -1996,7 +2036,8 @@ export default function App() {
       const nextUser = {
         email: payload.email,
         idToken: payload.idToken,
-        localId: payload.localId
+        localId: payload.localId,
+        refreshToken: payload.refreshToken
       }
       setAuthUser(nextUser)
       window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
@@ -2029,7 +2070,7 @@ export default function App() {
     setOrders((items) => [nextOrder, ...items])
     if (authUser) {
       saveOrderToFirestore(nextOrder, authUser).catch((error) => {
-        if (error?.message === 'UNAUTHENTICATED' || error?.message === 'TOKEN_EXPIRED' || error?.message === 'INVALID_ID_TOKEN') {
+        if (isFirebaseTokenError(error?.message)) {
           handleAuthSessionExpired()
         }
       })
@@ -2046,7 +2087,7 @@ export default function App() {
         const changed = updated.find((order) => order.id === orderId)
         if (changed) {
           patchOrderStatusToFirestore(changed, authUser).catch((error) => {
-            if (error?.message === 'UNAUTHENTICATED' || error?.message === 'TOKEN_EXPIRED' || error?.message === 'INVALID_ID_TOKEN') {
+            if (isFirebaseTokenError(error?.message)) {
               handleAuthSessionExpired()
             }
           })
@@ -2067,22 +2108,34 @@ export default function App() {
     }
     setIsSyncing(true)
     setSyncMessage('')
-    try {
+
+    const runSync = async (activeUser) => {
       for (const order of orders) {
-        await saveOrderToFirestore(order, authUser)
+        await saveOrderToFirestore(order, activeUser)
       }
-      const remoteOrders = await fetchOrdersFromFirestore(authUser)
+      const remoteOrders = await fetchOrdersFromFirestore(activeUser)
       const localMap = new Map(orders.map((order) => [order.id, order]))
       for (const remoteOrder of remoteOrders) {
         localMap.set(remoteOrder.id, remoteOrder)
       }
       setOrders(Array.from(localMap.values()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
+    }
+
+    try {
+      await runSync(authUser)
       setSyncMessage('Pedidos sincronizados con Firebase correctamente.')
     } catch (error) {
-      const message = normalizeFirebaseErrorMessage(error?.message)
-      setSyncMessage(message)
-      if (error?.message === 'UNAUTHENTICATED' || error?.message === 'TOKEN_EXPIRED' || error?.message === 'INVALID_ID_TOKEN') {
-        handleAuthSessionExpired()
+      if (isFirebaseTokenError(error?.message)) {
+        try {
+          const refreshedUser = await refreshAuthSession(authUser)
+          await runSync(refreshedUser)
+          setSyncMessage('Sesión renovada y sincronización completada correctamente.')
+        } catch (refreshError) {
+          setSyncMessage(normalizeFirebaseErrorMessage(refreshError?.message))
+          handleAuthSessionExpired()
+        }
+      } else {
+        setSyncMessage(normalizeFirebaseErrorMessage(error?.message))
       }
     } finally {
       setIsSyncing(false)

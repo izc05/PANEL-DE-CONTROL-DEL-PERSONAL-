@@ -119,6 +119,10 @@ firebase deploy --only firestore:rules
 - Mensajes de error Firebase normalizados para login/registro/sincronización.
 - Manejo de sesión caducada (token inválido/expirado) con cierre de sesión guiado.
 
+#### Avance fase 3.6 (actual)
+- Renovación de sesión con `refresh_token` cuando Firebase devuelve token caducado.
+- Reintento automático de sincronización de pedidos tras renovar sesión (1 intento).
+
 ### Fase 4 · Cierre de tienda (2 a 3 semanas)
 - Checkout más completo (pasarela o confirmación guiada).
 - Gestión de stock/disponibilidad básica.
