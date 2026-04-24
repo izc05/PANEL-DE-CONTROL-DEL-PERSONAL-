@@ -4,7 +4,7 @@ const withBaseUpload = (filename) => `${import.meta.env.BASE_URL}uploads/${encod
 export const mediaConfig = {
   heroVideoEnabled: true,
   heroVideoSrc: withBaseMedia('atelier-video.mp4'),
-  collectionVideoSrc: withBaseUpload('Video para portada de colección.mp4'),
+  collectionVideoSrc: withBaseMedia('video_musica_desde_050.mp4'),
   heroPoster: withBaseMedia('atelier-hero.png'),
   visualLead: withBaseMedia('atelier-wide.png'),
   visualDetailA: withBaseMedia('atelier-materials.png'),
