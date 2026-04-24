@@ -17,6 +17,7 @@ const AUTH_STORAGE_KEY = 'atelier-auth-v1'
 const JOURNAL_CTA_METRICS_KEY = 'atelier-journal-cta-metrics-v1'
 const JOURNAL_CTA_VARIANT_KEY = 'atelier-journal-cta-variant-v1'
 const ORDERS_STORAGE_KEY = 'atelier-orders-v1'
+const ORDERS_SYNC_QUEUE_KEY = 'atelier-orders-sync-queue-v1'
 
 const routeTitles = {
   '/': 'Atelier Lumière',
@@ -1201,7 +1202,8 @@ function LoginPage({
   onUpdateOrderStatus,
   onSyncOrders,
   syncMessage,
-  isSyncing
+  isSyncing,
+  pendingSyncCount
 }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -1392,6 +1394,7 @@ function LoginPage({
               <button type="button" className="button button--secondary" onClick={onSyncOrders} disabled={!user || isSyncing}>
                 {isSyncing ? 'Sincronizando...' : 'Sincronizar con Firebase'}
               </button>
+              {pendingSyncCount > 0 ? <p>Pendientes de sincronizar: {pendingSyncCount}</p> : null}
               {syncMessage ? <p>{syncMessage}</p> : null}
             </div>
           </article>
@@ -1803,6 +1806,7 @@ export default function App() {
   const [authMessage, setAuthMessage] = useState('')
   const [syncMessage, setSyncMessage] = useState('')
   const [isSyncing, setIsSyncing] = useState(false)
+  const [syncQueue, setSyncQueue] = useState([])
 
   const cartCount = cartItems.reduce((total, item) => total + item.qty, 0)
 
@@ -1848,6 +1852,29 @@ export default function App() {
     setAuthUser(null)
     window.localStorage.removeItem(AUTH_STORAGE_KEY)
     setAuthError('Tu sesión ha caducado. Inicia sesión de nuevo para continuar.')
+  }
+
+  const enqueueSyncAction = (action) => {
+    setSyncQueue((items) => [...items, { id: `sync-${Date.now()}-${Math.random()}`, ...action }])
+  }
+
+  const consumeSyncQueue = async (activeUser) => {
+    if (syncQueue.length === 0) return
+    const pending = []
+
+    for (const action of syncQueue) {
+      try {
+        if (action.type === 'create') {
+          await saveOrderToFirestore(action.order, activeUser)
+        } else if (action.type === 'status' && action.order) {
+          await patchOrderStatusToFirestore(action.order, activeUser)
+        }
+      } catch {
+        pending.push(action)
+      }
+    }
+
+    setSyncQueue(pending)
   }
 
   const refreshAuthSession = async (currentUser) => {
@@ -2072,8 +2099,12 @@ export default function App() {
       saveOrderToFirestore(nextOrder, authUser).catch((error) => {
         if (isFirebaseTokenError(error?.message)) {
           handleAuthSessionExpired()
+        } else {
+          enqueueSyncAction({ type: 'create', order: nextOrder })
         }
       })
+    } else {
+      enqueueSyncAction({ type: 'create', order: nextOrder })
     }
     return nextOrder
   }
@@ -2089,8 +2120,12 @@ export default function App() {
           patchOrderStatusToFirestore(changed, authUser).catch((error) => {
             if (isFirebaseTokenError(error?.message)) {
               handleAuthSessionExpired()
+            } else {
+              enqueueSyncAction({ type: 'status', order: changed })
             }
           })
+        } else if (changed) {
+          enqueueSyncAction({ type: 'status', order: changed })
         }
       }
       return updated
@@ -2110,6 +2145,7 @@ export default function App() {
     setSyncMessage('')
 
     const runSync = async (activeUser) => {
+      await consumeSyncQueue(activeUser)
       for (const order of orders) {
         await saveOrderToFirestore(order, activeUser)
       }
@@ -2173,6 +2209,18 @@ export default function App() {
 
   useEffect(() => {
     try {
+      const savedQueue = window.localStorage.getItem(ORDERS_SYNC_QUEUE_KEY)
+      if (!savedQueue) return
+      const parsed = JSON.parse(savedQueue)
+      if (!Array.isArray(parsed)) return
+      setSyncQueue(parsed)
+    } catch {
+      // Si falla lectura, seguimos sin cola de sincronización.
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
       window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems))
     } catch {
       // Si falla guardado, el carrito sigue funcionando en memoria.
@@ -2186,6 +2234,24 @@ export default function App() {
       // Si falla guardado, pedidos siguen en memoria.
     }
   }, [orders])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(ORDERS_SYNC_QUEUE_KEY, JSON.stringify(syncQueue))
+    } catch {
+      // Si falla guardado, cola sigue en memoria.
+    }
+  }, [syncQueue])
+
+  useEffect(() => {
+    const onOnline = () => {
+      if (authUser && syncQueue.length > 0) {
+        handleSyncOrders()
+      }
+    }
+    window.addEventListener('online', onOnline)
+    return () => window.removeEventListener('online', onOnline)
+  }, [authUser, syncQueue.length])
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 18)
@@ -2246,6 +2312,7 @@ export default function App() {
         onSyncOrders={handleSyncOrders}
         syncMessage={syncMessage}
         isSyncing={isSyncing}
+        pendingSyncCount={syncQueue.length}
       />
     )
   }

@@ -123,6 +123,10 @@ firebase deploy --only firestore:rules
 - Renovación de sesión con `refresh_token` cuando Firebase devuelve token caducado.
 - Reintento automático de sincronización de pedidos tras renovar sesión (1 intento).
 
+#### Avance fase 3.7 (actual)
+- Cola local de operaciones pendientes de sincronizar (`create` / `status`) cuando hay fallo de red/Firebase.
+- Reintento automático al volver conexión (`online`) y contador de pendientes en panel Acceder.
+
 ### Fase 4 · Cierre de tienda (2 a 3 semanas)
 - Checkout más completo (pasarela o confirmación guiada).
 - Gestión de stock/disponibilidad básica.
