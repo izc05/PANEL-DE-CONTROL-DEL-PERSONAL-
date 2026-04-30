@@ -44,6 +44,7 @@ const CATALOG_OVERRIDES_STORAGE_KEY = 'atelier-catalog-overrides-v1'
 const CUSTOM_PRODUCTS_STORAGE_KEY = 'atelier-custom-products-v1'
 const CATALOG_DELETED_STORAGE_KEY = 'atelier-deleted-products-v1'
 const CART_STORAGE_KEY = 'atelier-cart-v1'
+const CATALOG_FIRESTORE_COLLECTION = 'catalogo'
 const CATALOG_API_STATUS_PATH = '__catalog/status'
 const CATALOG_API_PRODUCT_PATH = '__catalog/product'
 const PRODUCT_AVAILABILITY_OPTIONS = ['Disponible', 'Reservado', 'Vendido', 'Por encargo']
@@ -556,6 +557,40 @@ const readImageFileAsDataUrl = (file) => new Promise((resolve, reject) => {
   reader.onerror = () => reject(new Error('No se pudo leer la imagen.'))
   reader.readAsDataURL(file)
 })
+
+const readImageFileAsOptimizedDataUrl = async (file) => {
+  const validationError = validateImageFile(file)
+  if (validationError) throw new Error(validationError)
+
+  const image = new Image()
+  const objectUrl = URL.createObjectURL(file)
+
+  try {
+    await new Promise((resolve, reject) => {
+      image.onload = resolve
+      image.onerror = () => reject(new Error('No se pudo preparar la imagen.'))
+      image.src = objectUrl
+    })
+
+    const maxSide = 1400
+    const ratio = Math.min(1, maxSide / Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height))
+    const width = Math.max(1, Math.round((image.naturalWidth || image.width) * ratio))
+    const height = Math.max(1, Math.round((image.naturalHeight || image.height) * ratio))
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const context = canvas.getContext('2d')
+
+    if (!context) {
+      return readImageFileAsDataUrl(file)
+    }
+
+    context.drawImage(image, 0, 0, width, height)
+    return canvas.toDataURL('image/jpeg', 0.82)
+  } finally {
+    URL.revokeObjectURL(objectUrl)
+  }
+}
 
 const validateImageFile = (file) => {
   if (!file) return 'Selecciona una imagen.'
@@ -1934,13 +1969,13 @@ function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreat
         return
       }
 
-      const imageData = await readImageFileAsDataUrl(file)
+      const imageData = await readImageFileAsOptimizedDataUrl(file)
       updateDraft('image', imageData)
-      setMessage('Imagen cargada como vista previa local. Para verla en todos tus dispositivos habrá que activar Firebase Storage.')
+      setMessage('Imagen optimizada y cargada como vista previa local. Ya puedes publicar la pieza.')
     } catch (error) {
       if (canUploadCloudImages) {
         try {
-          const imageData = await readImageFileAsDataUrl(file)
+          const imageData = await readImageFileAsOptimizedDataUrl(file)
           updateDraft('image', imageData)
           setMessage(`${error.message || 'Firebase Storage no respondió.'} La imagen se ha dejado como prueba local para que puedas seguir trabajando.`)
           return
@@ -1972,13 +2007,13 @@ function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreat
         return
       }
 
-      const imageData = await readImageFileAsDataUrl(file)
+      const imageData = await readImageFileAsOptimizedDataUrl(file)
       onUpdateProduct(product.slug, { image: imageData, alt: product.alt || product.title })
       setMessage(`Imagen actualizada para ${product.title} como prueba local.`)
     } catch (error) {
       if (canUploadCloudImages) {
         try {
-          const imageData = await readImageFileAsDataUrl(file)
+          const imageData = await readImageFileAsOptimizedDataUrl(file)
           onUpdateProduct(product.slug, { image: imageData, alt: product.alt || product.title })
           setMessage(`${product.title}: ${error.message || 'Firebase Storage no respondió.'} La imagen se ha dejado como prueba local para que puedas seguir trabajando.`)
           return
@@ -1993,9 +2028,9 @@ function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreat
     }
   }
 
-  const handleCreateSubmit = (event) => {
+  const handleCreateSubmit = async (event) => {
     event.preventDefault()
-    const result = onCreateProduct(draft)
+    const result = await onCreateProduct(draft)
 
     if (!result.ok) {
       setMessage(result.message)
@@ -3758,6 +3793,8 @@ export default function App() {
     setCartItems((items) => items.filter((item) => item.slug !== slug))
   }
 
+  const canWriteCatalogToFirebase = Boolean(firebaseDb && authUser?.profile?.role === 'owner')
+
   const handleUploadCatalogImage = async (file, slug) => {
     const validationError = validateImageFile(file)
     if (validationError) throw new Error(validationError)
@@ -3791,6 +3828,23 @@ export default function App() {
   }
 
   const loadShopProducts = async () => {
+    if (firebaseDb) {
+      try {
+        const snapshot = await getDocs(query(collection(firebaseDb, CATALOG_FIRESTORE_COLLECTION), limit(250)))
+        const remoteProducts = snapshot.docs
+          .map((entry) => ({ slug: entry.id, ...entry.data() }))
+          .filter((product) => !product.deleted)
+
+        if (remoteProducts.length > 0) {
+          setShopProducts(mergeCatalogProducts(remoteProducts, []))
+          setCatalogRefreshTick((value) => value + 1)
+          return true
+        }
+      } catch {
+        // Si Firebase no permite leer catálogo, seguimos con el JSON y la memoria local.
+      }
+    }
+
     try {
       const response = await fetch(`${resolveAppPath('data/shop-products.json')}?v=${Date.now()}`, {
         cache: 'no-store'
@@ -3809,10 +3863,34 @@ export default function App() {
     }
   }
 
+  const saveCatalogProductToFirestore = async (product) => {
+    if (!canWriteCatalogToFirebase) return false
+    await setDoc(doc(firebaseDb, CATALOG_FIRESTORE_COLLECTION, product.slug), {
+      ...product,
+      deleted: false,
+      updatedAt: new Date().toISOString()
+    }, { merge: true })
+    return true
+  }
+
+  const markCatalogProductDeletedInFirestore = async (slug) => {
+    if (!canWriteCatalogToFirebase) return false
+    await setDoc(doc(firebaseDb, CATALOG_FIRESTORE_COLLECTION, slug), {
+      deleted: true,
+      updatedAt: new Date().toISOString()
+    }, { merge: true })
+    return true
+  }
+
   const handleUpdateCatalogProduct = (slug, changes) => {
+    const currentProduct = shopProducts.find((product) => product.slug === slug)
+    const updatedAt = new Date().toISOString()
+    const normalizedChanges = { ...changes, updatedAt }
+    const nextProduct = currentProduct
+      ? normalizeShopProduct({ ...currentProduct, ...normalizedChanges })
+      : null
+
     setShopProducts((items) => {
-      const updatedAt = new Date().toISOString()
-      const normalizedChanges = { ...changes, updatedAt }
       const nextItems = items.map((product) => (
         product.slug === slug ? normalizeShopProduct({ ...product, ...normalizedChanges }) : product
       ))
@@ -3830,9 +3908,15 @@ export default function App() {
 
       return nextItems
     })
+
+    if (nextProduct) {
+      saveCatalogProductToFirestore(nextProduct).catch(() => {
+        // La copia local ya está guardada; la nube se reintentará cuando Firebase quede listo.
+      })
+    }
   }
 
-  const handleCreateCatalogProduct = (draft) => {
+  const handleCreateCatalogProduct = async (draft) => {
     const title = draft.title.trim()
     const category = draft.category.trim()
     const price = draft.price.trim()
@@ -3878,16 +3962,39 @@ export default function App() {
     }
 
     try {
+      let savedInCloud = false
+      try {
+        savedInCloud = await saveCatalogProductToFirestore(nextProduct)
+      } catch {
+        savedInCloud = false
+      }
+
       const customProducts = readCustomProducts()
-      writeCustomProducts([nextProduct, ...customProducts])
+      if (savedInCloud) {
+        writeCustomProducts(customProducts.filter((product) => product.slug !== slug))
+      } else {
+        writeCustomProducts([nextProduct, ...customProducts.filter((product) => product.slug !== slug)])
+      }
       const deletedSlugs = new Set(readDeletedProductSlugs())
       deletedSlugs.delete(slug)
       writeDeletedProductSlugs(Array.from(deletedSlugs))
       setShopProducts((items) => [normalizeShopProduct(nextProduct), ...items])
       setCatalogRefreshTick((value) => value + 1)
-      return { ok: true, message: 'Pieza añadida al catálogo.' }
-    } catch {
-      return { ok: false, message: 'No se pudo guardar la pieza en este navegador.' }
+      return {
+        ok: true,
+        message: savedInCloud
+          ? 'Pieza añadida al catálogo y guardada en Firebase.'
+          : 'Pieza añadida como copia local. Firebase no ha confirmado el guardado del catálogo.'
+      }
+    } catch (error) {
+      const isQuotaError = error?.name === 'QuotaExceededError'
+        || String(error?.message || '').toLowerCase().includes('quota')
+      return {
+        ok: false,
+        message: isQuotaError
+          ? 'No se pudo guardar porque la memoria local está llena. Prueba con una imagen más ligera o descarga/limpia la memoria local.'
+          : 'No se pudo guardar la pieza en este navegador.'
+      }
     }
   }
 
@@ -3899,6 +4006,9 @@ export default function App() {
 
     setShopProducts((items) => items.filter((product) => product.slug !== slug))
     setCartItems((items) => items.filter((item) => item.slug !== slug))
+    markCatalogProductDeletedInFirestore(slug).catch(() => {
+      // Si Firebase falla, la retirada local se conserva en este navegador.
+    })
 
     try {
       const customProducts = readCustomProducts()

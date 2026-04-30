@@ -31,5 +31,11 @@ service cloud.firestore {
         && resource.data.ownerId == request.auth.uid
         && (!('ownerId' in request.resource.data) || request.resource.data.ownerId == resource.data.ownerId));
     }
+
+    // Catálogo público: lectura abierta, escritura solo propietaria.
+    match /catalogo/{productId} {
+      allow read: if true;
+      allow create, update, delete: if isOwner();
+    }
   }
 }
