@@ -1396,6 +1396,68 @@ h3,
   grid-column: 1 / -1;
 }
 
+.management-image-uploader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.85rem;
+  border: 1px solid rgba(142, 107, 69, 0.18);
+  border-radius: 0.9rem;
+  background: rgba(255, 252, 248, 0.76);
+}
+
+.management-image-uploader div {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.management-image-uploader strong {
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: 1.08rem;
+}
+
+.management-image-uploader span {
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.management-image-uploader input[type='file'] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.management-image-uploader .button {
+  position: relative;
+  overflow: hidden;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.management-image-preview {
+  grid-column: 1 / -1;
+  margin: 0;
+  max-width: 18rem;
+  overflow: hidden;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(142, 107, 69, 0.18);
+}
+
+.management-image-preview img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.management-product-controls__wide {
+  grid-column: 1 / -1;
+}
+
 .management-status-strip,
 .management-money-strip,
 .management-order-actions {

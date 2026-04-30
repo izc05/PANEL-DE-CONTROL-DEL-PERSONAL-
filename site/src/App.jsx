@@ -496,11 +496,34 @@ const resolveAppPath = (value) => `${import.meta.env.BASE_URL}${value.replace(/^
 
 const normalizeAssetPath = (value) => {
   if (typeof value !== 'string' || value.length === 0) return value
+  if (value.startsWith('data:')) return value
   if (/^(https:)\/\//.test(value)) return value
   if (value.startsWith('/')) return resolveAppPath(value)
   if (value.startsWith('./')) return resolveAppPath(value)
   return value
 }
+
+const readImageFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+  if (!file) {
+    resolve('')
+    return
+  }
+
+  if (!file.type.startsWith('image/')) {
+    reject(new Error('El archivo debe ser una imagen.'))
+    return
+  }
+
+  if (file.size > 2.5 * 1024 * 1024) {
+    reject(new Error('La imagen pesa demasiado. Prueba con una imagen de menos de 2,5 MB.'))
+    return
+  }
+
+  const reader = new FileReader()
+  reader.onload = () => resolve(String(reader.result || ''))
+  reader.onerror = () => reject(new Error('No se pudo leer la imagen.'))
+  reader.readAsDataURL(file)
+})
 
 const normalizeProductStock = (value) => {
   const numberValue = Number.parseInt(value, 10)
@@ -1797,6 +1820,34 @@ function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreat
     setMessage('')
   }
 
+  const handleDraftImageUpload = async (event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+
+    try {
+      const imageData = await readImageFileAsDataUrl(file)
+      updateDraft('image', imageData)
+      setMessage('Imagen cargada como vista previa local.')
+    } catch (error) {
+      setMessage(error.message || 'No se pudo cargar la imagen.')
+    }
+  }
+
+  const handleProductImageUpload = async (product, event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+
+    try {
+      const imageData = await readImageFileAsDataUrl(file)
+      onUpdateProduct(product.slug, { image: imageData, alt: product.alt || product.title })
+      setMessage(`Imagen actualizada para ${product.title}.`)
+    } catch (error) {
+      setMessage(error.message || 'No se pudo cargar la imagen.')
+    }
+  }
+
   const handleCreateSubmit = (event) => {
     event.preventDefault()
     const result = onCreateProduct(draft)
@@ -1868,6 +1919,21 @@ function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreat
                 Imagen
                 <input type="text" value={draft.image} onChange={(event) => updateDraft('image', event.target.value)} placeholder="/media/imagen.png o https://..." />
               </label>
+              <div className="management-image-uploader management-create-product-form__wide">
+                <div>
+                  <strong>Subir imagen desde este dispositivo</strong>
+                  <span>Se guarda localmente en este navegador para probar el catálogo.</span>
+                </div>
+                <label className="button button--secondary">
+                  Elegir imagen
+                  <input type="file" accept="image/*" onChange={handleDraftImageUpload} />
+                </label>
+                {draft.image ? (
+                  <figure className="management-image-preview">
+                    <img src={draft.image} alt="Vista previa de la nueva pieza" />
+                  </figure>
+                ) : null}
+              </div>
               <label className="management-create-product-form__wide">
                 Descripción
                 <textarea rows={3} value={draft.description} onChange={(event) => updateDraft('description', event.target.value)} placeholder="Describe materiales, estilo, medidas o intención de la pieza" />
@@ -1934,6 +2000,16 @@ function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreat
                         onChange={(event) => onUpdateProduct(product.slug, { stock: normalizeProductStock(event.target.value) })}
                       />
                     </label>
+                    <div className="management-image-uploader management-product-controls__wide">
+                      <div>
+                        <strong>Imagen del producto</strong>
+                        <span>Sube una foto nueva desde PC o móvil.</span>
+                      </div>
+                      <label className="button button--secondary">
+                        Subir imagen
+                        <input type="file" accept="image/*" onChange={(event) => handleProductImageUpload(product, event)} />
+                      </label>
+                    </div>
                     <button
                       type="button"
                       className="button button--secondary management-product-delete"
