@@ -899,6 +899,24 @@ h3,
   background: #fff;
 }
 
+.cart-checkout-consent {
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 0.6rem;
+  padding: 0.78rem 0.85rem;
+  border: 1px solid rgba(142, 107, 69, 0.18);
+  border-radius: 0.9rem;
+  background: rgba(255, 252, 248, 0.82);
+  font-size: 0.92rem;
+}
+
+.cart-checkout-consent input {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 0.12rem;
+  accent-color: var(--gold);
+}
+
 .cart-summary-strip {
   display: flex;
   flex-wrap: wrap;
@@ -1026,6 +1044,34 @@ h3,
   color: #6f5340;
 }
 
+.order-summary-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.25rem 0;
+}
+
+.order-summary-chips span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.85rem;
+  padding: 0.25rem 0.58rem;
+  border-radius: 999px;
+  background: rgba(47, 39, 34, 0.06);
+  color: #6f5340;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.order-next-step {
+  margin: 0.2rem 0;
+  padding: 0.7rem 0.78rem;
+  border-left: 3px solid var(--gold);
+  border-radius: 0.7rem;
+  background: rgba(189, 143, 86, 0.1);
+  color: #604631;
+}
+
 .login-orders-item small {
   color: var(--ink-soft);
 }
@@ -1098,6 +1144,187 @@ h3,
   flex-wrap: wrap;
   gap: 0.7rem;
   margin-top: 1rem;
+}
+
+.management-board-panel,
+.management-alerts-panel,
+.management-sales-health-panel {
+  grid-column: 1 / -1;
+}
+
+.management-panel-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.management-panel-head h3 {
+  margin: 0.2rem 0 0;
+}
+
+.management-panel-head > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.35rem;
+  min-height: 2.35rem;
+  border-radius: 999px;
+  background: rgba(189, 143, 86, 0.14);
+  color: #6f4d2e;
+  font-weight: 800;
+}
+
+.management-board {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(190px, 1fr));
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.management-board-column {
+  display: grid;
+  align-content: start;
+  gap: 0.65rem;
+  min-height: 14rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(142, 107, 69, 0.16);
+  border-radius: 1rem;
+  background: rgba(255, 252, 248, 0.72);
+}
+
+.management-board-column__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.management-board-column__head strong {
+  font-family: var(--font-serif);
+  font-size: 1.08rem;
+  font-weight: 600;
+}
+
+.management-board-column__head span,
+.management-board-card__meta span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  padding: 0.2rem 0.52rem;
+  border-radius: 999px;
+  background: rgba(47, 39, 34, 0.06);
+  color: #6f5340;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.management-board-empty {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.management-board-card {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.72rem;
+  border: 1px solid rgba(142, 107, 69, 0.18);
+  border-radius: 0.85rem;
+  background: rgba(255, 251, 246, 0.92);
+}
+
+.management-board-card > strong {
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.management-board-card > span,
+.management-board-card small {
+  color: var(--ink-soft);
+}
+
+.management-board-card__meta,
+.management-board-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.management-board-card__actions button {
+  min-height: 2rem;
+  border: 1px solid rgba(142, 107, 69, 0.22);
+  border-radius: 999px;
+  padding: 0.28rem 0.58rem;
+  background: rgba(255, 255, 255, 0.86);
+  color: #5f4635;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.management-alert-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.management-alert-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.78rem 0.9rem;
+  border: 1px solid rgba(189, 143, 86, 0.24);
+  border-radius: 0.9rem;
+  background: rgba(189, 143, 86, 0.09);
+}
+
+.management-alert-item div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.management-alert-item strong {
+  color: var(--ink);
+}
+
+.management-alert-item span {
+  color: #6f5340;
+}
+
+.management-sales-health-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.management-sales-health-grid div {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.9rem;
+  border: 1px solid rgba(58, 142, 104, 0.18);
+  border-radius: 0.95rem;
+  background: rgba(58, 142, 104, 0.08);
+}
+
+.management-sales-health-grid strong {
+  color: #2f6f52;
+  font-family: var(--font-serif);
+  font-size: clamp(1.55rem, 2.6vw, 2.25rem);
+  font-weight: 650;
+}
+
+.management-sales-health-grid span {
+  color: #5e715f;
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .management-catalog-panel {
@@ -1492,6 +1719,17 @@ h3,
   color: #7f5530;
 }
 
+.order-status-badge--presupuesto-enviado {
+  background: rgba(194, 139, 77, 0.18);
+  color: #8a5a22;
+}
+
+.order-status-badge--aprobado {
+  background: rgba(112, 137, 91, 0.18);
+  color: #4e6b35;
+}
+
+.order-status-badge--en-produccion,
 .order-status-badge--en-proceso {
   background: rgba(74, 122, 186, 0.15);
   color: #315c90;
@@ -1500,6 +1738,21 @@ h3,
 .order-status-badge--listo-para-entregar {
   background: rgba(58, 142, 104, 0.15);
   color: #2f7a57;
+}
+
+.order-status-badge--enviado {
+  background: rgba(90, 103, 171, 0.15);
+  color: #4c568d;
+}
+
+.order-status-badge--entregado {
+  background: rgba(48, 132, 92, 0.18);
+  color: #2d6f50;
+}
+
+.order-status-badge--cerrado {
+  background: rgba(74, 65, 58, 0.12);
+  color: #4a413a;
 }
 
 .collection-catalog-head {
@@ -2345,6 +2598,10 @@ h3,
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .management-sales-health-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .management-filters {
     grid-template-columns: 1fr;
   }
@@ -2599,6 +2856,7 @@ h3,
   .pill-list,
   .boutique-stats,
   .management-summary,
+  .management-sales-health-grid,
   .product-grid--shop,
   .product-showcase__gallery,
   .ornament-band {

@@ -44,6 +44,20 @@ const CATALOG_API_PRODUCT_PATH = '__catalog/product'
 const PRODUCT_AVAILABILITY_OPTIONS = ['Disponible', 'Reservado', 'Vendido', 'Por encargo']
 const PRODUCT_AVAILABLE_FOR_CART = new Set(['Disponible', 'Por encargo'])
 const PRODUCT_AVAILABILITY_FILTERS = ['Todas', ...PRODUCT_AVAILABILITY_OPTIONS]
+const ORDER_STATUS_OPTIONS = [
+  'Recibido',
+  'Presupuesto enviado',
+  'Aprobado',
+  'En producción',
+  'Listo para entregar',
+  'Enviado',
+  'Entregado',
+  'Cerrado'
+]
+const OPEN_ORDER_STATUSES = new Set(['Recibido', 'Presupuesto enviado', 'Aprobado', 'En producción', 'Listo para entregar', 'Enviado'])
+const PAYMENT_STATUS_OPTIONS = ['Pendiente', 'Señal recibida', 'Pagado']
+const SHIPPING_STATUS_OPTIONS = ['Sin preparar', 'Preparando', 'Enviado', 'Entregado']
+const MANAGEMENT_BOARD_STATUSES = ['Recibido', 'Presupuesto enviado', 'Aprobado', 'En producción', 'Listo para entregar', 'Enviado']
 
 const LOCAL_MEMORY_BLOCKS = [
   {
@@ -125,10 +139,15 @@ const buildOrdersCsv = (orderList) => {
     'Pago preferido',
     'Entrega',
     'Precio final',
+    'Señal',
+    'Método de pago usado',
     'Estado pago',
     'Estado envio',
+    'Coste de envío',
+    'Seguimiento',
+    'Inventario',
     'Fecha objetivo',
-    'Direccion',
+    'Dirección',
     'Idea',
     'Piezas',
     'Notas internas'
@@ -144,8 +163,13 @@ const buildOrdersCsv = (orderList) => {
     order.paymentPreference,
     order.deliveryPreference,
     order.finalPrice,
+    order.depositAmount,
+    order.paymentMethodUsed,
     order.paymentStatus,
     order.shippingStatus,
+    order.shippingCost,
+    order.trackingCode,
+    order.inventoryStatus,
     order.targetDate,
     order.shippingAddress,
     order.idea,
@@ -185,6 +209,90 @@ const formatEuroAmount = (value) => new Intl.NumberFormat('es-ES', {
   maximumFractionDigits: 2
 }).format(value)
 
+const getOrderStatusClass = (value) => String(value || 'Recibido')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-+|-+$/g, '')
+
+const getOrderSourceLabel = (source) => ({
+  cart_checkout: 'Carrito',
+  orders_quick_form: 'Encargo',
+  journal_quick_form: 'Diario',
+  firebase_sync: 'Firebase'
+}[source] || 'Web')
+
+const getOrderNextStep = (order) => {
+  const status = normalizeOrderStatus(order.status)
+  if (status === 'Recibido') return 'El atelier revisa disponibilidad, plazo y forma de pago.'
+  if (status === 'Presupuesto enviado') return 'Revisa el presupuesto y confirma si quieres continuar.'
+  if (status === 'Aprobado') return 'Pedido aprobado. El atelier prepara la pieza o reserva.'
+  if (status === 'En producción') return 'La pieza está en trabajo dentro del atelier.'
+  if (status === 'Listo para entregar') return 'Pedido listo para recogida o envío.'
+  if (status === 'Enviado') return 'Pedido enviado. Revisa los datos de entrega.'
+  if (status === 'Entregado') return 'Pedido entregado.'
+  return 'Pedido cerrado.'
+}
+
+const getOrderItemsLabel = (order) => {
+  if (!Array.isArray(order.cartLines) || order.cartLines.length === 0) return 'Sin piezas de carrito'
+  const itemCount = order.cartLines.reduce((total, line) => total + (Number(line.qty) || 1), 0)
+  return `${itemCount} pieza(s) · ${order.cartLines.length} referencia(s)`
+}
+
+const buildClientOrderMessage = (order) => [
+  `Hola ${order.name || ''}, soy Atelier Lumière.`,
+  `Te escribo sobre tu pedido ${order.reference || 'sin referencia'}.`,
+  `Estado actual: ${normalizeOrderStatus(order.status)}.`,
+  `Siguiente paso: ${getOrderNextStep(order)}`,
+  order.finalPrice ? `Importe: ${order.finalPrice}.` : null,
+  order.depositAmount ? `Señal registrada: ${order.depositAmount}.` : null,
+  order.paymentMethodUsed ? `Pago por: ${order.paymentMethodUsed}.` : null,
+  order.trackingCode ? `Seguimiento del envío: ${order.trackingCode}.` : null
+].filter(Boolean).join('\n')
+
+const buildOrderSheetText = (order) => {
+  const cartLines = Array.isArray(order.cartLines) && order.cartLines.length > 0
+    ? order.cartLines.map((line) => `- ${line.title || line.slug} x${line.qty || 1} (${line.price || 'sin precio'})`).join('\n')
+    : 'Sin piezas asociadas al carrito.'
+
+  return [
+    'ATELIER LUMIERE - FICHA DE PEDIDO',
+    '',
+    `Referencia: ${order.reference || 'Sin referencia'}`,
+    `Fecha: ${order.createdAt ? new Date(order.createdAt).toLocaleString('es-ES') : 'Sin fecha'}`,
+    `Clienta: ${order.name || 'Sin nombre'}`,
+    `Contacto: ${order.whatsapp || 'Sin contacto'}`,
+    `Correo: ${order.customerEmail || 'Sin correo'}`,
+    '',
+    `Estado: ${order.status || 'Recibido'}`,
+    `Pago preferido: ${order.paymentPreference || 'Por confirmar'}`,
+    `Estado de pago: ${order.paymentStatus || 'Pendiente'}`,
+    `Entrega: ${order.deliveryPreference || 'Por confirmar'}`,
+    `Estado de envío: ${order.shippingStatus || 'Sin preparar'}`,
+    `Coste de envío: ${order.shippingCost || 'Sin cerrar'}`,
+    `Seguimiento: ${order.trackingCode || 'Sin seguimiento'}`,
+    `Inventario: ${order.inventoryStatus || 'Sin actualizar'}`,
+    `Fecha objetivo: ${order.targetDate || 'Sin fecha objetivo'}`,
+    `Precio final: ${order.finalPrice || 'Sin cerrar'}`,
+    `Señal: ${order.depositAmount || 'Sin señal'}`,
+    `Método de pago usado: ${order.paymentMethodUsed || 'Por confirmar'}`,
+    '',
+    'Idea / solicitud:',
+    order.idea || 'Sin detalle.',
+    '',
+    'Piezas:',
+    cartLines,
+    '',
+    'Dirección de envío:',
+    order.shippingAddress || 'Sin dirección guardada.',
+    '',
+    'Notas internas:',
+    order.internalNotes || 'Sin notas internas.'
+  ].join('\n')
+}
+
 const DEFAULT_BUSINESS_SETTINGS = {
   bizum: '',
   paypal: '',
@@ -206,6 +314,15 @@ const isConfiguredOwnerEmail = (email) => OWNER_EMAILS.includes(normalizeEmail(e
 const normalizeProductAvailability = (value) => (
   PRODUCT_AVAILABILITY_OPTIONS.includes(value) ? value : 'Disponible'
 )
+
+const LEGACY_ORDER_STATUS_MAP = {
+  'En proceso': 'En producción'
+}
+
+const normalizeOrderStatus = (value) => {
+  const status = String(value || '').trim()
+  return ORDER_STATUS_OPTIONS.includes(status) ? status : (LEGACY_ORDER_STATUS_MAP[status] || 'Recibido')
+}
 
 const getProductAvailabilityClass = (value) => (
   normalizeProductAvailability(value).toLowerCase().replace(/\s+/g, '-')
@@ -450,16 +567,22 @@ const normalizeOrderRecord = (id, payload) => ({
   deliveryPreference: payload.deliveryPreference || '',
   idea: payload.idea || '',
   source: payload.source || 'firebase_sync',
-  status: payload.status || 'Recibido',
+  status: normalizeOrderStatus(payload.status),
   createdAt: payload.createdAt || new Date().toISOString(),
   reference: payload.reference || '',
   ownerId: payload.ownerId || '',
   finalPrice: payload.finalPrice || '',
+  depositAmount: payload.depositAmount || '',
+  paymentMethodUsed: payload.paymentMethodUsed || '',
   paymentStatus: payload.paymentStatus || 'Pendiente',
   shippingStatus: payload.shippingStatus || 'Sin preparar',
+  shippingCost: payload.shippingCost || '',
+  trackingCode: payload.trackingCode || '',
   targetDate: payload.targetDate || '',
   shippingAddress: payload.shippingAddress || '',
   internalNotes: payload.internalNotes || '',
+  inventoryStatus: payload.inventoryStatus || '',
+  inventoryUpdatedAt: payload.inventoryUpdatedAt || '',
   cartLines: Array.isArray(payload.cartLines) ? payload.cartLines : []
 })
 
@@ -1138,7 +1261,9 @@ function CartPage({ cartItems, onAddToCart, onSetCartQuantity, onRemoveFromCart,
     whatsapp: '',
     paymentPreference: 'Por confirmar',
     deliveryPreference: 'Envío',
-    notes: ''
+    shippingAddress: '',
+    notes: '',
+    acceptedReview: false
   })
   const [checkoutMessage, setCheckoutMessage] = useState('')
   const [lastOrder, setLastOrder] = useState(null)
@@ -1157,6 +1282,15 @@ function CartPage({ cartItems, onAddToCart, onSetCartQuantity, onRemoveFromCart,
   ].filter(Boolean)
   const paymentOptions = ['Por confirmar', ...paymentMethods]
   const itemCount = lines.reduce((total, line) => total + line.qty, 0)
+  const pricedTotal = lines.reduce((total, line) => total + (parseEuroAmount(line.product.price) * line.qty), 0)
+  const hasPriceToConfirm = lines.some((line) => parseEuroAmount(line.product.price) === 0)
+  const orderTotalLabel = pricedTotal > 0
+    ? `${formatEuroAmount(pricedTotal)}${hasPriceToConfirm ? ' + piezas a confirmar' : ''}`
+    : 'Precio a confirmar'
+
+  useEffect(() => {
+    setBusinessSettings(readBusinessSettings())
+  }, [])
 
   const handleCheckoutSubmit = (event) => {
     event.preventDefault()
@@ -1165,6 +1299,7 @@ function CartPage({ cartItems, onAddToCart, onSetCartQuantity, onRemoveFromCart,
     const whatsapp = checkoutForm.whatsapp.trim()
     const paymentPreference = checkoutForm.paymentPreference
     const deliveryPreference = checkoutForm.deliveryPreference
+    const shippingAddress = checkoutForm.shippingAddress.trim()
     const notes = checkoutForm.notes.trim()
 
     if (lines.length === 0) {
@@ -1182,14 +1317,26 @@ function CartPage({ cartItems, onAddToCart, onSetCartQuantity, onRemoveFromCart,
       return
     }
 
+    if (deliveryPreference === 'Envío' && shippingAddress.length < 8) {
+      setCheckoutMessage('Añade una dirección de entrega o cambia la entrega a recoger/confirmar.')
+      return
+    }
+
+    if (!checkoutForm.acceptedReview) {
+      setCheckoutMessage('Confirma que el pago se revisará antes de enviar datos o reservar la pieza.')
+      return
+    }
+
     const createdOrder = onCreateOrder({
       name,
       whatsapp,
       customerEmail: email,
       paymentPreference,
       deliveryPreference,
+      shippingAddress,
+      finalPrice: hasPriceToConfirm ? 'Pendiente de confirmar' : formatEuroAmount(pricedTotal),
       idea: `Pedido desde carrito:
-${orderSummary}\n\nPago preferido: ${paymentPreference}\nEntrega: ${deliveryPreference}${email ? `\nCorreo: ${email}` : ''}${notes ? `\n\nNotas: ${notes}` : ''}`,
+${orderSummary}\n\nTotal orientativo: ${orderTotalLabel}\nPago preferido: ${paymentPreference}\nEntrega: ${deliveryPreference}${shippingAddress ? `\nDirección: ${shippingAddress}` : ''}${email ? `\nCorreo: ${email}` : ''}${notes ? `\n\nNotas: ${notes}` : ''}`,
       source: 'cart_checkout',
       cartLines: lines.map((line) => ({
         slug: line.slug,
@@ -1199,6 +1346,7 @@ ${orderSummary}\n\nPago preferido: ${paymentPreference}\nEntrega: ${deliveryPref
       }))
     })
 
+    setLastOrder(createdOrder)
     onClearCart()
     setCheckoutForm({
       name: '',
@@ -1206,7 +1354,9 @@ ${orderSummary}\n\nPago preferido: ${paymentPreference}\nEntrega: ${deliveryPref
       whatsapp: '',
       paymentPreference: 'Por confirmar',
       deliveryPreference: 'Envío',
-      notes: ''
+      shippingAddress: '',
+      notes: '',
+      acceptedReview: false
     })
     setCheckoutMessage(`Pedido guardado. Referencia: ${createdOrder.reference}. Podrás revisarlo desde tu acceso.`)
   }
@@ -1223,7 +1373,22 @@ ${orderSummary}\n\nPago preferido: ${paymentPreference}\nEntrega: ${deliveryPref
 
       <PageSection className="section-block--soft">
         <div className="container">
-          {lines.length === 0 ? (
+          {lines.length === 0 && lastOrder ? (
+            <article className="quote-panel quote-panel--signature cart-confirmation-panel">
+              <p className="eyebrow">Pedido creado</p>
+              <h3>Referencia {lastOrder.reference}</h3>
+              <p>Tu solicitud ha quedado guardada. La pieza no se cobra automáticamente: primero se revisa disponibilidad, pago y entrega.</p>
+              <ul className="note-list">
+                <li>Estado inicial: {normalizeOrderStatus(lastOrder.status)}</li>
+                <li>Pago elegido: {lastOrder.paymentPreference || 'Por confirmar'}</li>
+                <li>Total orientativo: {lastOrder.finalPrice || 'Pendiente de confirmar'}</li>
+              </ul>
+              <div className="collection-service-cta__actions">
+                <a className="button button--primary" href="#/acceder">Ver seguimiento</a>
+                <a className="button button--secondary" href="#/coleccion">Seguir mirando piezas</a>
+              </div>
+            </article>
+          ) : lines.length === 0 ? (
             <article className="quote-panel quote-panel--signature">
                 <p className="eyebrow">Carrito vacío</p>
                 <h3>Aún no has añadido ninguna pieza</h3>
@@ -1275,6 +1440,7 @@ ${orderSummary}\n\nPago preferido: ${paymentPreference}\nEntrega: ${deliveryPref
                 <div className="cart-summary-strip" aria-label="Resumen del carrito">
                   <span>{itemCount} pieza(s)</span>
                   <span>{lines.length} referencia(s)</span>
+                  <span>{orderTotalLabel}</span>
                   <span>{paymentMethods.length > 0 ? paymentMethods.join(' / ') : 'Pago a confirmar'}</span>
                 </div>
                 <div className="cart-payment-panel">
@@ -1337,6 +1503,15 @@ ${orderSummary}\n\nPago preferido: ${paymentPreference}\nEntrega: ${deliveryPref
                   </select>
                 </label>
                 <label>
+                  Dirección de entrega
+                  <textarea
+                    rows={3}
+                    value={checkoutForm.shippingAddress}
+                    onChange={(event) => setCheckoutForm((current) => ({ ...current, shippingAddress: event.target.value }))}
+                    placeholder="Dirección, código postal y ciudad si quieres envío"
+                  />
+                </label>
+                <label>
                   Notas
                   <textarea
                     rows={3}
@@ -1344,6 +1519,14 @@ ${orderSummary}\n\nPago preferido: ${paymentPreference}\nEntrega: ${deliveryPref
                     onChange={(event) => setCheckoutForm((current) => ({ ...current, notes: event.target.value }))}
                     placeholder="Plazo, dudas o preferencias"
                   />
+                </label>
+                <label className="cart-checkout-consent">
+                  <input
+                    type="checkbox"
+                    checked={checkoutForm.acceptedReview}
+                    onChange={(event) => setCheckoutForm((current) => ({ ...current, acceptedReview: event.target.checked }))}
+                  />
+                  <span>Entiendo que el atelier revisará disponibilidad, entrega y forma de pago antes de confirmar la compra.</span>
                 </label>
                 <button type="submit" className="button button--primary">
                   Crear solicitud
@@ -1394,7 +1577,7 @@ function LoginPage({
   const baseOrders = isOwnerAccount ? orders : customerOrders
   const visibleOrders = orderStatusFilter === 'Todos'
     ? baseOrders
-    : baseOrders.filter((order) => order.status === orderStatusFilter)
+    : baseOrders.filter((order) => normalizeOrderStatus(order.status) === orderStatusFilter)
 
   return (
     <>
@@ -1518,9 +1701,9 @@ function LoginPage({
                 Filtrar por estado
                 <select value={orderStatusFilter} onChange={(event) => setOrderStatusFilter(event.target.value)}>
                   <option value="Todos">Todos</option>
-                  <option value="Recibido">Recibido</option>
-                  <option value="En proceso">En proceso</option>
-                  <option value="Listo para entregar">Listo para entregar</option>
+                  {ORDER_STATUS_OPTIONS.map((status) => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
                 </select>
               </label>
             ) : null}
@@ -1535,22 +1718,45 @@ function LoginPage({
               <div className="login-orders-list">
                 {visibleOrders.map((order) => (
                   <article key={order.id} className="login-orders-item">
-                    <strong>{isOwnerAccount ? (order.name || 'Sin nombre') : (order.reference || 'Sin referencia')}</strong>
-                    <span className="login-orders-item__reference">Ref: {order.reference || 'Sin referencia'}</span>
+                    <div className="login-orders-item__header">
+                      <strong>{isOwnerAccount ? (order.name || 'Sin nombre') : (order.reference || 'Sin referencia')}</strong>
+                      <span className={`order-status-badge order-status-badge--${getOrderStatusClass(normalizeOrderStatus(order.status))}`}>
+                        {normalizeOrderStatus(order.status)}
+                      </span>
+                    </div>
+                    <div className="order-summary-chips" aria-label="Resumen del pedido">
+                      <span>Ref: {order.reference || 'Sin referencia'}</span>
+                      <span>{getOrderSourceLabel(order.source)}</span>
+                      <span>{getOrderItemsLabel(order)}</span>
+                      <span>Pago: {order.paymentPreference || 'Por confirmar'}</span>
+                      <span>Entrega: {order.deliveryPreference || 'Por confirmar'}</span>
+                      <span>Total: {order.finalPrice || 'Pendiente'}</span>
+                    </div>
                     {isOwnerAccount ? <span>{order.whatsapp}</span> : null}
                     <p>{order.idea}</p>
+                    <p className="order-next-step">{getOrderNextStep(order)}</p>
+                    {Array.isArray(order.cartLines) && order.cartLines.length > 0 ? (
+                      <ul className="management-cart-lines">
+                        {order.cartLines.map((line) => (
+                          <li key={`${order.id}-${line.slug || line.title}`}>
+                            <span>{line.title || line.slug}</span>
+                            <strong>x{line.qty || 1}</strong>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                     <small>{new Date(order.createdAt).toLocaleString('es-ES')}</small>
                     {isOwnerAccount ? (
                       <label>
                         Estado
-                        <select value={order.status} onChange={(event) => onUpdateOrderStatus(order.id, event.target.value)}>
-                          <option value="Recibido">Recibido</option>
-                          <option value="En proceso">En proceso</option>
-                          <option value="Listo para entregar">Listo para entregar</option>
+                        <select value={normalizeOrderStatus(order.status)} onChange={(event) => onUpdateOrderStatus(order.id, event.target.value)}>
+                          {ORDER_STATUS_OPTIONS.map((status) => (
+                            <option key={status} value={status}>{status}</option>
+                          ))}
                         </select>
                       </label>
                     ) : (
-                      <p>Estado: {order.status}</p>
+                      <p className="management-note">El estado se actualiza desde el atelier cuando el pedido avance.</p>
                     )}
                   </article>
                 ))}
@@ -1742,7 +1948,7 @@ function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreat
           </div>
         </>
       ) : (
-        <p>Abre el acceso privado para revisar el catalogo.</p>
+        <p>Abre el acceso privado para revisar el catálogo.</p>
       )}
     </article>
   )
@@ -1784,7 +1990,8 @@ function ManagementPage({
   const [memoryTick, setMemoryTick] = useState(0)
 
   const statusCounts = orders.reduce((acc, order) => {
-    acc[order.status] = (acc[order.status] ?? 0) + 1
+    const status = normalizeOrderStatus(order.status)
+    acc[status] = (acc[status] ?? 0) + 1
     return acc
   }, {})
   const productAvailabilityCounts = productsList.reduce((acc, product) => {
@@ -1793,25 +2000,55 @@ function ManagementPage({
     return acc
   }, {})
   const catalogReadyCount = productsList.filter((product) => product.price !== 'Consultar').length
-  const pendingOrders = orders.filter((order) => order.status !== 'Listo para entregar')
+  const pendingOrders = orders.filter((order) => OPEN_ORDER_STATUSES.has(normalizeOrderStatus(order.status)))
   const normalizedSearchTerm = searchTerm.trim().toLowerCase()
   const filteredOrders = orders
-    .filter((order) => statusFilter === 'Todos' || order.status === statusFilter)
+    .filter((order) => statusFilter === 'Todos' || normalizeOrderStatus(order.status) === statusFilter)
     .filter((order) => paymentFilter === 'Todos' || (order.paymentStatus || 'Pendiente') === paymentFilter)
     .filter((order) => shippingFilter === 'Todos' || (order.shippingStatus || 'Sin preparar') === shippingFilter)
     .filter((order) => {
       if (!normalizedSearchTerm) return true
-      return [order.reference, order.name, order.whatsapp, order.idea, order.shippingAddress, order.internalNotes]
+      return [order.reference, order.name, order.whatsapp, order.idea, order.shippingAddress, order.internalNotes, order.trackingCode, order.paymentMethodUsed]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(normalizedSearchTerm))
     })
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  const boardOrdersByStatus = MANAGEMENT_BOARD_STATUSES.map((status) => ({
+    status,
+    orders: orders
+      .filter((order) => normalizeOrderStatus(order.status) === status)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 6)
+  }))
+  const orderAlerts = orders
+    .map((order) => {
+      const missing = [
+        !order.finalPrice ? 'precio' : null,
+        (order.paymentStatus || 'Pendiente') === 'Pendiente' ? 'pago' : null,
+        order.deliveryPreference === 'Envío' && !order.shippingAddress ? 'dirección' : null,
+        !order.targetDate && OPEN_ORDER_STATUSES.has(normalizeOrderStatus(order.status)) ? 'fecha' : null
+      ].filter(Boolean)
+
+      return { order, missing }
+    })
+    .filter((item) => item.missing.length > 0)
+    .slice(0, 8)
   const paidOrders = orders.filter((order) => order.paymentStatus === 'Pagado')
   const signalOrders = orders.filter((order) => order.paymentStatus === 'Señal recibida')
   const pendingPaymentOrders = orders.filter((order) => (order.paymentStatus || 'Pendiente') === 'Pendiente')
   const shippingPendingOrders = orders.filter((order) => (order.shippingStatus || 'Sin preparar') !== 'Entregado')
+  const productionOrders = orders.filter((order) => normalizeOrderStatus(order.status) === 'En producción')
   const paidTotal = paidOrders.reduce((total, order) => total + parseEuroAmount(order.finalPrice), 0)
+  const signalTotal = signalOrders.reduce((total, order) => total + parseEuroAmount(order.depositAmount), 0)
   const pendingTotal = pendingPaymentOrders.reduce((total, order) => total + parseEuroAmount(order.finalPrice), 0)
+  const readyToSendOrders = orders.filter((order) => (
+    normalizeOrderStatus(order.status) === 'Listo para entregar'
+    && (order.shippingStatus || 'Sin preparar') !== 'Entregado'
+  ))
+  const blockedOrders = orders.filter((order) => (
+    OPEN_ORDER_STATUSES.has(normalizeOrderStatus(order.status))
+    && (!order.finalPrice || (order.paymentStatus || 'Pendiente') === 'Pendiente')
+  ))
   const configuredSettingCount = [
     businessSettings.bizum,
     businessSettings.paypal,
@@ -1859,7 +2096,7 @@ function ManagementPage({
   }
 
   const buildOrderWhatsappHref = (order) => {
-    const text = `Hola ${order.name || ''}, soy Atelier Lumière. Te escribo sobre tu pedido ${order.reference || ''}. Estado actual: ${order.status}.`
+    const text = buildClientOrderMessage(order)
     const cleanPhone = String(order.whatsapp || '').replace(/[^\d+]/g, '')
     return cleanPhone
       ? `https://wa.me/${cleanPhone.replace(/^\+/, '')}?text=${encodeURIComponent(text)}`
@@ -1876,10 +2113,23 @@ function ManagementPage({
     }
   }
 
+  const handleCopyClientMessage = async (order) => {
+    try {
+      await navigator.clipboard.writeText(buildClientOrderMessage(order))
+      setCopyMessage(`Mensaje del pedido ${order.reference || ''} copiado.`)
+    } catch {
+      setCopyMessage('No se pudo copiar el mensaje en este navegador.')
+    }
+  }
+
   const getSaleDraft = (order) => saleDrafts[order.id] || {
     finalPrice: order.finalPrice || '',
+    depositAmount: order.depositAmount || '',
+    paymentMethodUsed: order.paymentMethodUsed || order.paymentPreference || '',
     paymentStatus: order.paymentStatus || 'Pendiente',
     shippingStatus: order.shippingStatus || 'Sin preparar',
+    shippingCost: order.shippingCost || '',
+    trackingCode: order.trackingCode || '',
     targetDate: order.targetDate || '',
     shippingAddress: order.shippingAddress || '',
     internalNotes: order.internalNotes || ''
@@ -1901,6 +2151,66 @@ function ManagementPage({
     onUpdateOrderDetails(order.id, draft)
   }
 
+  const handleQuickOrderDetails = (order, details, message) => {
+    const { status: nextStatus, ...saleDetails } = details
+    if (Object.keys(saleDetails).length > 0) {
+      onUpdateOrderDetails(order.id, saleDetails)
+    }
+    if (nextStatus) {
+      onUpdateOrderStatus(order.id, nextStatus)
+    }
+    setSaleDrafts((current) => ({
+      ...current,
+      [order.id]: {
+        ...getSaleDraft(order),
+        ...current[order.id],
+        ...saleDetails
+      }
+    }))
+    setCopyMessage(message)
+  }
+
+  const handleApplyOrderInventory = (order, mode) => {
+    if (!Array.isArray(order.cartLines) || order.cartLines.length === 0) {
+      setCopyMessage('Este pedido no tiene piezas de carrito para actualizar inventario.')
+      return
+    }
+
+    const missingProducts = []
+    const shouldReduceStock = mode === 'sold' && order.inventoryStatus !== 'sold'
+
+    order.cartLines.forEach((line) => {
+      const product = productsList.find((item) => item.slug === line.slug)
+      if (!product) {
+        missingProducts.push(line.title || line.slug)
+        return
+      }
+
+      const qty = Number(line.qty) || 1
+      const nextAvailability = mode === 'sold' ? 'Vendido' : 'Reservado'
+      const nextStock = mode === 'sold'
+        ? (shouldReduceStock ? Math.max(0, normalizeProductStock(product.stock) - qty) : normalizeProductStock(product.stock))
+        : normalizeProductStock(product.stock)
+
+      onUpdateProduct(product.slug, {
+        availability: nextAvailability,
+        stock: nextStock
+      })
+    })
+
+    const nextInventoryStatus = mode === 'sold' ? 'sold' : 'reserved'
+    onUpdateOrderDetails(order.id, {
+      inventoryStatus: nextInventoryStatus,
+      inventoryUpdatedAt: new Date().toISOString()
+    })
+
+    setCopyMessage(
+      missingProducts.length > 0
+        ? `Inventario parcial: no encontré ${missingProducts.join(', ')} en el catálogo.`
+        : (mode === 'sold' ? `Piezas de ${order.reference || ''} marcadas como vendidas.` : `Piezas de ${order.reference || ''} reservadas.`)
+    )
+  }
+
   const handleExportOrders = (orderList, scopeLabel) => {
     if (orderList.length === 0) {
       setCopyMessage('No hay pedidos para exportar con ese filtro.')
@@ -1915,6 +2225,43 @@ function ManagementPage({
     } catch {
       setCopyMessage('No se pudo preparar el archivo de pedidos.')
     }
+  }
+
+  const handleDownloadOrderSheet = (order) => {
+    const safeReference = String(order.reference || order.id || 'pedido')
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+    downloadTextFile(buildOrderSheetText(order), `atelier-lumiere-ficha-${safeReference}.txt`)
+    setCopyMessage(`Ficha ${order.reference || ''} descargada.`)
+  }
+
+  const handlePrintOrderSheet = (order) => {
+    const printWindow = window.open('', '_blank', 'width=820,height=900')
+
+    if (!printWindow) {
+      setCopyMessage('No se pudo abrir la ventana de impresión. Puedes descargar la ficha.')
+      return
+    }
+
+    const sheetText = buildOrderSheetText(order)
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Ficha ${order.reference || 'pedido'}</title>
+          <style>
+            body { font-family: Georgia, serif; color: #2f2722; padding: 32px; line-height: 1.55; }
+            pre { white-space: pre-wrap; font: 16px/1.55 Georgia, serif; }
+          </style>
+        </head>
+        <body>
+          <pre>${sheetText.replace(/[&<>]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[char]))}</pre>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+    printWindow.focus()
+    printWindow.print()
   }
 
   const handleBusinessSettingChange = (field, value) => {
@@ -2076,12 +2423,49 @@ function ManagementPage({
               <strong>{shippingPendingOrders.length}</strong>
               <span>Por entregar</span>
             </article>
+            <article className="mini-stat-card">
+              <strong>{productionOrders.length}</strong>
+              <span>En producción</span>
+            </article>
           </div>
+
+          <article className="quote-panel management-sales-health-panel">
+            <div className="management-panel-head">
+              <div>
+                <p className="eyebrow">Ventas</p>
+                <h3>Estado comercial</h3>
+              </div>
+              <span>{blockedOrders.length}</span>
+            </div>
+            <div className="management-sales-health-grid">
+              <div>
+                <strong>{formatEuroAmount(paidTotal)}</strong>
+                <span>Cobrado</span>
+              </div>
+              <div>
+                <strong>{formatEuroAmount(signalTotal)}</strong>
+                <span>Señales</span>
+              </div>
+              <div>
+                <strong>{formatEuroAmount(pendingTotal)}</strong>
+                <span>Pendiente estimado</span>
+              </div>
+              <div>
+                <strong>{readyToSendOrders.length}</strong>
+                <span>Listos por entregar</span>
+              </div>
+            </div>
+            {blockedOrders.length > 0 ? (
+              <p className="management-note">{blockedOrders.length} pedido(s) abiertos necesitan precio o pago antes de avanzar.</p>
+            ) : (
+              <p className="management-note">No hay pedidos abiertos bloqueados por precio o pago.</p>
+            )}
+          </article>
 
           <article className="quote-panel management-metrics-panel">
             <p className="eyebrow">Métricas del diario</p>
-            <h3>Conversion local</h3>
-            <p>Variante activa para el boton principal: <strong>{journalVariant}</strong>.</p>
+            <h3>Conversión local</h3>
+            <p>Variante activa para el botón principal: <strong>{journalVariant}</strong>.</p>
             <ul className="note-list">
               <li>Clicks CTA encargo: {journalMetrics?.journal_order_cta_A ?? 0} (A) / {journalMetrics?.journal_order_cta_B ?? 0} (B)</li>
               <li>Clicks CTA colección: {journalMetrics?.journal_collection_cta ?? 0}</li>
@@ -2241,6 +2625,82 @@ function ManagementPage({
             {settingsMessage ? <p className="management-note">{settingsMessage}</p> : null}
           </article>
 
+          <article className="quote-panel management-board-panel">
+            <div className="management-panel-head">
+              <div>
+                <p className="eyebrow">Fase 4 · Bandeja</p>
+                <h3>Pedidos por estado</h3>
+              </div>
+              <span>{pendingOrders.length} abiertos</span>
+            </div>
+            <div className="management-board" aria-label="Bandeja de pedidos por estado">
+              {boardOrdersByStatus.map((column) => (
+                <section className="management-board-column" key={column.status}>
+                  <div className="management-board-column__head">
+                    <strong>{column.status}</strong>
+                    <span>{statusCounts[column.status] ?? 0}</span>
+                  </div>
+                  {column.orders.length === 0 ? (
+                    <p className="management-board-empty">Sin pedidos</p>
+                  ) : (
+                    column.orders.map((order) => (
+                      <article className="management-board-card" key={`board-${column.status}-${order.id}`}>
+                        <strong>{order.reference || 'Sin referencia'}</strong>
+                        <span>{order.name || 'Sin nombre'}</span>
+                        <small>{getOrderItemsLabel(order)}</small>
+                        <div className="management-board-card__meta">
+                          <span>{order.finalPrice || 'Sin precio'}</span>
+                          <span>{order.paymentStatus || 'Pendiente'}</span>
+                        </div>
+                        <div className="management-board-card__actions">
+                          <button type="button" onClick={() => handleCopyClientMessage(order)}>Mensaje</button>
+                          {MANAGEMENT_BOARD_STATUSES.map((status, index) => (
+                            status === normalizeOrderStatus(order.status) && MANAGEMENT_BOARD_STATUSES[index + 1] ? (
+                              <button
+                                type="button"
+                                key={`${order.id}-${status}-next`}
+                                onClick={() => onUpdateOrderStatus(order.id, MANAGEMENT_BOARD_STATUSES[index + 1])}
+                              >
+                                Pasar a {MANAGEMENT_BOARD_STATUSES[index + 1]}
+                              </button>
+                            ) : null
+                          ))}
+                        </div>
+                      </article>
+                    ))
+                  )}
+                </section>
+              ))}
+            </div>
+          </article>
+
+          <article className="quote-panel management-alerts-panel">
+            <div className="management-panel-head">
+              <div>
+                <p className="eyebrow">Avisos internos</p>
+                <h3>Pedidos que necesitan completar datos</h3>
+              </div>
+              <span>{orderAlerts.length}</span>
+            </div>
+            {orderAlerts.length === 0 ? (
+              <p>No hay avisos pendientes ahora mismo.</p>
+            ) : (
+              <div className="management-alert-list">
+                {orderAlerts.map(({ order, missing }) => (
+                  <div className="management-alert-item" key={`alert-${order.id}`}>
+                    <div>
+                      <strong>{order.reference || 'Sin referencia'} · {order.name || 'Sin nombre'}</strong>
+                      <span>Falta: {missing.join(', ')}</span>
+                    </div>
+                    <button type="button" className="button button--secondary" onClick={() => handleCopyReference(order.reference)}>
+                      Copiar ref.
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </article>
+
           <CatalogManagerPanel productsList={productsList} isVisible onUpdateProduct={onUpdateProduct} onCreateProduct={onCreateProduct} onDeleteProduct={onDeleteProduct} />
 
           <article className="quote-panel management-orders-panel">
@@ -2250,8 +2710,10 @@ function ManagementPage({
               <>
                 <div className="management-status-strip" aria-label="Resumen por estado">
                   <span>Recibido: {statusCounts.Recibido ?? 0}</span>
-                  <span>En proceso: {statusCounts['En proceso'] ?? 0}</span>
+                  <span>Presupuesto: {statusCounts['Presupuesto enviado'] ?? 0}</span>
+                  <span>Producción: {statusCounts['En producción'] ?? 0}</span>
                   <span>Listo: {statusCounts['Listo para entregar'] ?? 0}</span>
+                  <span>Entregado: {statusCounts.Entregado ?? 0}</span>
                   <span>Pagado: {paidOrders.length}</span>
                   <span>Señal: {signalOrders.length}</span>
                   <span>Pendiente pago: {pendingPaymentOrders.length}</span>
@@ -2289,28 +2751,27 @@ function ManagementPage({
                     Estado
                     <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
                       <option value="Todos">Todos</option>
-                      <option value="Recibido">Recibido</option>
-                      <option value="En proceso">En proceso</option>
-                      <option value="Listo para entregar">Listo para entregar</option>
+                      {ORDER_STATUS_OPTIONS.map((status) => (
+                        <option key={status} value={status}>{status}</option>
+                      ))}
                     </select>
                   </label>
                   <label>
                     Pago
                     <select value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}>
                       <option value="Todos">Todos</option>
-                      <option value="Pendiente">Pendiente</option>
-                      <option value="Señal recibida">Señal recibida</option>
-                      <option value="Pagado">Pagado</option>
+                      {PAYMENT_STATUS_OPTIONS.map((status) => (
+                        <option key={status} value={status}>{status}</option>
+                      ))}
                     </select>
                   </label>
                   <label>
                     Envío
                     <select value={shippingFilter} onChange={(event) => setShippingFilter(event.target.value)}>
                       <option value="Todos">Todos</option>
-                      <option value="Sin preparar">Sin preparar</option>
-                      <option value="Preparando">Preparando</option>
-                      <option value="Enviado">Enviado</option>
-                      <option value="Entregado">Entregado</option>
+                      {SHIPPING_STATUS_OPTIONS.map((status) => (
+                        <option key={status} value={status}>{status}</option>
+                      ))}
                     </select>
                   </label>
                 </div>
@@ -2326,27 +2787,104 @@ function ManagementPage({
                   <article key={`management-${order.id}`} className="login-orders-item">
                     <div className="login-orders-item__header">
                       <strong>{order.reference || 'Sin referencia'}</strong>
-                      <span className={`order-status-badge order-status-badge--${order.status.replace(/\s+/g, '-').toLowerCase()}`}>
-                        {order.status}
+                      <span className={`order-status-badge order-status-badge--${getOrderStatusClass(normalizeOrderStatus(order.status))}`}>
+                        {normalizeOrderStatus(order.status)}
                       </span>
                     </div>
                     <span>{order.name} · {order.whatsapp}</span>
+                    <div className="order-summary-chips" aria-label="Resumen del pedido">
+                      <span>{getOrderSourceLabel(order.source)}</span>
+                      <span>{getOrderItemsLabel(order)}</span>
+                      <span>Pago elegido: {order.paymentPreference || 'Por confirmar'}</span>
+                      <span>Entrega: {order.deliveryPreference || 'Por confirmar'}</span>
+                      <span>Total: {order.finalPrice || 'Pendiente'}</span>
+                      {order.inventoryStatus ? <span>Inventario: {order.inventoryStatus === 'sold' ? 'vendido' : 'reservado'}</span> : null}
+                      {order.depositAmount ? <span>Señal: {order.depositAmount}</span> : null}
+                      {order.paymentMethodUsed ? <span>Pago usado: {order.paymentMethodUsed}</span> : null}
+                      {order.shippingCost ? <span>Envío: {order.shippingCost}</span> : null}
+                      {order.trackingCode ? <span>Seguimiento: {order.trackingCode}</span> : null}
+                    </div>
                     <p>{order.idea}</p>
+                    <p className="order-next-step">{getOrderNextStep(order)}</p>
+                    {Array.isArray(order.cartLines) && order.cartLines.length > 0 ? (
+                      <ul className="management-cart-lines">
+                        {order.cartLines.map((line) => (
+                          <li key={`management-line-${order.id}-${line.slug || line.title}`}>
+                            <span>{line.title || line.slug}</span>
+                            <strong>x{line.qty || 1}</strong>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                     <small>{new Date(order.createdAt).toLocaleString('es-ES')}</small>
                     <div className="management-order-actions">
                       <a className="button button--secondary" href={buildOrderWhatsappHref(order)} target="_blank" rel="noreferrer">
                         Contactar
                       </a>
+                      <button
+                        type="button"
+                        className="button button--secondary"
+                        onClick={() => handleQuickOrderDetails(order, { paymentStatus: 'Señal recibida' }, `Pedido ${order.reference || ''} marcado con señal.`)}
+                      >
+                        Señal recibida
+                      </button>
+                      <button
+                        type="button"
+                        className="button button--secondary"
+                        onClick={() => handleQuickOrderDetails(order, { paymentStatus: 'Pagado' }, `Pedido ${order.reference || ''} marcado como pagado.`)}
+                      >
+                        Pagado
+                      </button>
+                      <button
+                        type="button"
+                        className="button button--secondary"
+                        onClick={() => handleQuickOrderDetails(order, { shippingStatus: 'Preparando' }, `Envío de ${order.reference || ''} marcado como preparando.`)}
+                      >
+                        Preparar envío
+                      </button>
+                      <button
+                        type="button"
+                        className="button button--secondary"
+                        onClick={() => {
+                          handleQuickOrderDetails(order, { shippingStatus: 'Entregado', status: 'Entregado' }, `Pedido ${order.reference || ''} marcado como entregado.`)
+                          handleApplyOrderInventory(order, 'sold')
+                        }}
+                      >
+                        Entregado
+                      </button>
+                      <button
+                        type="button"
+                        className="button button--secondary"
+                        onClick={() => handleApplyOrderInventory(order, 'reserved')}
+                      >
+                        Reservar piezas
+                      </button>
+                      <button
+                        type="button"
+                        className="button button--secondary"
+                        onClick={() => handleApplyOrderInventory(order, 'sold')}
+                      >
+                        Marcar vendidas
+                      </button>
                       <button type="button" className="button button--secondary" onClick={() => handleCopyReference(order.reference)}>
                         Copiar ref.
+                      </button>
+                      <button type="button" className="button button--secondary" onClick={() => handleCopyClientMessage(order)}>
+                        Copiar mensaje
+                      </button>
+                      <button type="button" className="button button--secondary" onClick={() => handleDownloadOrderSheet(order)}>
+                        Descargar ficha
+                      </button>
+                      <button type="button" className="button button--secondary" onClick={() => handlePrintOrderSheet(order)}>
+                        Imprimir
                       </button>
                     </div>
                     <label>
                       Estado
-                      <select value={order.status} onChange={(event) => onUpdateOrderStatus(order.id, event.target.value)}>
-                        <option value="Recibido">Recibido</option>
-                        <option value="En proceso">En proceso</option>
-                        <option value="Listo para entregar">Listo para entregar</option>
+                      <select value={normalizeOrderStatus(order.status)} onChange={(event) => onUpdateOrderStatus(order.id, event.target.value)}>
+                        {ORDER_STATUS_OPTIONS.map((status) => (
+                          <option key={status} value={status}>{status}</option>
+                        ))}
                       </select>
                     </label>
                     <details className="management-sale-card">
@@ -2362,14 +2900,32 @@ function ManagementPage({
                           />
                         </label>
                         <label>
+                          Señal
+                          <input
+                            type="text"
+                            value={getSaleDraft(order).depositAmount}
+                            onChange={(event) => handleSaleDraftChange(order, 'depositAmount', event.target.value)}
+                            placeholder="Ej. 40 EUR"
+                          />
+                        </label>
+                        <label>
+                          Método usado
+                          <input
+                            type="text"
+                            value={getSaleDraft(order).paymentMethodUsed}
+                            onChange={(event) => handleSaleDraftChange(order, 'paymentMethodUsed', event.target.value)}
+                            placeholder="Bizum, PayPal, transferencia..."
+                          />
+                        </label>
+                        <label>
                           Pago
                           <select
                             value={getSaleDraft(order).paymentStatus}
                             onChange={(event) => handleSaleDraftChange(order, 'paymentStatus', event.target.value)}
                           >
-                            <option value="Pendiente">Pendiente</option>
-                            <option value="Señal recibida">Señal recibida</option>
-                            <option value="Pagado">Pagado</option>
+                            {PAYMENT_STATUS_OPTIONS.map((status) => (
+                              <option key={status} value={status}>{status}</option>
+                            ))}
                           </select>
                         </label>
                         <label>
@@ -2378,11 +2934,19 @@ function ManagementPage({
                             value={getSaleDraft(order).shippingStatus}
                             onChange={(event) => handleSaleDraftChange(order, 'shippingStatus', event.target.value)}
                           >
-                            <option value="Sin preparar">Sin preparar</option>
-                            <option value="Preparando">Preparando</option>
-                            <option value="Enviado">Enviado</option>
-                            <option value="Entregado">Entregado</option>
+                            {SHIPPING_STATUS_OPTIONS.map((status) => (
+                              <option key={status} value={status}>{status}</option>
+                            ))}
                           </select>
+                        </label>
+                        <label>
+                          Coste de envío
+                          <input
+                            type="text"
+                            value={getSaleDraft(order).shippingCost}
+                            onChange={(event) => handleSaleDraftChange(order, 'shippingCost', event.target.value)}
+                            placeholder="Ej. 6 EUR"
+                          />
                         </label>
                         <label>
                           Fecha objetivo
@@ -2390,6 +2954,15 @@ function ManagementPage({
                             type="date"
                             value={getSaleDraft(order).targetDate}
                             onChange={(event) => handleSaleDraftChange(order, 'targetDate', event.target.value)}
+                          />
+                        </label>
+                        <label>
+                          Seguimiento
+                          <input
+                            type="text"
+                            value={getSaleDraft(order).trackingCode}
+                            onChange={(event) => handleSaleDraftChange(order, 'trackingCode', event.target.value)}
+                            placeholder="Código o enlace de seguimiento"
                           />
                         </label>
                         <label className="management-sale-form__wide">
@@ -2699,7 +3272,7 @@ const legalPages = {
     sections: [
       {
         title: 'Datos que se solicitan',
-        text: 'Nombre, correo, Contactar, dirección de envío cuando sea necesaria y detalles del encargo. Estos datos se usan para preparar presupuestos, pedidos y comunicaciones relacionadas.'
+        text: 'Nombre, correo, teléfono de contacto, dirección de envío cuando sea necesaria y detalles del encargo. Estos datos se usan para preparar presupuestos, pedidos y comunicaciones relacionadas.'
       },
       {
         title: 'Cuenta de cliente',
@@ -2806,7 +3379,7 @@ function Footer() {
 
         <form className="footer-form">
           <h2>Newsletter</h2>
-          <p>Recibe novedades, historias del taller y nuevas colecciónes.</p>
+          <p>Recibe novedades, historias del taller y nuevas colecciones.</p>
           <div className="footer-form__row">
             <input type="email" placeholder="Tu correo electrónico" aria-label="Correo electrónico" />
             <button type="button">Suscribirme</button>
@@ -3087,11 +3660,17 @@ export default function App() {
 
     await setDoc(doc(firebaseDb, 'orders', order.id), {
       finalPrice: order.finalPrice || '',
+      depositAmount: order.depositAmount || '',
+      paymentMethodUsed: order.paymentMethodUsed || '',
       paymentStatus: order.paymentStatus || 'Pendiente',
       shippingStatus: order.shippingStatus || 'Sin preparar',
+      shippingCost: order.shippingCost || '',
+      trackingCode: order.trackingCode || '',
       targetDate: order.targetDate || '',
       shippingAddress: order.shippingAddress || '',
       internalNotes: order.internalNotes || '',
+      inventoryStatus: order.inventoryStatus || '',
+      inventoryUpdatedAt: order.inventoryUpdatedAt || '',
       updatedAt: new Date().toISOString()
     }, { merge: true })
   }
