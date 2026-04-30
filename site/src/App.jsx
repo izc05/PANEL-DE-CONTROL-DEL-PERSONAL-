@@ -19,6 +19,11 @@ import {
   where
 } from 'firebase/firestore'
 import {
+  getDownloadURL,
+  ref as storageRef,
+  uploadBytes
+} from 'firebase/storage'
+import {
   aboutNotes,
   contactDetails,
   heroHighlights,
@@ -28,7 +33,7 @@ import {
   processSteps,
   products
 } from './content'
-import { firebaseAuth, firebaseDb, isFirebaseConfigured } from './firebase'
+import { firebaseAuth, firebaseDb, firebaseStorage, isFirebaseConfigured } from './firebase'
 
 const JOURNAL_CTA_METRICS_KEY = 'atelier-journal-cta-metrics-v1'
 const JOURNAL_CTA_VARIANT_KEY = 'atelier-journal-cta-variant-v1'
@@ -524,6 +529,19 @@ const readImageFileAsDataUrl = (file) => new Promise((resolve, reject) => {
   reader.onerror = () => reject(new Error('No se pudo leer la imagen.'))
   reader.readAsDataURL(file)
 })
+
+const validateImageFile = (file) => {
+  if (!file) return 'Selecciona una imagen.'
+  if (!file.type.startsWith('image/')) return 'El archivo debe ser una imagen.'
+  if (file.size > 4 * 1024 * 1024) return 'La imagen pesa demasiado. Prueba con una imagen de menos de 4 MB.'
+  return ''
+}
+
+const buildStorageImagePath = (slug, file) => {
+  const extension = file?.name?.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
+  const cleanSlug = slugifyProductValue(slug || 'pieza')
+  return `catalogo/${cleanSlug}/${Date.now()}.${extension}`
+}
 
 const normalizeProductStock = (value) => {
   const numberValue = Number.parseInt(value, 10)
@@ -1613,12 +1631,6 @@ function LoginPage({
       />
       <PageSection className="section-block--soft">
         <div className="container split-panels split-panels--single">
-          <article className="quote-panel quote-panel--signature login-intro-panel">
-            <p className="eyebrow">Cuenta Atelier</p>
-            <h3>Seguimiento sencillo, sin ruido</h3>
-            <p>Este acceso sirve para revisar el estado de un pedido, recuperar referencias y continuar una solicitud con calma.</p>
-          </article>
-
           {ownerAccessRequired ? (
             <article className="quote-panel quote-panel--signature">
               <p className="eyebrow">Zona privada</p>
@@ -1803,7 +1815,7 @@ function LoginPage({
 }
 
 
-function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreateProduct, onDeleteProduct }) {
+function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreateProduct, onDeleteProduct, onUploadProductImage, canUploadCloudImages }) {
   const [draft, setDraft] = useState({
     title: '',
     category: 'Piezas únicas',
@@ -1814,6 +1826,7 @@ function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreat
     description: ''
   })
   const [message, setMessage] = useState('')
+  const [uploadingImageKey, setUploadingImageKey] = useState('')
 
   const updateDraft = (field, value) => {
     setDraft((current) => ({ ...current, [field]: value }))
@@ -1826,11 +1839,24 @@ function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreat
     if (!file) return
 
     try {
+      const validationError = validateImageFile(file)
+      if (validationError) throw new Error(validationError)
+
+      setUploadingImageKey('draft')
+      if (canUploadCloudImages && onUploadProductImage) {
+        const upload = await onUploadProductImage(file, draft.title || 'nueva-pieza')
+        updateDraft('image', upload.url)
+        setMessage(upload.message)
+        return
+      }
+
       const imageData = await readImageFileAsDataUrl(file)
       updateDraft('image', imageData)
-      setMessage('Imagen cargada como vista previa local.')
+      setMessage('Imagen cargada como vista previa local. Para verla en todos tus dispositivos habrá que activar Firebase Storage.')
     } catch (error) {
       setMessage(error.message || 'No se pudo cargar la imagen.')
+    } finally {
+      setUploadingImageKey('')
     }
   }
 
@@ -1840,11 +1866,24 @@ function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreat
     if (!file) return
 
     try {
+      const validationError = validateImageFile(file)
+      if (validationError) throw new Error(validationError)
+
+      setUploadingImageKey(product.slug)
+      if (canUploadCloudImages && onUploadProductImage) {
+        const upload = await onUploadProductImage(file, product.slug)
+        onUpdateProduct(product.slug, { image: upload.url, alt: product.alt || product.title, imageStoragePath: upload.storagePath || '' })
+        setMessage(`${product.title}: ${upload.message}`)
+        return
+      }
+
       const imageData = await readImageFileAsDataUrl(file)
       onUpdateProduct(product.slug, { image: imageData, alt: product.alt || product.title })
-      setMessage(`Imagen actualizada para ${product.title}.`)
+      setMessage(`Imagen actualizada para ${product.title} como prueba local.`)
     } catch (error) {
       setMessage(error.message || 'No se pudo cargar la imagen.')
+    } finally {
+      setUploadingImageKey('')
     }
   }
 
@@ -1879,7 +1918,7 @@ function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreat
         <>
           <div className="management-catalog-toolbar">
             <strong>{productsList.length} pieza(s) en catálogo</strong>
-            <span>Cambia precio, categoría y disponibilidad desde aquí. Estos ajustes se guardan en este navegador.</span>
+            <span>{canUploadCloudImages ? 'Las fotos se suben a Firebase Storage y el catálogo se actualiza desde aquí.' : 'Cambia precio, categoría y disponibilidad desde aquí. Las fotos se guardan en este navegador hasta activar Firebase Storage.'}</span>
           </div>
 
           <form className="management-create-product-form" onSubmit={handleCreateSubmit}>
@@ -1922,10 +1961,10 @@ function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreat
               <div className="management-image-uploader management-create-product-form__wide">
                 <div>
                   <strong>Subir imagen desde este dispositivo</strong>
-                  <span>Se guarda localmente en este navegador para probar el catálogo.</span>
+                  <span>{canUploadCloudImages ? 'Se subirá a Firebase Storage para usarla en la web publicada.' : 'Se guarda localmente en este navegador para probar el catálogo.'}</span>
                 </div>
                 <label className="button button--secondary">
-                  Elegir imagen
+                  {uploadingImageKey === 'draft' ? 'Subiendo...' : 'Elegir imagen'}
                   <input type="file" accept="image/*" onChange={handleDraftImageUpload} />
                 </label>
                 {draft.image ? (
@@ -2003,10 +2042,10 @@ function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreat
                     <div className="management-image-uploader management-product-controls__wide">
                       <div>
                         <strong>Imagen del producto</strong>
-                        <span>Sube una foto nueva desde PC o móvil.</span>
+                        <span>{canUploadCloudImages ? 'Sube una foto nueva desde PC o móvil y queda en la nube.' : 'Sube una foto nueva desde PC o móvil para probarla aquí.'}</span>
                       </div>
                       <label className="button button--secondary">
-                        Subir imagen
+                        {uploadingImageKey === product.slug ? 'Subiendo...' : 'Subir imagen'}
                         <input type="file" accept="image/*" onChange={(event) => handleProductImageUpload(product, event)} />
                       </label>
                     </div>
@@ -2042,7 +2081,9 @@ function ManagementPage({
   pendingSyncCount,
   onUpdateProduct,
   onCreateProduct,
-  onDeleteProduct
+  onDeleteProduct,
+  onUploadProductImage,
+  canUploadCloudImages
 }) {
   const [statusFilter, setStatusFilter] = useState('Todos')
   const [paymentFilter, setPaymentFilter] = useState('Todos')
@@ -2777,7 +2818,15 @@ function ManagementPage({
             )}
           </article>
 
-          <CatalogManagerPanel productsList={productsList} isVisible onUpdateProduct={onUpdateProduct} onCreateProduct={onCreateProduct} onDeleteProduct={onDeleteProduct} />
+          <CatalogManagerPanel
+            productsList={productsList}
+            isVisible
+            onUpdateProduct={onUpdateProduct}
+            onCreateProduct={onCreateProduct}
+            onDeleteProduct={onDeleteProduct}
+            onUploadProductImage={onUploadProductImage}
+            canUploadCloudImages={canUploadCloudImages}
+          />
 
           <article className="quote-panel management-orders-panel">
             <p className="eyebrow">Ventas y pedidos</p>
@@ -3201,17 +3250,6 @@ function JournalPage({ onCreateOrder }) {
         </div>
       </section>
 
-      <PageSection className="section-block--soft journal-conversion">
-        <div className="container journal-conversion__grid journal-conversion__grid--simple">
-          <article className="journal-conversion__card">
-            <p className="eyebrow">Encargo inspirado</p>
-            <h3>¿Quieres una pieza nacida de este proceso?</h3>
-            <p>Cuéntame tu idea y preparo una referencia para seguir formato, paleta y acabado.</p>
-          </article>
-          <QuickOrderForm onCreateOrder={onCreateOrder} source="journal_quick_form" title="Solicitud rápida" intro="Déjame una idea inspirada en el diario del taller." />
-        </div>
-      </PageSection>
-
       <PageSection id="diario-entradas">
         <div className="container journal-grid journal-grid--large">
           {journalEntries.map((entry) => (
@@ -3517,6 +3555,30 @@ export default function App() {
 
   const handleRemoveFromCart = (slug) => {
     setCartItems((items) => items.filter((item) => item.slug !== slug))
+  }
+
+  const handleUploadCatalogImage = async (file, slug) => {
+    const validationError = validateImageFile(file)
+    if (validationError) throw new Error(validationError)
+    if (!firebaseStorage) throw new Error('Firebase Storage no está configurado todavía.')
+    if (authUser?.profile?.role !== 'owner') throw new Error('Solo la propietaria puede subir imágenes del catálogo.')
+
+    const imagePath = buildStorageImagePath(slug, file)
+    const reference = storageRef(firebaseStorage, imagePath)
+    await uploadBytes(reference, file, {
+      contentType: file.type,
+      customMetadata: {
+        uploadedBy: authUser.email || 'owner',
+        catalogSlug: String(slug || '')
+      }
+    })
+    const url = await getDownloadURL(reference)
+
+    return {
+      url,
+      storagePath: imagePath,
+      message: 'Imagen subida a Firebase Storage y lista para la web publicada.'
+    }
   }
 
   const loadShopProducts = async () => {
@@ -4119,6 +4181,8 @@ export default function App() {
         onUpdateProduct={handleUpdateCatalogProduct}
         onCreateProduct={handleCreateCatalogProduct}
         onDeleteProduct={handleDeleteCatalogProduct}
+        onUploadProductImage={handleUploadCatalogImage}
+        canUploadCloudImages={Boolean(firebaseStorage && authUser?.profile?.role === 'owner')}
       />
     ) : (
       <LoginPage
