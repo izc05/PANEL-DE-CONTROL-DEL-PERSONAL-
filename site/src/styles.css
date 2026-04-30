@@ -983,6 +983,34 @@ h3,
   display: none;
 }
 
+.cart-receipt-panel {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1rem;
+  border: 1px solid rgba(142, 107, 69, 0.18);
+  border-radius: 1rem;
+  background: rgba(255, 252, 248, 0.82);
+}
+
+.cart-receipt-panel strong {
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+}
+
+.cart-receipt-panel p {
+  margin: 0;
+}
+
+.cart-next-steps {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--ink-soft);
+  line-height: 1.55;
+}
+
 .login-metrics-panel {
   margin-top: 1rem;
 }
@@ -1148,7 +1176,8 @@ h3,
 
 .management-board-panel,
 .management-alerts-panel,
-.management-sales-health-panel {
+.management-sales-health-panel,
+.management-priority-panel {
   grid-column: 1 / -1;
 }
 
@@ -1295,6 +1324,71 @@ h3,
 
 .management-alert-item span {
   color: #6f5340;
+}
+
+.management-priority-list,
+.management-stock-watch-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.management-priority-item,
+.management-stock-watch-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid rgba(142, 107, 69, 0.16);
+  border-radius: 0.95rem;
+  background: rgba(255, 252, 248, 0.78);
+}
+
+.management-priority-item div,
+.management-stock-watch-item div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.management-priority-item strong,
+.management-stock-watch-item strong {
+  color: var(--ink);
+}
+
+.management-priority-item span,
+.management-stock-watch-item span {
+  color: #6f5340;
+}
+
+.management-priority-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+.management-priority-item__actions button {
+  min-height: 2rem;
+  border: 1px solid rgba(142, 107, 69, 0.22);
+  border-radius: 999px;
+  padding: 0.3rem 0.65rem;
+  background: rgba(255, 255, 255, 0.9);
+  color: #5f4635;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.management-stock-watch-item > span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(189, 143, 86, 0.14);
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .management-sales-health-grid {

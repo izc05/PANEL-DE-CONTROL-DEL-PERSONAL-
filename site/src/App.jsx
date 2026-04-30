@@ -257,6 +257,33 @@ const buildClientOrderMessage = (order) => [
   order.trackingCode ? `Seguimiento del envío: ${order.trackingCode}.` : null
 ].filter(Boolean).join('\n')
 
+const buildCustomerOrderReceipt = (order) => {
+  const cartLines = Array.isArray(order.cartLines) && order.cartLines.length > 0
+    ? order.cartLines.map((line) => `- ${line.title || line.slug} x${line.qty || 1} · ${line.price || 'Precio a confirmar'}`).join('\n')
+    : '- Pedido sin piezas de carrito.'
+
+  return [
+    'Atelier Lumiere · referencia de pedido',
+    '',
+    `Referencia: ${order.reference || 'Sin referencia'}`,
+    `Fecha: ${order.createdAt ? new Date(order.createdAt).toLocaleString('es-ES') : new Date().toLocaleString('es-ES')}`,
+    `Nombre: ${order.name || 'Sin nombre'}`,
+    `Contacto: ${order.whatsapp || 'Sin contacto'}`,
+    order.customerEmail ? `Correo: ${order.customerEmail}` : null,
+    '',
+    'Piezas:',
+    cartLines,
+    '',
+    `Total orientativo: ${order.finalPrice || 'Pendiente de confirmar'}`,
+    `Pago elegido: ${order.paymentPreference || 'Por confirmar'}`,
+    `Entrega: ${order.deliveryPreference || 'Por confirmar'}`,
+    order.shippingAddress ? `Direccion: ${order.shippingAddress}` : null,
+    '',
+    'Siguiente paso:',
+    'El atelier revisara disponibilidad, entrega y forma de pago antes de confirmar la compra.'
+  ].filter(Boolean).join('\n')
+}
+
 const buildOrderSheetText = (order) => {
   const cartLines = Array.isArray(order.cartLines) && order.cartLines.length > 0
     ? order.cartLines.map((line) => `- ${line.title || line.slug} x${line.qty || 1} (${line.price || 'sin precio'})`).join('\n')
@@ -519,8 +546,8 @@ const readImageFileAsDataUrl = (file) => new Promise((resolve, reject) => {
     return
   }
 
-  if (file.size > 2.5 * 1024 * 1024) {
-    reject(new Error('La imagen pesa demasiado. Prueba con una imagen de menos de 2,5 MB.'))
+  if (file.size > 4 * 1024 * 1024) {
+    reject(new Error('La imagen pesa demasiado. Prueba con una imagen de menos de 4 MB.'))
     return
   }
 
@@ -542,6 +569,22 @@ const buildStorageImagePath = (slug, file) => {
   const cleanSlug = slugifyProductValue(slug || 'pieza')
   return `catalogo/${cleanSlug}/${Date.now()}.${extension}`
 }
+
+const withTimeout = (promise, timeoutMs, message) => new Promise((resolve, reject) => {
+  const timeoutId = window.setTimeout(() => {
+    reject(new Error(message))
+  }, timeoutMs)
+
+  promise
+    .then((value) => {
+      window.clearTimeout(timeoutId)
+      resolve(value)
+    })
+    .catch((error) => {
+      window.clearTimeout(timeoutId)
+      reject(error)
+    })
+})
 
 const normalizeProductStock = (value) => {
   const numberValue = Number.parseInt(value, 10)
@@ -1308,6 +1351,7 @@ function CartPage({ cartItems, onAddToCart, onSetCartQuantity, onRemoveFromCart,
   })
   const [checkoutMessage, setCheckoutMessage] = useState('')
   const [lastOrder, setLastOrder] = useState(null)
+  const [receiptMessage, setReceiptMessage] = useState('')
   const [businessSettings, setBusinessSettings] = useState(DEFAULT_BUSINESS_SETTINGS)
   const lines = cartItems
     .map((line) => {
@@ -1400,6 +1444,27 @@ ${orderSummary}\n\nTotal orientativo: ${orderTotalLabel}\nPago preferido: ${paym
       acceptedReview: false
     })
     setCheckoutMessage(`Pedido guardado. Referencia: ${createdOrder.reference}. Podrás revisarlo desde tu acceso.`)
+    setReceiptMessage('')
+  }
+
+  const handleCopyReceipt = async () => {
+    if (!lastOrder) return
+    try {
+      await navigator.clipboard.writeText(buildCustomerOrderReceipt(lastOrder))
+      setReceiptMessage('Resumen copiado.')
+    } catch {
+      setReceiptMessage('No se pudo copiar el resumen en este navegador.')
+    }
+  }
+
+  const handleDownloadReceipt = () => {
+    if (!lastOrder) return
+    const safeReference = String(lastOrder.reference || lastOrder.id || 'pedido')
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+    downloadTextFile(buildCustomerOrderReceipt(lastOrder), `atelier-lumiere-${safeReference}.txt`)
+    setReceiptMessage('Referencia descargada.')
   }
 
   return (
@@ -1423,7 +1488,26 @@ ${orderSummary}\n\nTotal orientativo: ${orderTotalLabel}\nPago preferido: ${paym
                 <li>Estado inicial: {normalizeOrderStatus(lastOrder.status)}</li>
                 <li>Pago elegido: {lastOrder.paymentPreference || 'Por confirmar'}</li>
                 <li>Total orientativo: {lastOrder.finalPrice || 'Pendiente de confirmar'}</li>
+                <li>Entrega: {lastOrder.deliveryPreference || 'Por confirmar'}</li>
               </ul>
+              <div className="cart-receipt-panel">
+                <strong>Resumen para guardar</strong>
+                <p>Conserva esta referencia para consultar el pedido o continuar la conversación con el atelier.</p>
+                <div className="collection-service-cta__actions">
+                  <button type="button" className="button button--secondary" onClick={handleCopyReceipt}>
+                    Copiar resumen
+                  </button>
+                  <button type="button" className="button button--secondary" onClick={handleDownloadReceipt}>
+                    Descargar referencia
+                  </button>
+                </div>
+                {receiptMessage ? <p className="journal-quick-form__message">{receiptMessage}</p> : null}
+              </div>
+              <ol className="cart-next-steps">
+                <li>El atelier revisa disponibilidad, precio final y plazo.</li>
+                <li>Recibirás confirmación del método de pago antes de reservar o enviar.</li>
+                <li>Podrás seguir el estado desde Acceder usando tu cuenta.</li>
+              </ol>
               <div className="collection-service-cta__actions">
                 <a className="button button--primary" href="#/acceder">Ver seguimiento</a>
                 <a className="button button--secondary" href="#/coleccion">Seguir mirando piezas</a>
@@ -1854,6 +1938,17 @@ function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreat
       updateDraft('image', imageData)
       setMessage('Imagen cargada como vista previa local. Para verla en todos tus dispositivos habrá que activar Firebase Storage.')
     } catch (error) {
+      if (canUploadCloudImages) {
+        try {
+          const imageData = await readImageFileAsDataUrl(file)
+          updateDraft('image', imageData)
+          setMessage(`${error.message || 'Firebase Storage no respondió.'} La imagen se ha dejado como prueba local para que puedas seguir trabajando.`)
+          return
+        } catch {
+          setMessage(error.message || 'No se pudo cargar la imagen.')
+          return
+        }
+      }
       setMessage(error.message || 'No se pudo cargar la imagen.')
     } finally {
       setUploadingImageKey('')
@@ -1881,6 +1976,17 @@ function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreat
       onUpdateProduct(product.slug, { image: imageData, alt: product.alt || product.title })
       setMessage(`Imagen actualizada para ${product.title} como prueba local.`)
     } catch (error) {
+      if (canUploadCloudImages) {
+        try {
+          const imageData = await readImageFileAsDataUrl(file)
+          onUpdateProduct(product.slug, { image: imageData, alt: product.alt || product.title })
+          setMessage(`${product.title}: ${error.message || 'Firebase Storage no respondió.'} La imagen se ha dejado como prueba local para que puedas seguir trabajando.`)
+          return
+        } catch {
+          setMessage(error.message || 'No se pudo cargar la imagen.')
+          return
+        }
+      }
       setMessage(error.message || 'No se pudo cargar la imagen.')
     } finally {
       setUploadingImageKey('')
@@ -2166,6 +2272,42 @@ function ManagementPage({
     OPEN_ORDER_STATUSES.has(normalizeOrderStatus(order.status))
     && (!order.finalPrice || (order.paymentStatus || 'Pendiente') === 'Pendiente')
   ))
+  const priorityOrders = orders
+    .map((order) => {
+      const status = normalizeOrderStatus(order.status)
+      const paymentStatus = order.paymentStatus || 'Pendiente'
+      const shippingStatus = order.shippingStatus || 'Sin preparar'
+      const missingPrice = !order.finalPrice || order.finalPrice === 'Pendiente de confirmar'
+      const missingAddress = order.deliveryPreference === 'Envío' && !order.shippingAddress
+      const needsPayment = OPEN_ORDER_STATUSES.has(status) && paymentStatus === 'Pendiente'
+      const readyToDeliver = status === 'Listo para entregar' && shippingStatus !== 'Entregado'
+      const inProductionWithoutDate = status === 'En producción' && !order.targetDate
+      const priorityScore = [
+        missingPrice,
+        needsPayment,
+        readyToDeliver,
+        missingAddress,
+        inProductionWithoutDate
+      ].filter(Boolean).length
+
+      return {
+        order,
+        priorityScore,
+        reasons: [
+          missingPrice ? 'cerrar precio' : null,
+          needsPayment ? 'confirmar pago' : null,
+          readyToDeliver ? 'preparar entrega' : null,
+          missingAddress ? 'pedir dirección' : null,
+          inProductionWithoutDate ? 'poner fecha' : null
+        ].filter(Boolean)
+      }
+    })
+    .filter((item) => item.priorityScore > 0)
+    .sort((a, b) => b.priorityScore - a.priorityScore || new Date(b.order.createdAt) - new Date(a.order.createdAt))
+    .slice(0, 6)
+  const lowStockProducts = productsList
+    .filter((product) => normalizeProductAvailability(product.availability) === 'Disponible' && normalizeProductStock(product.stock) <= 1)
+    .slice(0, 6)
   const configuredSettingCount = [
     businessSettings.bizum,
     businessSettings.paypal,
@@ -2576,6 +2718,65 @@ function ManagementPage({
               <p className="management-note">{blockedOrders.length} pedido(s) abiertos necesitan precio o pago antes de avanzar.</p>
             ) : (
               <p className="management-note">No hay pedidos abiertos bloqueados por precio o pago.</p>
+            )}
+          </article>
+
+          <article className="quote-panel management-priority-panel">
+            <div className="management-panel-head">
+              <div>
+                <p className="eyebrow">Prioridades</p>
+                <h3>Qué atender primero</h3>
+              </div>
+              <span>{priorityOrders.length}</span>
+            </div>
+            {priorityOrders.length === 0 ? (
+              <p className="management-note">No hay pedidos urgentes ahora mismo.</p>
+            ) : (
+              <div className="management-priority-list">
+                {priorityOrders.map(({ order, reasons }) => (
+                  <article className="management-priority-item" key={`priority-${order.id}`}>
+                    <div>
+                      <strong>{order.reference || 'Sin referencia'} · {order.name || 'Sin nombre'}</strong>
+                      <span>{reasons.join(', ')}</span>
+                    </div>
+                    <div className="management-priority-item__actions">
+                      <button type="button" onClick={() => handleCopyClientMessage(order)}>Mensaje</button>
+                      <button type="button" onClick={() => handleCopyReference(order.reference)}>Copiar ref.</button>
+                      {(order.paymentStatus || 'Pendiente') === 'Pendiente' ? (
+                        <button type="button" onClick={() => handleQuickOrderDetails(order, { paymentStatus: 'Señal recibida' }, `Pedido ${order.reference || ''} marcado con señal.`)}>Señal</button>
+                      ) : null}
+                      {normalizeOrderStatus(order.status) === 'Listo para entregar' ? (
+                        <button type="button" onClick={() => handleQuickOrderDetails(order, { shippingStatus: 'Preparando' }, `Entrega de ${order.reference || ''} en preparación.`)}>Preparar</button>
+                      ) : null}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </article>
+
+          <article className="quote-panel management-stock-watch-panel">
+            <div className="management-panel-head">
+              <div>
+                <p className="eyebrow">Stock</p>
+                <h3>Piezas a vigilar</h3>
+              </div>
+              <span>{lowStockProducts.length}</span>
+            </div>
+            {lowStockProducts.length === 0 ? (
+              <p className="management-note">No hay piezas disponibles con stock bajo.</p>
+            ) : (
+              <div className="management-stock-watch-list">
+                {lowStockProducts.map((product) => (
+                  <div className="management-stock-watch-item" key={`stock-${product.slug}`}>
+                    <div>
+                      <strong>{product.title}</strong>
+                      <span>{product.category}</span>
+                    </div>
+                    <span>{normalizeProductStock(product.stock)} unidad(es)</span>
+                  </div>
+                ))}
+              </div>
             )}
           </article>
 
@@ -3565,14 +3766,22 @@ export default function App() {
 
     const imagePath = buildStorageImagePath(slug, file)
     const reference = storageRef(firebaseStorage, imagePath)
-    await uploadBytes(reference, file, {
-      contentType: file.type,
-      customMetadata: {
-        uploadedBy: authUser.email || 'owner',
-        catalogSlug: String(slug || '')
-      }
-    })
-    const url = await getDownloadURL(reference)
+    await withTimeout(
+      uploadBytes(reference, file, {
+        contentType: file.type,
+        customMetadata: {
+          uploadedBy: authUser.email || 'owner',
+          catalogSlug: String(slug || '')
+        }
+      }),
+      15000,
+      'Firebase Storage está tardando demasiado. Revisa reglas, conexión o configuración del bucket.'
+    )
+    const url = await withTimeout(
+      getDownloadURL(reference),
+      8000,
+      'La imagen subió, pero no se pudo obtener el enlace público.'
+    )
 
     return {
       url,
