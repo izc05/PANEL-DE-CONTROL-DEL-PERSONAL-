@@ -6,3 +6,4 @@ media/video_musica_desde_050.mp4
 .env
 .env.local
 .env.*.local
+*.log

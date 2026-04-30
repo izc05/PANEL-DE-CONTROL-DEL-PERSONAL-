@@ -1,14 +1,35 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Cada cliente solo puede leer/escribir sus propios pedidos
+    function isOwner() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'owner';
+    }
+
+    match /usuarios/{userId} {
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && (!('role' in request.resource.data) || request.resource.data.role == 'customer');
+
+      allow read: if request.auth != null && (request.auth.uid == userId || isOwner());
+
+      allow update: if isOwner()
+        || (request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.role == resource.data.role);
+    }
+
+    // Cada cliente ve sus propios pedidos; la propietaria puede gestionar todos.
     match /orders/{orderId} {
       allow create: if request.auth != null
-        && request.resource.data.ownerId == request.auth.uid;
+        && (request.resource.data.ownerId == request.auth.uid || isOwner());
 
-      allow read, update, delete: if request.auth != null
+      allow read, update, delete: if isOwner()
+        || (request.auth != null
         && resource.data.ownerId == request.auth.uid
-        && (!('ownerId' in request.resource.data) || request.resource.data.ownerId == resource.data.ownerId);
+        && (!('ownerId' in request.resource.data) || request.resource.data.ownerId == resource.data.ownerId));
     }
   }
 }

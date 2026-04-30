@@ -10,7 +10,8 @@
       "price": "195 €",
       "description": "Bolso bordado a mano con flores suaves y acabado elegante para uso diario o regalo.",
       "image": "./media/ChatGPT Image 23 abr 2026, 13_03_07.png",
-      "alt": "Bolso bordado artesanal en tonos cálidos"
+      "alt": "Bolso bordado artesanal en tonos cálidos",
+      "availability": "Disponible"
     },
     {
       "slug": "cojin-jardin-bordado",
@@ -22,7 +23,8 @@
       "price": "92 €",
       "description": "Cojín decorativo con bordado floral pensado para dar textura y calidez a cualquier rincón.",
       "image": "./media/ChatGPT Image 23 abr 2026, 13_03_13.png",
-      "alt": "Cojín bordado con motivos florales en ambiente acogedor"
+      "alt": "Cojín bordado con motivos florales en ambiente acogedor",
+      "availability": "Reservado"
     },
     {
       "slug": "set-lino-atelier",
@@ -34,7 +36,8 @@
       "price": "68 €",
       "description": "Conjunto de piezas textiles bordadas con diseño delicado y estilo artesanal contemporáneo.",
       "image": "./media/ChatGPT Image 23 abr 2026, 13_03_23.png",
-      "alt": "Set de textiles bordados sobre mesa de atelier"
+      "alt": "Set de textiles bordados sobre mesa de atelier",
+      "availability": "Disponible"
     }
   ]
 }

@@ -6,9 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && node ./scripts/publish-build.mjs",
+    "local": "npm run build && node ./scripts/local-static-server.mjs dist 127.0.0.1 4173",
+    "serve": "node ./scripts/local-static-server.mjs dist 127.0.0.1 4173",
     "preview": "vite preview"
   },
   "dependencies": {
+    "firebase": "^12.12.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

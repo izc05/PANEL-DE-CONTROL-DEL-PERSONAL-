@@ -1,5 +1,24 @@
 import { useEffect, useState } from 'react'
 import {
+  browserLocalPersistence,
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  setPersistence,
+  signInWithEmailAndPassword,
+  signOut
+} from 'firebase/auth'
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  query,
+  setDoc,
+  updateDoc,
+  where
+} from 'firebase/firestore'
+import {
   aboutNotes,
   contactDetails,
   heroHighlights,
@@ -9,15 +28,257 @@ import {
   processSteps,
   products
 } from './content'
+import { firebaseAuth, firebaseDb, isFirebaseConfigured } from './firebase'
 
-const FIREBASE_API_KEY = import.meta.env.VITE_FIREBASE_API_KEY
-const FIREBASE_PROJECT_ID = import.meta.env.VITE_FIREBASE_PROJECT_ID
-const isFirebaseConfigured = Boolean(FIREBASE_API_KEY)
-const AUTH_STORAGE_KEY = 'atelier-auth-v1'
 const JOURNAL_CTA_METRICS_KEY = 'atelier-journal-cta-metrics-v1'
 const JOURNAL_CTA_VARIANT_KEY = 'atelier-journal-cta-variant-v1'
 const ORDERS_STORAGE_KEY = 'atelier-orders-v1'
 const ORDERS_SYNC_QUEUE_KEY = 'atelier-orders-sync-queue-v1'
+const PAYMENT_SETTINGS_STORAGE_KEY = 'atelier-payment-settings-v1'
+const CATALOG_OVERRIDES_STORAGE_KEY = 'atelier-catalog-overrides-v1'
+const CUSTOM_PRODUCTS_STORAGE_KEY = 'atelier-custom-products-v1'
+const CATALOG_DELETED_STORAGE_KEY = 'atelier-deleted-products-v1'
+const CART_STORAGE_KEY = 'atelier-cart-v1'
+const CATALOG_API_STATUS_PATH = '__catalog/status'
+const CATALOG_API_PRODUCT_PATH = '__catalog/product'
+const PRODUCT_AVAILABILITY_OPTIONS = ['Disponible', 'Reservado', 'Vendido', 'Por encargo']
+const PRODUCT_AVAILABLE_FOR_CART = new Set(['Disponible', 'Por encargo'])
+const PRODUCT_AVAILABILITY_FILTERS = ['Todas', ...PRODUCT_AVAILABILITY_OPTIONS]
+
+const LOCAL_MEMORY_BLOCKS = [
+  {
+    key: CART_STORAGE_KEY,
+    label: 'Carrito',
+    description: 'Piezas que una clienta ha añadido antes de confirmar el pedido.'
+  },
+  {
+    key: CUSTOM_PRODUCTS_STORAGE_KEY,
+    label: 'Piezas creadas',
+    description: 'Artículos nuevos publicados desde el panel de gestión.'
+  },
+  {
+    key: CATALOG_OVERRIDES_STORAGE_KEY,
+    label: 'Cambios de catálogo',
+    description: 'Precios, stock, estado e imágenes modificadas en piezas existentes.'
+  },
+  {
+    key: CATALOG_DELETED_STORAGE_KEY,
+    label: 'Piezas retiradas',
+    description: 'Piezas ocultas para que no salgan en la tienda publica.'
+  },
+  {
+    key: ORDERS_STORAGE_KEY,
+    label: 'Pedidos locales',
+    description: 'Solicitudes guardadas en este navegador antes o después de sincronizar.'
+  },
+  {
+    key: ORDERS_SYNC_QUEUE_KEY,
+    label: 'Cola Firebase',
+    description: 'Pedidos pendientes de subir cuando haya sesión y conexión.'
+  },
+  {
+    key: PAYMENT_SETTINGS_STORAGE_KEY,
+    label: 'Pagos y contacto',
+    description: 'Bizum, PayPal, notas de envío y datos comerciales internos.'
+  },
+  {
+    key: JOURNAL_CTA_METRICS_KEY,
+    label: 'Métricas del diario',
+    description: 'Clicks y pruebas locales para saber qué botones funcionan mejor.'
+  },
+  {
+    key: JOURNAL_CTA_VARIANT_KEY,
+    label: 'Variante diario',
+    description: 'La versión A/B activa del botón principal del diario.'
+  }
+]
+
+const readLocalMemoryValue = (key) => {
+  try {
+    return window.localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+const formatLocalMemorySize = (value) => {
+  if (!value) return 'Vacío'
+  const bytes = new Blob([value]).size
+  if (bytes < 1024) return `${bytes} B`
+  return `${(bytes / 1024).toFixed(1)} KB`
+}
+
+const escapeCsvValue = (value) => {
+  const text = String(value ?? '')
+  if (!/[;"\n\r]/.test(text)) return text
+  return `"${text.replace(/"/g, '""')}"`
+}
+
+const buildOrdersCsv = (orderList) => {
+  const headers = [
+    'Referencia',
+    'Fecha',
+    'Nombre',
+    'Contacto',
+    'Correo',
+    'Estado',
+    'Pago preferido',
+    'Entrega',
+    'Precio final',
+    'Estado pago',
+    'Estado envio',
+    'Fecha objetivo',
+    'Direccion',
+    'Idea',
+    'Piezas',
+    'Notas internas'
+  ]
+
+  const rows = orderList.map((order) => [
+    order.reference,
+    order.createdAt ? new Date(order.createdAt).toLocaleString('es-ES') : '',
+    order.name,
+    order.whatsapp,
+    order.customerEmail,
+    order.status,
+    order.paymentPreference,
+    order.deliveryPreference,
+    order.finalPrice,
+    order.paymentStatus,
+    order.shippingStatus,
+    order.targetDate,
+    order.shippingAddress,
+    order.idea,
+    Array.isArray(order.cartLines)
+      ? order.cartLines.map((line) => `${line.title || line.slug} x${line.qty || 1}`).join(' | ')
+      : '',
+    order.internalNotes
+  ])
+
+  return [headers, ...rows]
+    .map((row) => row.map(escapeCsvValue).join(';'))
+    .join('\n')
+}
+
+const downloadTextFile = (content, fileName, type = 'text/plain;charset=utf-8') => {
+  const blob = new Blob([content], { type })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+const parseEuroAmount = (value) => {
+  const normalized = String(value ?? '')
+    .replace(/[^\d,.-]/g, '')
+    .replace(/\./g, '')
+    .replace(',', '.')
+  const amount = Number.parseFloat(normalized)
+  return Number.isFinite(amount) ? amount : 0
+}
+
+const formatEuroAmount = (value) => new Intl.NumberFormat('es-ES', {
+  style: 'currency',
+  currency: 'EUR',
+  maximumFractionDigits: 2
+}).format(value)
+
+const DEFAULT_BUSINESS_SETTINGS = {
+  bizum: '',
+  paypal: '',
+  transferOwner: '',
+  contactEmail: '',
+  contactWhatsapp: '',
+  paymentNote: '',
+  shippingNote: ''
+}
+
+const OWNER_EMAILS = (import.meta.env.VITE_OWNER_EMAILS || import.meta.env.VITE_OWNER_EMAIL || '')
+  .split(',')
+  .map((email) => email.trim().toLowerCase())
+  .filter(Boolean)
+
+const normalizeEmail = (email) => String(email || '').trim().toLowerCase()
+
+const isConfiguredOwnerEmail = (email) => OWNER_EMAILS.includes(normalizeEmail(email))
+const normalizeProductAvailability = (value) => (
+  PRODUCT_AVAILABILITY_OPTIONS.includes(value) ? value : 'Disponible'
+)
+
+const getProductAvailabilityClass = (value) => (
+  normalizeProductAvailability(value).toLowerCase().replace(/\s+/g, '-')
+)
+
+const readBusinessSettings = () => {
+  try {
+    const savedSettings = window.localStorage.getItem(PAYMENT_SETTINGS_STORAGE_KEY)
+    if (!savedSettings) return DEFAULT_BUSINESS_SETTINGS
+    const parsedSettings = JSON.parse(savedSettings)
+    return { ...DEFAULT_BUSINESS_SETTINGS, ...parsedSettings }
+  } catch {
+    return DEFAULT_BUSINESS_SETTINGS
+  }
+}
+
+const readCatalogOverrides = () => {
+  try {
+    const savedOverrides = window.localStorage.getItem(CATALOG_OVERRIDES_STORAGE_KEY)
+    if (!savedOverrides) return {}
+    const parsedOverrides = JSON.parse(savedOverrides)
+    return parsedOverrides && typeof parsedOverrides === 'object' ? parsedOverrides : {}
+  } catch {
+    return {}
+  }
+}
+
+const slugifyProductValue = (value) => String(value || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-+|-+$/g, '') || `pieza-${Date.now()}`
+
+const readCustomProducts = () => {
+  try {
+    const savedProducts = window.localStorage.getItem(CUSTOM_PRODUCTS_STORAGE_KEY)
+    if (!savedProducts) return []
+    const parsedProducts = JSON.parse(savedProducts)
+    return Array.isArray(parsedProducts) ? parsedProducts : []
+  } catch {
+    return []
+  }
+}
+
+const writeCustomProducts = (items) => {
+  window.localStorage.setItem(CUSTOM_PRODUCTS_STORAGE_KEY, JSON.stringify(items))
+}
+
+const readDeletedProductSlugs = () => {
+  try {
+    const savedSlugs = window.localStorage.getItem(CATALOG_DELETED_STORAGE_KEY)
+    if (!savedSlugs) return []
+    const parsedSlugs = JSON.parse(savedSlugs)
+    return Array.isArray(parsedSlugs) ? parsedSlugs : []
+  } catch {
+    return []
+  }
+}
+
+const writeDeletedProductSlugs = (items) => {
+  window.localStorage.setItem(CATALOG_DELETED_STORAGE_KEY, JSON.stringify(items))
+}
+
+const applyCatalogOverrides = (items) => {
+  const overrides = readCatalogOverrides()
+  return items.map((item) => ({ ...item, ...(overrides[item.slug] || {}) }))
+}
+
+const mergeCatalogProducts = (baseProducts, customProducts = readCustomProducts()) => (
+  applyCatalogOverrides([...customProducts, ...baseProducts].map(normalizeShopProduct))
+    .filter((product) => !readDeletedProductSlugs().includes(product.slug))
+)
 
 const routeTitles = {
   '/': 'Atelier Lumière',
@@ -25,6 +286,7 @@ const routeTitles = {
   '/producto': 'Producto · Atelier Lumière',
   '/carrito': 'Carrito · Atelier Lumière',
   '/acceder': 'Acceder · Atelier Lumière',
+  '/gestion': 'Acceso privado · Atelier Lumière',
   '/encargos': 'Encargos · Atelier Lumière',
   '/diario': 'Diario del taller · Atelier Lumière',
   '/sobre-mi': 'Sobre mí · Atelier Lumière',
@@ -39,24 +301,6 @@ const getRouteFromHash = (hash) => {
 const getRouteClass = (route) => {
   if (route === '/') return 'route-home'
   return `route-${route.replace(/^\//, '').replace(/\//g, '-')}`
-}
-
-const whatsappHrefForProduct = (product) => {
-  const text = `Hola, me interesa ${product.title} (${product.price}). ¿Me das más información?`
-  return `https://wa.me/34612345678?text=${encodeURIComponent(text)}`
-}
-
-const whatsappHrefForCart = (lines) => {
-  if (!Array.isArray(lines) || lines.length === 0) {
-    return 'https://wa.me/34612345678'
-  }
-
-  const summary = lines
-    .map((line) => `• ${line.product.title} x${line.qty} (${line.product.price})`)
-    .join('\n')
-
-  const text = `Hola, quiero finalizar mi solicitud con estas piezas:\n${summary}\n\n¿Me confirmas disponibilidad y siguientes pasos?`
-  return `https://wa.me/34612345678?text=${encodeURIComponent(text)}`
 }
 
 const trackJournalCtaClick = (ctaName) => {
@@ -86,17 +330,12 @@ const getJournalOrderCtaVariant = () => {
   }
 }
 
-const toFirestoreString = (value) => ({ stringValue: String(value ?? '') })
-
-const fromFirestoreString = (value) => {
-  if (!value) return ''
-  if (typeof value.stringValue === 'string') return value.stringValue
-  if (typeof value.timestampValue === 'string') return value.timestampValue
-  return ''
-}
-
 const FIREBASE_ERROR_MESSAGES = {
-  EMAIL_NOT_FOUND: 'No existe una cuenta con ese correo.',
+  'auth/user-not-found': 'No existe una cuenta con ese correo.',
+  'auth/invalid-email': 'El correo electrónico no es válido.',
+  'auth/missing-password': 'Introduce la contraseña para poder continuar.',
+  'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres.',
+  'auth/network-request-failed': 'No se pudo conectar con Firebase. Revisa tu conexión.',
   INVALID_PASSWORD: 'La contraseña no es correcta.',
   USER_DISABLED: 'La cuenta está deshabilitada.',
   EMAIL_EXISTS: 'Este correo ya está registrado.',
@@ -109,38 +348,134 @@ const FIREBASE_ERROR_MESSAGES = {
   UNAUTHENTICATED: 'Sesión no autenticada. Inicia sesión de nuevo.'
 }
 
-const normalizeFirebaseErrorMessage = (errorCode) => {
-  if (!errorCode) return 'No se pudo completar la operación en Firebase.'
-  return FIREBASE_ERROR_MESSAGES[errorCode] || `Error Firebase: ${errorCode}`
+const LEGACY_FIREBASE_ERROR_CODES = {
+  'auth/wrong-password': 'INVALID_PASSWORD',
+  'auth/user-disabled': 'USER_DISABLED',
+  'auth/email-already-in-use': 'EMAIL_EXISTS',
+  'auth/too-many-requests': 'TOO_MANY_ATTEMPTS_TRY_LATER',
+  'auth/operation-not-allowed': 'OPERATION_NOT_ALLOWED',
+  'auth/invalid-credential': 'INVALID_PASSWORD',
+  'auth/invalid-login-credentials': 'INVALID_PASSWORD',
+  'auth/invalid-email': 'auth/invalid-email',
+  'auth/missing-password': 'auth/missing-password',
+  'auth/weak-password': 'auth/weak-password',
+  'auth/network-request-failed': 'auth/network-request-failed',
+  'permission-denied': 'PERMISSION_DENIED',
+  unauthenticated: 'UNAUTHENTICATED'
 }
 
-const isFirebaseTokenError = (errorCode) => (
-  errorCode === 'UNAUTHENTICATED' ||
-  errorCode === 'TOKEN_EXPIRED' ||
-  errorCode === 'INVALID_ID_TOKEN' ||
-  errorCode === 'INVALID_REFRESH_TOKEN'
-)
+const normalizeFirebaseErrorMessage = (errorCode) => {
+  if (!errorCode) return 'No se pudo completar la operación en Firebase.'
+  const normalizedErrorCode = LEGACY_FIREBASE_ERROR_CODES[errorCode] || errorCode
+  return FIREBASE_ERROR_MESSAGES[normalizedErrorCode] || `Error Firebase: ${errorCode}`
+}
 
 const getShopCategories = (productList) => [
   'Todos',
   ...Array.from(new Set(productList.map((product) => product.category).filter(Boolean)))
 ]
 
+const resolveAppPath = (value) => `${import.meta.env.BASE_URL}${value.replace(/^\.\//, '')}`
+
 const normalizeAssetPath = (value) => {
   if (typeof value !== 'string' || value.length === 0) return value
-  if (/^(https?:)?\/\//.test(value)) return value
-  if (value.startsWith('/')) return `${import.meta.env.BASE_URL}${value.replace(/^\//, '')}`
-  if (value.startsWith('./')) return `${import.meta.env.BASE_URL}${value.replace(/^\.\//, '')}`
+  if (/^(https:)\/\//.test(value)) return value
+  if (value.startsWith('/')) return resolveAppPath(value)
+  if (value.startsWith('./')) return resolveAppPath(value)
   return value
 }
 
+const normalizeProductStock = (value) => {
+  const numberValue = Number.parseInt(value, 10)
+  return Number.isFinite(numberValue) ? Math.max(0, numberValue) : 1
+}
+
+const isProductAvailableForCart = (product) => (
+  PRODUCT_AVAILABLE_FOR_CART.has(normalizeProductAvailability(product.availability))
+  && normalizeProductStock(product.stock) > 0
+)
+
 const normalizeShopProduct = (product) => ({
   ...product,
-  image: normalizeAssetPath(product.image)
+  image: normalizeAssetPath(product.image),
+  localVideo: normalizeAssetPath(product.video || product.localVideo),
+  availability: normalizeProductAvailability(product.availability),
+  stock: normalizeProductStock(product.stock)
 })
 
+const buildUserProfilePayload = (user) => {
+  const now = new Date().toISOString()
+  return {
+    uid: user.uid,
+    email: user.email || '',
+    displayName: user.displayName || user.email?.split('@')[0] || 'Cliente',
+    role: 'customer',
+    createdAt: now,
+    updatedAt: now
+  }
+}
 
-function Header({ isScrolled, menuOpen, setMenuOpen, route, cartCount }) {
+const getAccessProfile = (user, profile = null) => {
+  const baseProfile = profile || buildUserProfilePayload(user)
+
+  if (isConfiguredOwnerEmail(user.email)) {
+    return {
+      ...baseProfile,
+      role: 'owner',
+      ownerSource: 'local-config'
+    }
+  }
+
+  return baseProfile
+}
+
+const buildAuthUserState = (user, profile = null) => {
+  const accessProfile = getAccessProfile(user, profile)
+
+  return {
+    uid: user.uid,
+    localId: user.uid,
+    email: user.email || '',
+    profile: accessProfile,
+    isOwner: accessProfile?.role === 'owner'
+  }
+}
+
+const normalizeOrderRecord = (id, payload) => ({
+  id,
+  name: payload.name || '',
+  whatsapp: payload.whatsapp || '',
+  customerEmail: payload.customerEmail || '',
+  paymentPreference: payload.paymentPreference || '',
+  deliveryPreference: payload.deliveryPreference || '',
+  idea: payload.idea || '',
+  source: payload.source || 'firebase_sync',
+  status: payload.status || 'Recibido',
+  createdAt: payload.createdAt || new Date().toISOString(),
+  reference: payload.reference || '',
+  ownerId: payload.ownerId || '',
+  finalPrice: payload.finalPrice || '',
+  paymentStatus: payload.paymentStatus || 'Pendiente',
+  shippingStatus: payload.shippingStatus || 'Sin preparar',
+  targetDate: payload.targetDate || '',
+  shippingAddress: payload.shippingAddress || '',
+  internalNotes: payload.internalNotes || '',
+  cartLines: Array.isArray(payload.cartLines) ? payload.cartLines : []
+})
+
+const mergeOrdersById = (localOrders, remoteOrders) => {
+  const orderMap = new Map(localOrders.map((order) => [order.id, order]))
+
+  for (const remoteOrder of remoteOrders) {
+    const existingOrder = orderMap.get(remoteOrder.id)
+    orderMap.set(remoteOrder.id, existingOrder ? { ...existingOrder, ...remoteOrder } : remoteOrder)
+  }
+
+  return Array.from(orderMap.values()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+}
+
+
+function Header({ isScrolled, menuOpen, setMenuOpen, route, cartCount, cartPulse }) {
   return (
     <header className={`site-header ${isScrolled ? 'is-scrolled' : ''}`}>
       <div className="container site-header__inner">
@@ -174,11 +509,17 @@ function Header({ isScrolled, menuOpen, setMenuOpen, route, cartCount }) {
               {item.label}
             </a>
           ))}
+          <a className="site-nav__mobile-tool" href="#/carrito" onClick={() => setMenuOpen(false)}>
+            Carrito {cartCount}
+          </a>
+          <a className="site-nav__mobile-tool" href="#/acceder" onClick={() => setMenuOpen(false)}>
+            Acceder
+          </a>
         </nav>
 
         <div className="header-tools" aria-label="Accesos rápidos">
-          <a className="cart-pill" href="#/carrito" onClick={() => setMenuOpen(false)}>
-            Cesta {cartCount}
+          <a className={`cart-pill ${cartPulse ? 'is-pulsing' : ''}`} href="#/carrito" onClick={() => setMenuOpen(false)}>
+            Carrito {cartCount}
           </a>
           <a className="cart-pill cart-pill--ghost" href="#/acceder" onClick={() => setMenuOpen(false)}>
             Acceder
@@ -209,7 +550,7 @@ function PageSection({ id, className = '', children }) {
   )
 }
 
-function SmartVideo({ primarySrc, fallbackSrc, poster, className = '', controls = true, autoPlay = false, loop = false, muted = false }) {
+function SmartVideo({ primarySrc, fallbackSrc, poster, className = '', controls = true, autoPlay = false, loop = false, muted = false, ...videoProps }) {
   return (
     <video
       className={className}
@@ -220,6 +561,7 @@ function SmartVideo({ primarySrc, fallbackSrc, poster, className = '', controls 
       playsInline
       preload="metadata"
       poster={poster}
+      {...videoProps}
     >
       <source src={primarySrc} type="video/mp4" />
       {fallbackSrc ? <source src={fallbackSrc} type="video/mp4" /> : null}
@@ -228,28 +570,82 @@ function SmartVideo({ primarySrc, fallbackSrc, poster, className = '', controls 
   )
 }
 
+function SmartVideoSegment({
+  primarySrc,
+  fallbackSrc,
+  poster,
+  className = '',
+  controls = true,
+  autoPlay = false,
+  loop = false,
+  muted = false,
+  loopStart = 0,
+  loopEnd = null
+}) {
+  const hasCustomLoopRange = Number.isFinite(loopEnd) && loopEnd > loopStart
+
+  const handleLoadedMetadata = (event) => {
+    if (loopStart > 0) {
+      event.currentTarget.currentTime = loopStart
+    }
+  }
+
+  const handleTimeUpdate = (event) => {
+    if (!hasCustomLoopRange) {
+      return
+    }
+
+    const video = event.currentTarget
+
+    if (video.currentTime >= loopEnd) {
+      video.currentTime = loopStart
+
+      if (!video.paused) {
+        const playPromise = video.play()
+
+        if (playPromise && typeof playPromise.catch === 'function') {
+          playPromise.catch(() => {})
+        }
+      }
+    }
+  }
+
+  return (
+    <SmartVideo
+      className={className}
+      controls={controls}
+      autoPlay={autoPlay}
+      loop={loop && !hasCustomLoopRange}
+      muted={muted}
+      poster={poster}
+      primarySrc={primarySrc}
+      fallbackSrc={fallbackSrc}
+      onLoadedMetadata={handleLoadedMetadata}
+      onTimeUpdate={handleTimeUpdate}
+    />
+  )
+}
+
 function HomePage({ productsList }) {
-  const collectionPreview = productsList.slice(0, 4)
+  const collectionPreview = productsList.slice(0, 3)
 
   return (
     <>
-      <section id="inicio" className="hero-v4 hero-v4--clean">
-        <div className="hero-v4__media-wrap">
-          <figure className="hero-v4__media">
-            {mediaConfig.heroVideoEnabled ? (
-              <SmartVideo autoPlay loop muted controls={false} poster={mediaConfig.heroPoster} primarySrc={mediaConfig.collectionVideoSrc} fallbackSrc={mediaConfig.atelierVideo} />
-            ) : (
-              <img src={mediaConfig.heroPoster} alt="Artesana bordando junto a una ventana luminosa" />
-            )}
-          </figure>
+      <section id="inicio" className="collection-hero collection-hero--home">
+        <div className="collection-hero__media">
+          {mediaConfig.heroVideoEnabled ? (
+            <SmartVideo autoPlay loop muted controls={false} poster={mediaConfig.heroPoster} primarySrc={mediaConfig.heroVideoSrc} fallbackSrc={mediaConfig.atelierVideo} />
+          ) : (
+            <img src={mediaConfig.heroPoster} alt="Artesana bordando junto a una ventana luminosa" />
+          )}
         </div>
-        <div className="hero-v4__veil" />
-        <div className="container hero-v4__grid">
-          <div className="hero-v4__copy hero-v4__copy--open">
+        <div className="collection-hero__veil" />
+        <div className="container collection-hero__grid">
+          <div className="collection-hero__copy collection-hero__copy--home">
             <p className="eyebrow">Atelier francés · bordado artesanal</p>
-            <h1>Donde el hilo cuenta historias</h1>
+            <h1>Atelier Lumière</h1>
             <p className="hero-v4__lead">
-              Piezas bordadas a mano con calma, luz y delicadeza. Un atelier donde cada puntada convierte un recuerdo en algo único.
+              Piezas bordadas a mano, accesorios delicados y encargos creados con calma para convertir una idea en algo único.
             </p>
 
             <div className="hero-actions">
@@ -268,14 +664,6 @@ function HomePage({ productsList }) {
                 </span>
               ))}
             </div>
-
-            <div className="home-map" aria-label="Accesos rápidos de portada">
-              <a href="#home-collection">Colección</a>
-              <a href="#home-orders">Encargos</a>
-              <a href="#home-journal">Diario</a>
-            </div>
-
-            <p className="hero-v4__closing">Hecho a mano, creado despacio.</p>
           </div>
         </div>
       </section>
@@ -284,8 +672,8 @@ function HomePage({ productsList }) {
         <div className="container">
           <SectionIntro
             eyebrow="Colección destacada"
-            title="Piezas creadas con calma, para durar"
-            text="Una selección pensada para descubrir el universo del atelier a través de bordados, texturas suaves y detalles hechos a mano."
+            title="Piezas listas para descubrir"
+            text="Una selección breve para entrar en el universo del atelier sin perderse entre demasiadas opciónes."
           />
 
           <div className="collection-grid collection-grid--featured-v3">
@@ -310,71 +698,60 @@ function HomePage({ productsList }) {
       </PageSection>
 
       <PageSection id="home-orders">
-        <div className="container split-panels split-panels--premium">
-          <article className="story-card story-card--premium">
-            <img loading="lazy" src={mediaConfig.visualDetailC} alt="Vista del atelier desde la puerta" />
+        <div className="container">
+          <article className="story-card story-card--premium story-card--home-focus">
+            <img loading="lazy" src={mediaConfig.portrait} alt="Retrato cercano de la creadora bordando" />
             <div className="story-card__body">
-              <p className="eyebrow">Sobre la creadora</p>
-              <h2>Una historia tejida con dedicación</h2>
-              <p>
-                Atelier Lumière nace de una práctica lenta y consciente, donde cada pieza se elabora a mano para perdurar en el tiempo.
-              </p>
-              <ul className="note-list">
-                {aboutNotes.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-              <a className="text-link" href="#/sobre-mi">
-                Ir a la página completa
-              </a>
-            </div>
-          </article>
-
-          <article className="story-card story-card--accent story-card--premium-accent">
-            <div className="story-card__body story-card__body--centered">
               <p className="eyebrow">Encargos personalizados</p>
               <h2>Piezas únicas creadas para momentos con historia</h2>
               <p>
-                Encargos pensados para celebrar recuerdos, nombres y fechas con un bordado hecho exclusivamente para ti.
+                Si tienes una idea, un nombre o una fecha especial, la convertimos en una pieza bordada con formato, color y acabado definidos contigo.
               </p>
-              <a className="button button--dark" href="#/encargos">
-                Solicitar un encargo
-              </a>
+              <div className="hero-actions">
+                <a className="button button--dark" href="#/encargos">
+                  Solicitar un encargo
+                </a>
+                <a className="button button--secondary" href="#/sobre-mi">
+                  Conocer el atelier
+                </a>
+              </div>
             </div>
-
-            <img loading="lazy" src={mediaConfig.portrait} alt="Retrato cercano de la creadora bordando" />
           </article>
+
         </div>
       </PageSection>
 
       <PageSection id="home-journal" className="section-block--soft">
         <div className="container">
-          <SectionIntro
-            split
-            eyebrow="Diario del taller"
-            title="Historias del taller, entre luz y materia"
-            text="Un espacio para compartir procesos, inspiración y escenas cotidianas del oficio artesanal."
-          />
-
-          <div className="journal-grid journal-grid--editorial">
-            {journalEntries.map((entry) => (
-              <article key={entry.slug} className="journal-card journal-card--editorial">
-                <img loading="lazy" src={entry.image} alt={entry.alt} />
-                <div className="journal-card__body">
-                  <p className="journal-card__meta">{entry.meta}</p>
-                  <h3>{entry.title}</h3>
-                  <p>{entry.text}</p>
-                </div>
-              </article>
-            ))}
-          </div>
+          <article className="collection-service-cta collection-service-cta--home">
+            <div>
+              <p className="eyebrow">Diario del taller</p>
+              <h3>Proceso, inspiración y piezas en marcha</h3>
+              <p>Un espacio breve para ver cómo nacen los bordados antes de llegar a la colección.</p>
+            </div>
+            <div className="collection-service-cta__actions">
+              <a className="button button--primary" href="#/diario">Entrar al diario</a>
+              <a className="button button--secondary" href="#/contacto">Contactar</a>
+            </div>
+          </article>
         </div>
       </PageSection>
     </>
   )
 }
 
-function PageHero({ eyebrow, title, text, image, alt, actions = [] }) {
+function PageHero({
+  eyebrow,
+  title,
+  text,
+  image,
+  alt,
+  videoSrc,
+  videoFallbackSrc = mediaConfig.atelierVideo,
+  videoLoopStart = 0,
+  videoLoopEnd = null,
+  actions = []
+}) {
   return (
     <section className="page-hero page-hero--premium">
       <div className="container page-hero__grid">
@@ -384,317 +761,87 @@ function PageHero({ eyebrow, title, text, image, alt, actions = [] }) {
           <p>{text}</p>
           {actions.length > 0 ? (
             <div className="hero-actions">
-              {actions.map((action) => (
-                <a key={action.href} className={`button ${action.kind === 'secondary' ? 'button--secondary' : 'button--primary'}`} href={action.href}>
-                  {action.label}
-                </a>
-              ))}
+              {actions.map((action) => {
+                const isExternal = /^https:\/\//.test(action.href)
+
+                return (
+                  <a
+                    key={action.href}
+                    className={`button ${action.kind === 'secondary' ? 'button--secondary' : 'button--primary'}`}
+                    href={action.href}
+                    target={isExternal ? '_blank' : undefined}
+                    rel={isExternal ? 'noreferrer' : undefined}
+                  >
+                    {action.label}
+                  </a>
+                )
+              })}
             </div>
           ) : null}
         </div>
 
         <figure className="page-hero__media">
-          <img src={image} alt={alt} />
+          {videoSrc ? (
+            <SmartVideoSegment
+              className="page-hero__video"
+              controls={false}
+              autoPlay
+              loop
+              muted
+              poster={image}
+              primarySrc={videoSrc}
+              fallbackSrc={videoFallbackSrc}
+              loopStart={videoLoopStart}
+              loopEnd={videoLoopEnd}
+            />
+          ) : (
+            <img src={image} alt={alt} />
+          )}
         </figure>
       </div>
     </section>
   )
 }
 
-function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
-  const LOCAL_PRODUCTS_KEY = 'atelier-local-products-v1'
-  const EDITOR_SESSION_KEY = 'atelier-editor-session-v1'
-  const EDITOR_PIN_HASH_KEY = 'atelier-editor-pin-hash-v1'
-  const [localProducts, setLocalProducts] = useState([])
-  const [uploadForm, setUploadForm] = useState({
-    title: '',
-    price: '',
-    category: '',
-    description: '',
-    file: null
-  })
-  const [uploadMessage, setUploadMessage] = useState('')
-  const [uploadErrors, setUploadErrors] = useState({})
-  const [fileInputKey, setFileInputKey] = useState(0)
-  const [editingSlug, setEditingSlug] = useState(null)
-  const [editorPinInput, setEditorPinInput] = useState('')
-  const [isEditorUnlocked, setIsEditorUnlocked] = useState(false)
-  const [editorAccessError, setEditorAccessError] = useState('')
-  const [isEditorPinConfigured, setIsEditorPinConfigured] = useState(false)
-  const [editorSetupPin, setEditorSetupPin] = useState('')
-  const [editorSetupPinConfirm, setEditorSetupPinConfirm] = useState('')
-  const allProducts = [...localProducts, ...productsList]
+function CollectionPage({ onAddToCart, productsList }) {
+  const allProducts = productsList
   const categories = getShopCategories(allProducts)
   const [activeCategory, setActiveCategory] = useState('Todos')
-  const filteredProducts = activeCategory === 'Todos'
-    ? allProducts
-    : allProducts.filter((product) => product.category === activeCategory)
+  const [activeAvailability, setActiveAvailability] = useState('Todas')
+  const [businessSettings, setBusinessSettings] = useState(DEFAULT_BUSINESS_SETTINGS)
+  const [cartNotice, setCartNotice] = useState('')
+
+  const filteredProducts = allProducts.filter((product) => {
+    const matchesCategory = activeCategory === 'Todos' || product.category === activeCategory
+    const matchesAvailability = activeAvailability === 'Todas'
+      || normalizeProductAvailability(product.availability) === activeAvailability
+    return matchesCategory && matchesAvailability
+  })
   const sortedProducts = [...filteredProducts].sort((a, b) => (a.featuredRank ?? 999) - (b.featuredRank ?? 999))
-  const featuredProducts = [...allProducts].sort((a, b) => (a.featuredRank ?? 999) - (b.featuredRank ?? 999)).slice(0, 3)
   const categoryCounts = allProducts.reduce((acc, product) => {
     if (!product.category) return acc
     acc[product.category] = (acc[product.category] ?? 0) + 1
     return acc
   }, {})
+  const availabilityCounts = allProducts.reduce((acc, product) => {
+    const availability = normalizeProductAvailability(product.availability)
+    acc[availability] = (acc[availability] ?? 0) + 1
+    return acc
+  }, {})
+  const paymentMethods = [
+    businessSettings.bizum ? 'Bizum' : null,
+    businessSettings.paypal ? 'PayPal' : null,
+    businessSettings.transferOwner ? 'Transferencia' : null
+  ].filter(Boolean)
 
   const scrollToPieces = () => {
     document.getElementById('piezas-disponibles')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  const scrollToUploader = () => {
-    document.getElementById('cargar-articulo')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const handleAddProductToCart = (product) => {
+    onAddToCart(product)
+    setCartNotice(`${product.title} se ha añadido al carrito.`)
   }
-
-  const fileToDataUrl = (file) => new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result)
-    reader.onerror = () => reject(new Error('No se pudo leer el archivo.'))
-    reader.readAsDataURL(file)
-  })
-
-  const validateUploadForm = (formData) => {
-    const errors = {}
-
-    if (!formData.title || formData.title.trim().length < 3) {
-      errors.title = 'Escribe un título de al menos 3 caracteres.'
-    }
-
-    if (!formData.price || !/^\d+(?:[.,]\d{1,2})?\s?€?$/.test(formData.price.trim())) {
-      errors.price = 'Usa un precio válido. Ejemplo: 120 o 120 €.'
-    }
-
-    if (!formData.category || formData.category.trim().length < 2) {
-      errors.category = 'Indica una categoría válida.'
-    }
-
-    if (formData.description && formData.description.length > 240) {
-      errors.description = 'La descripción no puede superar 240 caracteres.'
-    }
-
-    const needsFile = !editingSlug
-    if (needsFile && !formData.file) {
-      errors.file = 'Selecciona una imagen o un vídeo.'
-    }
-
-    if (formData.file) {
-      if (!formData.file.type.startsWith('image/') && !formData.file.type.startsWith('video/')) {
-        errors.file = 'Solo se permiten imágenes o vídeos.'
-      }
-
-      if (formData.file.size > 15 * 1024 * 1024) {
-        errors.file = 'El archivo no puede superar 15 MB.'
-      }
-    }
-
-    return errors
-  }
-
-  const resetUploadForm = () => {
-    setUploadForm({
-      title: '',
-      price: '',
-      category: '',
-      description: '',
-      file: null
-    })
-    setFileInputKey((value) => value + 1)
-    setEditingSlug(null)
-    setUploadErrors({})
-  }
-
-  const handleUploadFieldChange = (event) => {
-    const { name, value, files } = event.target
-
-    if (name === 'file') {
-      setUploadForm((current) => ({ ...current, file: files?.[0] ?? null }))
-      setUploadErrors((current) => ({ ...current, file: undefined }))
-      return
-    }
-
-    setUploadForm((current) => ({ ...current, [name]: value }))
-    setUploadErrors((current) => ({ ...current, [name]: undefined }))
-  }
-
-  const startEditLocalProduct = (product) => {
-    setEditingSlug(product.slug)
-    setUploadForm({
-      title: product.title,
-      price: product.price,
-      category: product.category,
-      description: product.description ?? '',
-      file: null
-    })
-    setUploadErrors({})
-    setUploadMessage(`Editando “${product.title}”. Puedes cambiar texto y opcionalmente el archivo.`)
-    scrollToUploader()
-  }
-
-  const handleDeleteLocalProduct = (product) => {
-    setLocalProducts((items) => items.filter((item) => item.slug !== product.slug))
-    if (editingSlug === product.slug) resetUploadForm()
-    setUploadMessage(`“${product.title}” eliminado del catálogo local.`)
-  }
-
-  const handleUploadSubmit = async (event) => {
-    event.preventDefault()
-    const errors = validateUploadForm(uploadForm)
-
-    if (Object.keys(errors).length > 0) {
-      setUploadErrors(errors)
-      setUploadMessage('Revisa los campos marcados para continuar.')
-      return
-    }
-
-    try {
-      let mediaType = 'image'
-      let mediaSrc = ''
-
-      if (uploadForm.file) {
-        mediaType = uploadForm.file.type.startsWith('video/') ? 'video' : 'image'
-        mediaSrc = await fileToDataUrl(uploadForm.file)
-      }
-
-      if (editingSlug) {
-        setLocalProducts((items) => items.map((item) => {
-          if (item.slug !== editingSlug) return item
-          const nextMediaType = mediaSrc ? mediaType : item.mediaType
-          const nextMediaSrc = mediaSrc || item.mediaSrc
-
-          return {
-            ...item,
-            title: uploadForm.title.trim(),
-            price: uploadForm.price.trim(),
-            category: uploadForm.category.trim(),
-            description: uploadForm.description.trim() || 'Pieza subida desde tu ordenador.',
-            tag: uploadForm.category.trim(),
-            mediaType: nextMediaType,
-            mediaSrc: nextMediaSrc,
-            image: nextMediaType === 'video' ? mediaConfig.heroPoster : nextMediaSrc,
-            localVideo: nextMediaType === 'video' ? nextMediaSrc : null
-          }
-        }))
-
-        setUploadMessage(`Cambios guardados para “${uploadForm.title.trim()}”.`)
-        resetUploadForm()
-        return
-      }
-
-      const slug = `${uploadForm.title.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}-${Date.now()}`
-
-      setLocalProducts((items) => [
-        {
-          slug,
-          title: uploadForm.title.trim(),
-          price: uploadForm.price.trim(),
-          category: uploadForm.category.trim(),
-          description: uploadForm.description.trim() || 'Pieza subida desde tu ordenador.',
-          image: mediaType === 'video' ? mediaConfig.heroPoster : mediaSrc,
-          alt: uploadForm.title.trim(),
-          tag: uploadForm.category.trim(),
-          badge: 'Nuevo',
-          localVideo: mediaType === 'video' ? mediaSrc : null,
-          mediaType,
-          mediaSrc,
-          isLocal: true,
-          createdAt: new Date().toISOString(),
-          featuredRank: 0
-        },
-        ...items
-      ])
-
-      setUploadMessage(`“${uploadForm.title.trim()}” añadido correctamente desde tu PC.`)
-      resetUploadForm()
-    } catch {
-      setUploadMessage('No se pudo procesar el archivo. Prueba con otro recurso.')
-    }
-  }
-
-  const handleRefreshCatalogNow = async () => {
-    if (!onRefreshCatalog) return
-    const refreshed = await onRefreshCatalog()
-    setUploadMessage(refreshed ? 'Catálogo recargado con la versión más reciente.' : 'No se pudo recargar ahora. Inténtalo en unos segundos.')
-  }
-
-  const hashPin = async (value) => {
-    const normalized = value.trim()
-    const encoder = new TextEncoder()
-    const data = encoder.encode(normalized)
-    const digest = await window.crypto.subtle.digest('SHA-256', data)
-    const hashArray = Array.from(new Uint8Array(digest))
-    return hashArray.map((byte) => byte.toString(16).padStart(2, '0')).join('')
-  }
-
-  const handleSetupEditorPin = async (event) => {
-    event.preventDefault()
-    if (editorSetupPin.trim().length < 6) {
-      setEditorAccessError('La clave debe tener al menos 6 caracteres.')
-      return
-    }
-    if (editorSetupPin !== editorSetupPinConfirm) {
-      setEditorAccessError('La confirmación de clave no coincide.')
-      return
-    }
-
-    const pinHash = await hashPin(editorSetupPin)
-    window.localStorage.setItem(EDITOR_PIN_HASH_KEY, pinHash)
-    setIsEditorPinConfigured(true)
-    setEditorSetupPin('')
-    setEditorSetupPinConfirm('')
-    setEditorAccessError('')
-    setUploadMessage('Clave privada configurada correctamente.')
-  }
-
-  const handleUnlockEditor = async (event) => {
-    event.preventDefault()
-    const storedHash = window.localStorage.getItem(EDITOR_PIN_HASH_KEY)
-    if (!storedHash) {
-      setEditorAccessError('Primero configura tu clave privada.')
-      return
-    }
-
-    const pinHash = await hashPin(editorPinInput)
-    if (pinHash !== storedHash) {
-      setEditorAccessError('Clave incorrecta. Solo la propietaria puede subir artículos.')
-      return
-    }
-
-    setIsEditorUnlocked(true)
-    setEditorAccessError('')
-    setEditorPinInput('')
-    window.localStorage.setItem(EDITOR_SESSION_KEY, 'open')
-  }
-
-  const handleLockEditor = () => {
-    setIsEditorUnlocked(false)
-    setEditorPinInput('')
-    setEditorAccessError('')
-    window.localStorage.removeItem(EDITOR_SESSION_KEY)
-  }
-
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(LOCAL_PRODUCTS_KEY)
-      if (!raw) return
-      const parsed = JSON.parse(raw)
-      if (!Array.isArray(parsed)) return
-      setLocalProducts(parsed)
-    } catch {
-      // Si falla la lectura, mantenemos el catálogo en memoria.
-    }
-  }, [])
-
-  useEffect(() => {
-    setIsEditorUnlocked(window.localStorage.getItem(EDITOR_SESSION_KEY) === 'open')
-    setIsEditorPinConfigured(Boolean(window.localStorage.getItem(EDITOR_PIN_HASH_KEY)))
-  }, [])
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(LOCAL_PRODUCTS_KEY, JSON.stringify(localProducts))
-    } catch {
-      // Si falla el guardado, la sesión seguirá funcionando en memoria.
-    }
-  }, [localProducts])
 
   return (
     <>
@@ -714,8 +861,8 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
         <div className="container collection-hero__grid">
           <div className="collection-hero__copy">
             <p className="eyebrow">Colección</p>
-            <h1>Piezas bordadas con alma artesanal</h1>
-            <p>Una entrada visual limpia para recorrer la colección desde su esencia.</p>
+            <h1>Colección Atelier</h1>
+            <p>Piezas bordadas, accesorios y encargos reunidos en un catálogo más directo.</p>
             <button type="button" className="button button--primary" onClick={scrollToPieces}>
               Ver piezas disponibles
             </button>
@@ -725,203 +872,12 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
 
       <PageSection id="piezas-disponibles">
         <div className="container">
-          <article className="collection-intro-panel">
+          <div className="collection-catalog-head">
             <div>
-              <p className="eyebrow">Selección curada</p>
-              <h2>Piezas listas para comprar o personalizar</h2>
-              <p>
-                Filtra por categoría y recorre cada ficha con una vista más limpia de materiales, acabados y disponibilidad.
-              </p>
+              <p className="eyebrow">Catálogo</p>
+              <h2>Piezas disponibles</h2>
             </div>
-            <div className="collection-intro-panel__stats">
-              <div>
-                <strong>{allProducts.length}</strong>
-                <span>Piezas publicadas</span>
-              </div>
-              <div>
-                <strong>{categories.length - 1}</strong>
-                <span>Categorías activas</span>
-              </div>
-              <div>
-                <strong>48h</strong>
-                <span>Respuesta estimada</span>
-              </div>
-            </div>
-          </article>
-
-          <article id="cargar-articulo" className="collection-upload-panel">
-            <div>
-              <p className="eyebrow">Cargar desde PC</p>
-              <h3>{editingSlug ? 'Edita tu artículo local' : 'Sube un artículo nuevo en segundos'}</h3>
-              <p>
-                Tus artículos locales se guardan en este navegador para que no se pierdan al recargar. Cuando quieras publicarlos,
-                pásalos al archivo
-                <code> public/data/shop-products.json </code>
-                y guarda recursos finales en
-                <code> public/uploads </code>.
-              </p>
-            </div>
-            {!isEditorUnlocked ? (
-              <form className="collection-upload-form" onSubmit={handleUnlockEditor}>
-                {!isEditorPinConfigured ? (
-                  <>
-                    <label htmlFor="editor-pin-setup">Crea tu clave privada (solo una vez)</label>
-                    <input
-                      id="editor-pin-setup"
-                      type="password"
-                      value={editorSetupPin}
-                      onChange={(event) => {
-                        setEditorSetupPin(event.target.value)
-                        setEditorAccessError('')
-                      }}
-                      placeholder="Nueva clave (mínimo 6 caracteres)"
-                      aria-invalid={Boolean(editorAccessError)}
-                    />
-                    <label htmlFor="editor-pin-confirm">Confirmar clave</label>
-                    <input
-                      id="editor-pin-confirm"
-                      type="password"
-                      value={editorSetupPinConfirm}
-                      onChange={(event) => {
-                        setEditorSetupPinConfirm(event.target.value)
-                        setEditorAccessError('')
-                      }}
-                      placeholder="Repite la clave"
-                      aria-invalid={Boolean(editorAccessError)}
-                    />
-                    <div className="collection-upload-form__actions">
-                      <button type="button" className="button button--primary" onClick={handleSetupEditorPin}>
-                        Guardar clave privada
-                      </button>
-                      <button type="button" className="button button--secondary" onClick={handleRefreshCatalogNow}>
-                        Forzar actualización
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <label htmlFor="editor-pin">Acceso privado para editar catálogo</label>
-                    <input
-                      id="editor-pin"
-                      type="password"
-                      value={editorPinInput}
-                      onChange={(event) => {
-                        setEditorPinInput(event.target.value)
-                        setEditorAccessError('')
-                      }}
-                      placeholder="Introduce tu clave"
-                      aria-invalid={Boolean(editorAccessError)}
-                    />
-                    <div className="collection-upload-form__actions">
-                      <button type="submit" className="button button--primary">Entrar como propietaria</button>
-                      <button type="button" className="button button--secondary" onClick={handleRefreshCatalogNow}>
-                        Forzar actualización
-                      </button>
-                    </div>
-                  </>
-                )}
-                {editorAccessError ? <p className="collection-upload-form__error">{editorAccessError}</p> : null}
-                {uploadMessage ? <p className="collection-upload-form__message" role="status">{uploadMessage}</p> : null}
-              </form>
-            ) : (
-              <form className="collection-upload-form" onSubmit={handleUploadSubmit} noValidate>
-                <label htmlFor="upload-title">Título</label>
-                <input
-                  id="upload-title"
-                  type="text"
-                  name="title"
-                  value={uploadForm.title}
-                  onChange={handleUploadFieldChange}
-                  placeholder="Título del artículo"
-                  aria-invalid={Boolean(uploadErrors.title)}
-                />
-                {uploadErrors.title ? <p className="collection-upload-form__error">{uploadErrors.title}</p> : null}
-
-                <label htmlFor="upload-price">Precio</label>
-                <input
-                  id="upload-price"
-                  type="text"
-                  name="price"
-                  value={uploadForm.price}
-                  onChange={handleUploadFieldChange}
-                  placeholder="Ej. 120 €"
-                  aria-invalid={Boolean(uploadErrors.price)}
-                />
-                {uploadErrors.price ? <p className="collection-upload-form__error">{uploadErrors.price}</p> : null}
-
-                <label htmlFor="upload-category">Categoría</label>
-                <input
-                  id="upload-category"
-                  type="text"
-                  name="category"
-                  value={uploadForm.category}
-                  onChange={handleUploadFieldChange}
-                  placeholder="Ej. Bolsos"
-                  aria-invalid={Boolean(uploadErrors.category)}
-                />
-                {uploadErrors.category ? <p className="collection-upload-form__error">{uploadErrors.category}</p> : null}
-
-                <label htmlFor="upload-description">Descripción</label>
-                <textarea
-                  id="upload-description"
-                  name="description"
-                  value={uploadForm.description}
-                  onChange={handleUploadFieldChange}
-                  placeholder="Descripción corta de la pieza"
-                  rows={3}
-                  aria-invalid={Boolean(uploadErrors.description)}
-                />
-                {uploadErrors.description ? <p className="collection-upload-form__error">{uploadErrors.description}</p> : null}
-
-                <label htmlFor="upload-file">Archivo (imagen o vídeo)</label>
-                <input
-                  key={fileInputKey}
-                  id="upload-file"
-                  type="file"
-                  name="file"
-                  onChange={handleUploadFieldChange}
-                  accept="image/*,video/*"
-                  aria-invalid={Boolean(uploadErrors.file)}
-                />
-                {uploadErrors.file ? <p className="collection-upload-form__error">{uploadErrors.file}</p> : null}
-
-                <div className="collection-upload-form__actions">
-                  <button type="submit" className="button button--primary">
-                    {editingSlug ? 'Guardar cambios' : 'Añadir desde mi PC'}
-                  </button>
-                  <button type="button" className="button button--secondary" onClick={handleRefreshCatalogNow}>
-                    Forzar actualización
-                  </button>
-                  {editingSlug ? (
-                    <button type="button" className="button button--secondary" onClick={resetUploadForm}>
-                      Cancelar edición
-                    </button>
-                  ) : null}
-                  <button type="button" className="button button--secondary" onClick={handleLockEditor}>
-                    Cerrar sesión de edición
-                  </button>
-                </div>
-
-                {uploadMessage ? <p className="collection-upload-form__message" role="status">{uploadMessage}</p> : null}
-              </form>
-            )}
-          </article>
-
-          <div className="collection-featured-strip">
-            {featuredProducts.map((product) => (
-              <article key={`${product.slug}-featured`} className="collection-featured-item">
-                {product.localVideo ? (
-                  <SmartVideo className="collection-featured-item__video" primarySrc={product.localVideo} controls />
-                ) : (
-                  <img src={product.image} alt={product.alt} loading="lazy" />
-                )}
-                <div>
-                  <p className="collection-card__tag">{product.tag ?? product.category}</p>
-                  <h3>{product.title}</h3>
-                  <p>{product.description}</p>
-                </div>
-              </article>
-            ))}
+            <p>{allProducts.length} piezas publicadas en {categories.length - 1} categorías.</p>
           </div>
 
           <div className="pill-list pill-list--shop">
@@ -929,7 +885,7 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
               <button
                 key={category}
                 type="button"
-                className={`editorial-pill editorial-pill--category ${activeCategory === category ? 'is-active' : ''}`}
+                className={'editorial-pill editorial-pill--category ' + (activeCategory === category ? 'is-active' : '')}
                 onClick={() => setActiveCategory(category)}
                 aria-pressed={activeCategory === category}
               >
@@ -941,24 +897,40 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
             ))}
           </div>
 
+          <div className="pill-list pill-list--shop">
+            {PRODUCT_AVAILABILITY_FILTERS.map((availability) => (
+              <button
+                key={availability}
+                type="button"
+                className={'editorial-pill editorial-pill--category ' + (activeAvailability === availability ? 'is-active' : '')}
+                onClick={() => setActiveAvailability(availability)}
+                aria-pressed={activeAvailability === availability}
+              >
+                {availability}
+                <span className="editorial-pill__count">
+                  {availability === 'Todas' ? allProducts.length : (availabilityCounts[availability] ?? 0)}
+                </span>
+              </button>
+            ))}
+          </div>
+
           <div className="shop-toolbar">
-            <p>
-              {activeCategory === 'Todos'
-                ? `Explora ${filteredProducts.length} piezas bordadas, accesorios y encargos personalizados.`
-                : `${filteredProducts.length} pieza(s) en ${activeCategory}.`}
-              {' '}Ordenadas por destacadas para que veas primero los ejemplos más nuevos.
-            </p>
-            {activeCategory !== 'Todos' ? (
+            <p>{cartNotice || `${filteredProducts.length} pieza(s) visibles.`}</p>
+            {cartNotice || activeCategory !== 'Todos' || activeAvailability !== 'Todas' ? (
               <div className="shop-toolbar__actions">
-                <button
-                  type="button"
-                  className="editorial-pill"
-                  onClick={() => {
-                    setActiveCategory('Todos')
-                  }}
-                >
-                  Limpiar
-                </button>
+                {cartNotice ? <a className="editorial-pill editorial-pill--cart" href="#/carrito">Ver carrito</a> : null}
+                {activeCategory !== 'Todos' || activeAvailability !== 'Todas' ? (
+                  <button
+                    type="button"
+                    className="editorial-pill"
+                    onClick={() => {
+                      setActiveCategory('Todos')
+                      setActiveAvailability('Todas')
+                    }}
+                  >
+                    Limpiar
+                  </button>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -974,36 +946,28 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
                 <div className="product-card__body">
                   <div className="product-card__labels">
                     <p className="collection-card__tag">{product.category}</p>
-                    <span className="product-badge">{product.badge ?? 'Atelier'}</span>
+                    <span className={'product-availability product-availability--' + getProductAvailabilityClass(product.availability)}>
+                      {normalizeProductAvailability(product.availability)}
+                    </span>
                   </div>
                   <h3>{product.title}</h3>
                   <p>{product.description}</p>
                   <div className="product-card__meta">
                     <strong>{product.price}</strong>
-                    <a className="text-link" href="#/producto">
-                      Ver ficha
-                    </a>
+                    <span>{normalizeProductStock(product.stock)} unidad(es)</span>
                   </div>
                   <div className="product-card__actions product-card__actions--shop">
-                    <a className="button button--secondary" href="#/producto">
-                      Ver detalles
-                    </a>
-                    <button type="button" className="button button--primary" onClick={() => onAddToCart(product)}>
-                      Añadir al carrito
+                    <button
+                      type="button"
+                      className="button button--primary"
+                      onClick={() => handleAddProductToCart(product)}
+                      disabled={!isProductAvailableForCart(product)}
+                    >
+                      {isProductAvailableForCart(product) ? 'Añadir al carrito' : 'No disponible'}
                     </button>
-                    <a className="button button--dark button--whatsapp" href={whatsappHrefForProduct(product)} target="_blank" rel="noreferrer">
-                      WhatsApp
+                    <a className="button button--secondary" href="#/producto">
+                      Ver detalle
                     </a>
-                    {product.isLocal && isEditorUnlocked ? (
-                      <>
-                        <button type="button" className="button button--secondary" onClick={() => startEditLocalProduct(product)}>
-                          Editar local
-                        </button>
-                        <button type="button" className="button button--secondary" onClick={() => handleDeleteLocalProduct(product)}>
-                          Eliminar local
-                        </button>
-                      </>
-                    ) : null}
                   </div>
                 </div>
               </article>
@@ -1011,7 +975,7 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
               <article className="quote-panel quote-panel--signature">
                 <p className="eyebrow">Sin resultados</p>
                 <h3>No hay piezas en esta categoría por ahora</h3>
-                <p>Prueba otra selección o vuelve a “Todos” para ver la colección completa.</p>
+                <p>Prueba otra selección o vuelve a Todos para ver la colección completa.</p>
                 <a className="button button--secondary" href="#/encargos">
                   Solicitar pieza a medida
                 </a>
@@ -1022,15 +986,25 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
           <article className="collection-service-cta">
             <div>
               <p className="eyebrow">Asesoría del atelier</p>
-              <h3>¿Dudas entre varias piezas?</h3>
-              <p>
-                Te ayudo a elegir formato, paleta y acabado según el espacio, regalo o tipo de uso que tengas en mente.
-              </p>
+              <h3>¿Buscas algo a medida?</h3>
+              <p>Cuéntame la idea y preparo una recomendación sencilla de formato, color y acabado.</p>
             </div>
             <div className="collection-service-cta__actions">
               <a className="button button--primary" href="#/contacto">Pedir recomendación</a>
               <a className="button button--secondary" href="#/encargos">Encargo personalizado</a>
             </div>
+          </article>
+
+          <article className="quote-panel collection-support-panel">
+            <p className="eyebrow">Compra y reserva</p>
+            <h3>La colección ya está preparada para vender dentro de la web</h3>
+            <p>Las piezas terminadas pueden pedirse desde el carrito. Los encargos y variantes siguen mejor desde la parte de encargos.</p>
+            <ul className="note-list">
+              <li>{paymentMethods.length > 0 ? `Métodos disponibles: ${paymentMethods.join(', ')}.` : 'El método de pago se confirmará al revisar el pedido.'}</li>
+              {businessSettings.contactEmail ? <li>Correo del atelier: {businessSettings.contactEmail}</li> : null}
+              {businessSettings.contactWhatsapp ? <li>WhatsApp del atelier: {businessSettings.contactWhatsapp}</li> : null}
+              {businessSettings.shippingNote ? <li>{businessSettings.shippingNote}</li> : null}
+            </ul>
           </article>
         </div>
       </PageSection>
@@ -1040,6 +1014,16 @@ function CollectionPage({ onAddToCart, productsList, onRefreshCatalog }) {
 
 function ProductPage({ onAddToCart, productsList }) {
   const featured = productsList[0]
+  const [businessSettings, setBusinessSettings] = useState(DEFAULT_BUSINESS_SETTINGS)
+  const paymentMethods = [
+    businessSettings.bizum ? 'Bizum' : null,
+    businessSettings.paypal ? 'PayPal' : null,
+    businessSettings.transferOwner ? 'Transferencia' : null
+  ].filter(Boolean)
+
+  useEffect(() => {
+    setBusinessSettings(readBusinessSettings())
+  }, [])
 
   if (!featured) {
     return (
@@ -1089,6 +1073,9 @@ function ProductPage({ onAddToCart, productsList }) {
             <article className="contact-card contact-card--product">
               <p className="eyebrow">Detalle de producto</p>
               <h3>{featured.price}</h3>
+              <span className={`product-availability product-availability--${getProductAvailabilityClass(featured.availability)}`}>
+                {normalizeProductAvailability(featured.availability)}
+              </span>
               <p>{featured.description}</p>
               <div className="contact-list">
                 <div>
@@ -1105,8 +1092,13 @@ function ProductPage({ onAddToCart, productsList }) {
                 </div>
               </div>
               <div className="product-card__actions product-card__actions--detail">
-                <button type="button" className="button button--primary" onClick={() => onAddToCart(featured)}>
-                  Añadir al carrito
+                <button
+                  type="button"
+                  className="button button--primary"
+                  onClick={() => onAddToCart(featured)}
+                  disabled={!PRODUCT_AVAILABLE_FOR_CART.has(normalizeProductAvailability(featured.availability))}
+                >
+  {PRODUCT_AVAILABLE_FOR_CART.has(normalizeProductAvailability(featured.availability)) ? 'Añadir al carrito' : 'No disponible'}
                 </button>
                 <a className="button button--secondary" href="#/encargos">
                   Pedir variante
@@ -1121,6 +1113,17 @@ function ProductPage({ onAddToCart, productsList }) {
                 Cada descripción está enfocada en mostrar textura, técnica y carácter para facilitar una elección cuidada y personal.
               </p>
             </article>
+
+            <article className="quote-panel quote-panel--product">
+              <p className="eyebrow">Reserva y pago</p>
+              <h3>Antes de cerrar la compra te enseñamos cómo continuar</h3>
+              <ul className="note-list">
+                <li>{paymentMethods.length > 0 ? `Métodos disponibles: ${paymentMethods.join(', ')}.` : 'El método de pago se confirmará al revisar el pedido.'}</li>
+                {businessSettings.paymentNote ? <li>{businessSettings.paymentNote}</li> : <li>Cuando completes el pedido, recibirás la referencia para confirmar disponibilidad y pago.</li>}
+                {businessSettings.contactEmail ? <li>Correo de apoyo: {businessSettings.contactEmail}</li> : null}
+                {businessSettings.contactWhatsapp ? <li>WhatsApp de apoyo: {businessSettings.contactWhatsapp}</li> : null}
+              </ul>
+            </article>
           </div>
         </div>
       </section>
@@ -1128,21 +1131,92 @@ function ProductPage({ onAddToCart, productsList }) {
   )
 }
 
-function CartPage({ cartItems, onAddToCart, productsList }) {
+function CartPage({ cartItems, onAddToCart, onSetCartQuantity, onRemoveFromCart, onCreateOrder, onClearCart, productsList }) {
+  const [checkoutForm, setCheckoutForm] = useState({
+    name: '',
+    email: '',
+    whatsapp: '',
+    paymentPreference: 'Por confirmar',
+    deliveryPreference: 'Envío',
+    notes: ''
+  })
+  const [checkoutMessage, setCheckoutMessage] = useState('')
+  const [lastOrder, setLastOrder] = useState(null)
+  const [businessSettings, setBusinessSettings] = useState(DEFAULT_BUSINESS_SETTINGS)
   const lines = cartItems
     .map((line) => {
       const product = productsList.find((item) => item.slug === line.slug)
       return product ? { ...line, product } : null
     })
     .filter(Boolean)
-  const checkoutWhatsappHref = whatsappHrefForCart(lines)
+  const orderSummary = lines.map((line) => `${line.product.title} x${line.qty} (${line.product.price})`).join('\n')
+  const paymentMethods = [
+    businessSettings.bizum ? 'Bizum' : null,
+    businessSettings.paypal ? 'PayPal' : null,
+    businessSettings.transferOwner ? 'Transferencia' : null
+  ].filter(Boolean)
+  const paymentOptions = ['Por confirmar', ...paymentMethods]
+  const itemCount = lines.reduce((total, line) => total + line.qty, 0)
+
+  const handleCheckoutSubmit = (event) => {
+    event.preventDefault()
+    const name = checkoutForm.name.trim()
+    const email = checkoutForm.email.trim()
+    const whatsapp = checkoutForm.whatsapp.trim()
+    const paymentPreference = checkoutForm.paymentPreference
+    const deliveryPreference = checkoutForm.deliveryPreference
+    const notes = checkoutForm.notes.trim()
+
+    if (lines.length === 0) {
+      setCheckoutMessage('Añade alguna pieza antes de finalizar.')
+      return
+    }
+
+    if (name.length < 2 || whatsapp.length < 6) {
+      setCheckoutMessage('Completa nombre y WhatsApp para crear la solicitud.')
+      return
+    }
+
+    if (email && !email.includes('@')) {
+      setCheckoutMessage('Revisa el correo o deja ese campo vacío.')
+      return
+    }
+
+    const createdOrder = onCreateOrder({
+      name,
+      whatsapp,
+      customerEmail: email,
+      paymentPreference,
+      deliveryPreference,
+      idea: `Pedido desde carrito:
+${orderSummary}\n\nPago preferido: ${paymentPreference}\nEntrega: ${deliveryPreference}${email ? `\nCorreo: ${email}` : ''}${notes ? `\n\nNotas: ${notes}` : ''}`,
+      source: 'cart_checkout',
+      cartLines: lines.map((line) => ({
+        slug: line.slug,
+        title: line.product.title,
+        price: line.product.price,
+        qty: line.qty
+      }))
+    })
+
+    onClearCart()
+    setCheckoutForm({
+      name: '',
+      email: '',
+      whatsapp: '',
+      paymentPreference: 'Por confirmar',
+      deliveryPreference: 'Envío',
+      notes: ''
+    })
+    setCheckoutMessage(`Pedido guardado. Referencia: ${createdOrder.reference}. Podrás revisarlo desde tu acceso.`)
+  }
 
   return (
     <>
       <PageHero
         eyebrow="Carrito"
         title="Tu selección del atelier"
-        text="Revisa tus piezas y finaliza tu solicitud por WhatsApp para confirmar disponibilidad, tiempos y entrega."
+        text="Revisa tus piezas y crea una solicitud con referencia para confirmar disponibilidad, tiempos y entrega."
         image={mediaConfig.visualLead}
         alt="Mesa del atelier con piezas seleccionadas"
       />
@@ -1151,37 +1225,131 @@ function CartPage({ cartItems, onAddToCart, productsList }) {
         <div className="container">
           {lines.length === 0 ? (
             <article className="quote-panel quote-panel--signature">
-              <p className="eyebrow">Carrito vacío</p>
-              <h3>Aún no has añadido ninguna pieza</h3>
-              <p>Explora la colección y guarda tus favoritas para continuar después.</p>
-              <a className="button button--primary" href="#/coleccion">
-                Ir a colección
-              </a>
+                <p className="eyebrow">Carrito vacío</p>
+                <h3>Aún no has añadido ninguna pieza</h3>
+                <p>Explora la colección y guarda tus favoritas para continuar después.</p>
+                <a className="button button--primary" href="#/coleccion">
+                  Ir a colección
+                </a>
             </article>
           ) : (
-            <div className="product-grid product-grid--shop">
-              {lines.map((line) => (
-                <article key={line.slug} className="product-card product-card--shop">
-                  <img src={line.product.image} alt={line.product.alt} />
-                  <div className="product-card__body">
-                    <p className="collection-card__tag">{line.product.category}</p>
-                    <h3>{line.product.title}</h3>
-                    <p>{line.product.description}</p>
-                    <div className="product-card__meta">
-                      <strong>{line.product.price}</strong>
-                      <span>Cantidad: {line.qty}</span>
+            <div className="cart-checkout-layout">
+              <div className="product-grid product-grid--shop">
+                {lines.map((line) => (
+                  <article key={line.slug} className="product-card product-card--shop">
+                    <img src={line.product.image} alt={line.product.alt} />
+                    <div className="product-card__body">
+                      <p className="collection-card__tag">{line.product.category}</p>
+                      <h3>{line.product.title}</h3>
+                      <p>{line.product.description}</p>
+                      <div className="product-card__meta">
+                        <strong>{line.product.price}</strong>
+                        <span>Cantidad: {line.qty}</span>
+                      </div>
+                      <div className="cart-line-controls" aria-label={'Cantidad de ' + line.product.title}>
+                        <button type="button" className="cart-line-stepper" onClick={() => onSetCartQuantity(line.slug, line.qty - 1)}>
+                          -
+                        </button>
+                        <span>{line.qty}</span>
+                        <button type="button" className="cart-line-stepper" onClick={() => onSetCartQuantity(line.slug, line.qty + 1)} disabled={line.qty >= normalizeProductStock(line.product.stock)}>
+                          +
+                        </button>
+                        <button type="button" className="button button--secondary cart-line-remove" onClick={() => onRemoveFromCart(line.slug)}>
+                          Quitar
+                        </button>
+                      </div>
+                      <div className="product-card__actions product-card__actions--shop">
+                        <button type="button" className="button button--secondary" onClick={() => onAddToCart(line.product)}>
+                          Añadir otra
+                        </button>
+                      </div>
                     </div>
-                    <div className="product-card__actions product-card__actions--shop">
-                      <button type="button" className="button button--secondary" onClick={() => onAddToCart(line.product)}>
-                        Añadir otra
-                      </button>
-                      <a className="button button--primary" href={checkoutWhatsappHref} target="_blank" rel="noreferrer">
-                        Finalizar por WhatsApp
-                      </a>
-                    </div>
-                  </div>
-                </article>
-              ))}
+                  </article>
+                ))}
+              </div>
+
+              <form className="cart-checkout-form" onSubmit={handleCheckoutSubmit}>
+                <p className="eyebrow">Finalizar pedido</p>
+                <h3>Crear solicitud con referencia</h3>
+                <p>Guardaremos este carrito como pedido para que puedas seguirlo desde tu acceso.</p>
+                <div className="cart-summary-strip" aria-label="Resumen del carrito">
+                  <span>{itemCount} pieza(s)</span>
+                  <span>{lines.length} referencia(s)</span>
+                  <span>{paymentMethods.length > 0 ? paymentMethods.join(' / ') : 'Pago a confirmar'}</span>
+                </div>
+                <div className="cart-payment-panel">
+                  <strong>Pago y confirmación</strong>
+                  <p>{paymentMethods.length > 0 ? 'Métodos activos: ' + paymentMethods.join(', ') + '.' : 'El pago se confirmará contigo al revisar la solicitud.'}</p>
+                  {businessSettings.bizum ? <p>Bizum: {businessSettings.bizum}</p> : null}
+                  {businessSettings.paypal ? <p>PayPal: {businessSettings.paypal}</p> : null}
+                  {businessSettings.contactEmail ? <p>Correo: {businessSettings.contactEmail}</p> : null}
+                  {businessSettings.contactWhatsapp ? <p>WhatsApp del atelier: {businessSettings.contactWhatsapp}</p> : null}
+                  {businessSettings.paymentNote ? <p>{businessSettings.paymentNote}</p> : null}
+                  {businessSettings.shippingNote ? <p>{businessSettings.shippingNote}</p> : null}
+                </div>
+                <label>
+                  Nombre
+                  <input
+                    type="text"
+                    value={checkoutForm.name}
+                    onChange={(event) => setCheckoutForm((current) => ({ ...current, name: event.target.value }))}
+                    placeholder="Tu nombre"
+                  />
+                </label>
+                <label>
+                  Correo
+                  <input
+                    type="email"
+                    value={checkoutForm.email}
+                    onChange={(event) => setCheckoutForm((current) => ({ ...current, email: event.target.value }))}
+                    placeholder="tu@email.com"
+                  />
+                </label>
+                <label>
+                  Contactar
+                  <input
+                    type="text"
+                    value={checkoutForm.whatsapp}
+                    onChange={(event) => setCheckoutForm((current) => ({ ...current, whatsapp: event.target.value }))}
+                    placeholder="+34..."
+                  />
+                </label>
+                <label>
+                  Pago preferido
+                  <select
+                    value={checkoutForm.paymentPreference}
+                    onChange={(event) => setCheckoutForm((current) => ({ ...current, paymentPreference: event.target.value }))}
+                  >
+                    {paymentOptions.map((method) => (
+                      <option key={method} value={method}>{method}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Entrega
+                  <select
+                    value={checkoutForm.deliveryPreference}
+                    onChange={(event) => setCheckoutForm((current) => ({ ...current, deliveryPreference: event.target.value }))}
+                  >
+                    <option value="Envío">Envío</option>
+                    <option value="Recogida">Recogida</option>
+                    <option value="Por confirmar">Por confirmar</option>
+                  </select>
+                </label>
+                <label>
+                  Notas
+                  <textarea
+                    rows={3}
+                    value={checkoutForm.notes}
+                    onChange={(event) => setCheckoutForm((current) => ({ ...current, notes: event.target.value }))}
+                    placeholder="Plazo, dudas o preferencias"
+                  />
+                </label>
+                <button type="submit" className="button button--primary">
+                  Crear solicitud
+                </button>
+                {checkoutMessage ? <p className="journal-quick-form__message">{checkoutMessage}</p> : null}
+              </form>
             </div>
           )}
         </div>
@@ -1189,7 +1357,6 @@ function CartPage({ cartItems, onAddToCart, productsList }) {
     </>
   )
 }
-
 function LoginPage({
   user,
   authReady,
@@ -1203,37 +1370,14 @@ function LoginPage({
   onSyncOrders,
   syncMessage,
   isSyncing,
-  pendingSyncCount
+  pendingSyncCount,
+  ownerAccessRequired = false
 }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [journalMetrics, setJournalMetrics] = useState(null)
-  const [journalVariant, setJournalVariant] = useState('A')
   const [orderStatusFilter, setOrderStatusFilter] = useState('Todos')
-  const [copyMessage, setCopyMessage] = useState('')
-
-  useEffect(() => {
-    try {
-      const metricsRaw = window.localStorage.getItem(JOURNAL_CTA_METRICS_KEY)
-      const variantRaw = window.localStorage.getItem(JOURNAL_CTA_VARIANT_KEY)
-      setJournalMetrics(metricsRaw ? JSON.parse(metricsRaw) : null)
-      setJournalVariant(variantRaw === 'B' ? 'B' : 'A')
-    } catch {
-      setJournalMetrics(null)
-      setJournalVariant('A')
-    }
-  }, [])
-
-  const resetJournalMetrics = () => {
-    try {
-      window.localStorage.removeItem(JOURNAL_CTA_METRICS_KEY)
-      window.localStorage.removeItem(JOURNAL_CTA_VARIANT_KEY)
-      setJournalMetrics(null)
-      setJournalVariant('A')
-    } catch {
-      // Sin bloqueo si falla limpieza.
-    }
-  }
+  const isOwnerAccount = Boolean(user?.profile?.role === 'owner')
+  const canSubmitAccess = authReady && email.trim().length > 0 && password.length >= 6
 
   const handleLoginSubmit = async (event) => {
     event.preventDefault()
@@ -1244,34 +1388,39 @@ function LoginPage({
     await onRegister(email, password)
   }
 
-  const visibleOrders = orderStatusFilter === 'Todos'
-    ? orders
-    : orders.filter((order) => order.status === orderStatusFilter)
   const customerOrders = user
     ? orders.filter((order) => order.ownerId === user.localId)
     : []
-
-  const handleCopyReference = async (reference) => {
-    if (!reference) return
-    try {
-      await navigator.clipboard.writeText(reference)
-      setCopyMessage(`Referencia ${reference} copiada.`)
-    } catch {
-      setCopyMessage('No se pudo copiar en este navegador.')
-    }
-  }
+  const baseOrders = isOwnerAccount ? orders : customerOrders
+  const visibleOrders = orderStatusFilter === 'Todos'
+    ? baseOrders
+    : baseOrders.filter((order) => order.status === orderStatusFilter)
 
   return (
     <>
       <PageHero
-        eyebrow="Acceder"
-        title="Tu cuenta Atelier Lumière"
-        text="Accede para guardar favoritos, seguir tus encargos y centralizar tu historial de piezas."
-        image={mediaConfig.portrait}
-        alt="Retrato de la creadora junto a la ventana"
+        eyebrow="Acceso Atelier"
+        title="Tu espacio privado"
+        text="Entra con tu correo para consultar pedidos, referencias y mensajes del atelier."
+        image={mediaConfig.accessImage}
+        alt="Mesa del atelier con hilos, flores y bordado preparado"
       />
       <PageSection className="section-block--soft">
         <div className="container split-panels split-panels--single">
+          <article className="quote-panel quote-panel--signature login-intro-panel">
+            <p className="eyebrow">Cuenta Atelier</p>
+            <h3>Seguimiento sencillo, sin ruido</h3>
+            <p>Este acceso sirve para revisar el estado de un pedido, recuperar referencias y continuar una solicitud con calma.</p>
+          </article>
+
+          {ownerAccessRequired ? (
+            <article className="quote-panel quote-panel--signature">
+              <p className="eyebrow">Zona privada</p>
+              <h3>Gestión solo para propietaria</h3>
+              <p>Esta sección no está publicada para clientas. Entra con tu cuenta de propietaria para abrir la gestión interna.</p>
+            </article>
+          ) : null}
+
           {!isFirebaseConfigured ? (
             <article className="quote-panel quote-panel--signature">
               <p className="eyebrow">Configurar Firebase</p>
@@ -1304,7 +1453,7 @@ function LoginPage({
                     Contraseña
                     <input
                       type="password"
-                      placeholder="••••••••"
+                      placeholder="Mínimo 6 caracteres"
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
                       minLength={6}
@@ -1314,45 +1463,57 @@ function LoginPage({
                 </>
               )}
 
+              {!user ? (
+                <p className="management-note">Usa una contraseña de al menos 6 caracteres. No la compartas conmigo.</p>
+              ) : null}
               {authError ? <p className="collection-upload-form__error">{authError}</p> : null}
               {authMessage ? <p className="collection-upload-form__message">{authMessage}</p> : null}
 
               {user ? (
                 <button type="button" className="button button--secondary" onClick={onLogout}>
-                  Cerrar sesión
-                </button>
+                  Cerrar sesión</button>
               ) : (
                 <div className="product-card__actions product-card__actions--shop">
-                  <button type="submit" className="button button--primary" disabled={!authReady}>
+                  <button type="submit" className="button button--primary" disabled={!canSubmitAccess}>
                     Entrar
                   </button>
-                  <button type="button" className="button button--secondary" onClick={handleRegister} disabled={!authReady}>
-                    Crear cuenta
+                  <button type="button" className="button button--secondary" onClick={handleRegister} disabled={!canSubmitAccess}>
+                    Crear cuenta cliente
                   </button>
                 </div>
               )}
             </form>
           )}
 
-          <article className="quote-panel quote-panel--signature login-metrics-panel">
-            <p className="eyebrow">Métricas rápidas · Diario</p>
-            <h3>Panel local de conversión</h3>
-            <p>Variante A/B activa para CTA principal: <strong>{journalVariant}</strong>.</p>
-            <ul className="note-list">
-              <li>Clicks CTA encargo: {journalMetrics?.journal_order_cta_A ?? 0} (A) / {journalMetrics?.journal_order_cta_B ?? 0} (B)</li>
-              <li>Clicks CTA colección: {journalMetrics?.journal_collection_cta ?? 0}</li>
-              <li>Solicitudes rápidas enviadas: {journalMetrics?.quick_order_submit ?? 0}</li>
-            </ul>
-            <button type="button" className="button button--secondary" onClick={resetJournalMetrics}>
-              Reiniciar métricas
-            </button>
-          </article>
+          {isOwnerAccount ? (
+            <article className="quote-panel quote-panel--signature">
+              <p className="eyebrow">Propietaria</p>
+              <h3>Acceso interno</h3>
+              <p>Tu cuenta ya tiene acceso a la parte privada. Desde aquí puedes entrar a gestión y seguir con pedidos, catálogo y ventas.</p>
+              <a className="button button--primary" href="#/gestion">
+                Abrir gestión
+              </a>
+            </article>
+          ) : user ? (
+            <article className="quote-panel quote-panel--signature login-account-panel">
+              <p className="eyebrow">Cuenta cliente</p>
+              <h3>Tu cuenta está lista</h3>
+              <p>Desde aquí podrás consultar tus pedidos cuando haya solicitudes asociadas a este correo.</p>
+              <div className="login-account-actions" aria-label="Accesos de cuenta">
+                <a className="button button--primary" href="#/coleccion">Ver colección</a>
+                <a className="button button--secondary" href="#/carrito">Ver carrito</a>
+                <a className="button button--secondary" href="#/encargos">Nuevo encargo</a>
+              </div>
+              <p className="management-note">La gestión interna solo aparece en cuentas de propietaria.</p>
+            </article>
+          ) : null}
 
-          <article className="quote-panel quote-panel--signature login-orders-panel">
-            <p className="eyebrow">Fase 3 · Solicitudes</p>
-            <h3>Mis solicitudes recibidas</h3>
-            {!user ? <p>Inicia sesión para gestionar y actualizar el estado de pedidos.</p> : null}
-            {orders.length > 0 ? (
+          {user ? (
+            <article className="quote-panel quote-panel--signature login-orders-panel">
+            <p className="eyebrow">{isOwnerAccount ? 'Gestión de pedidos' : 'Mis solicitudes'}</p>
+            <h3>{isOwnerAccount ? 'Resumen de solicitudes' : 'Seguimiento de tus referencias'}</h3>
+            {!user ? <p>Inicia sesión para ver tus pedidos y seguir su estado.</p> : null}
+            {baseOrders.length > 0 ? (
               <label>
                 Filtrar por estado
                 <select value={orderStatusFilter} onChange={(event) => setOrderStatusFilter(event.target.value)}>
@@ -1364,17 +1525,22 @@ function LoginPage({
               </label>
             ) : null}
             {visibleOrders.length === 0 ? (
-              <p>Aún no hay solicitudes guardadas desde el formulario rápido del Diario.</p>
+              <div className="login-empty-state">
+                <p>{isOwnerAccount ? 'Aún no hay solicitudes registradas.' : 'Aún no hay pedidos asociados a tu cuenta.'}</p>
+                {!isOwnerAccount ? (
+                  <a className="button button--secondary" href="#/encargos">Crear una solicitud</a>
+                ) : null}
+              </div>
             ) : (
               <div className="login-orders-list">
                 {visibleOrders.map((order) => (
                   <article key={order.id} className="login-orders-item">
-                    <strong>{order.name}</strong>
-                    <span className="login-orders-item__reference">Ref: {order.reference ?? 'Sin referencia'}</span>
-                    <span>{order.whatsapp}</span>
+                    <strong>{isOwnerAccount ? (order.name || 'Sin nombre') : (order.reference || 'Sin referencia')}</strong>
+                    <span className="login-orders-item__reference">Ref: {order.reference || 'Sin referencia'}</span>
+                    {isOwnerAccount ? <span>{order.whatsapp}</span> : null}
                     <p>{order.idea}</p>
                     <small>{new Date(order.createdAt).toLocaleString('es-ES')}</small>
-                    {user ? (
+                    {isOwnerAccount ? (
                       <label>
                         Estado
                         <select value={order.status} onChange={(event) => onUpdateOrderStatus(order.id, event.target.value)}>
@@ -1390,42 +1556,16 @@ function LoginPage({
                 ))}
               </div>
             )}
-            <div className="login-orders-panel__actions">
-              <button type="button" className="button button--secondary" onClick={onSyncOrders} disabled={!user || isSyncing}>
-                {isSyncing ? 'Sincronizando...' : 'Sincronizar con Firebase'}
-              </button>
-              {pendingSyncCount > 0 ? <p>Pendientes de sincronizar: {pendingSyncCount}</p> : null}
-              {syncMessage ? <p>{syncMessage}</p> : null}
-            </div>
+            {isOwnerAccount ? (
+              <div className="login-orders-panel__actions">
+                <button type="button" className="button button--secondary" onClick={onSyncOrders} disabled={!user || isSyncing}>
+                  {isSyncing ? 'Sincronizando...' : 'Sincronizar con Firebase'}
+                </button>
+                {pendingSyncCount > 0 ? <p>Pendientes de sincronizar: {pendingSyncCount}</p> : null}
+                {syncMessage ? <p>{syncMessage}</p> : null}
+              </div>
+            ) : null}
           </article>
-
-          {user ? (
-            <article className="quote-panel quote-panel--signature login-customer-orders">
-              <p className="eyebrow">Cliente · Mis pedidos</p>
-              <h3>Seguimiento rápido de tus referencias</h3>
-              {customerOrders.length === 0 ? (
-                <p>Aún no hay pedidos asociados a tu cuenta.</p>
-              ) : (
-                <div className="login-orders-list">
-                  {customerOrders.map((order) => (
-                    <article key={`customer-${order.id}`} className="login-orders-item">
-                      <div className="login-orders-item__header">
-                        <strong>{order.reference ?? 'Sin referencia'}</strong>
-                        <span className={`order-status-badge order-status-badge--${order.status.replace(/\s+/g, '-').toLowerCase()}`}>
-                          {order.status}
-                        </span>
-                      </div>
-                      <p>{order.idea}</p>
-                      <small>{new Date(order.createdAt).toLocaleString('es-ES')}</small>
-                      <button type="button" className="button button--secondary" onClick={() => handleCopyReference(order.reference)}>
-                        Copiar referencia
-                      </button>
-                    </article>
-                  ))}
-                </div>
-              )}
-              {copyMessage ? <p>{copyMessage}</p> : null}
-            </article>
           ) : null}
         </div>
       </PageSection>
@@ -1433,27 +1573,927 @@ function LoginPage({
   )
 }
 
-function OrdersPage() {
+
+function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreateProduct, onDeleteProduct }) {
+  const [draft, setDraft] = useState({
+    title: '',
+    category: 'Piezas únicas',
+    price: '',
+    availability: 'Disponible',
+    stock: '1',
+    image: '',
+    description: ''
+  })
+  const [message, setMessage] = useState('')
+
+  const updateDraft = (field, value) => {
+    setDraft((current) => ({ ...current, [field]: value }))
+    setMessage('')
+  }
+
+  const handleCreateSubmit = (event) => {
+    event.preventDefault()
+    const result = onCreateProduct(draft)
+
+    if (!result.ok) {
+      setMessage(result.message)
+      return
+    }
+
+    setDraft({
+      title: '',
+      category: 'Piezas únicas',
+      price: '',
+      availability: 'Disponible',
+      stock: '1',
+      image: '',
+      description: ''
+    })
+    setMessage(result.message)
+  }
+
+  return (
+    <article id="gestion-catalogo" className="quote-panel management-catalog-panel">
+      <p className="eyebrow">Catálogo</p>
+      <h3>Edición de artículos</h3>
+      <p>La edición del catálogo ya no aparece en la colección pública. Esta parte queda reservada para la gestión interna.</p>
+
+      {isVisible ? (
+        <>
+          <div className="management-catalog-toolbar">
+            <strong>{productsList.length} pieza(s) en catálogo</strong>
+            <span>Cambia precio, categoría y disponibilidad desde aquí. Estos ajustes se guardan en este navegador.</span>
+          </div>
+
+          <form className="management-create-product-form" onSubmit={handleCreateSubmit}>
+            <div className="management-create-product-form__head">
+              <div>
+                <p className="eyebrow">Nueva pieza</p>
+                <h4>Crear artículo para la colección</h4>
+              </div>
+              <button type="submit" className="button button--primary">Publicar pieza</button>
+            </div>
+            <div className="management-create-product-form__grid">
+              <label>
+                Nombre
+                <input type="text" value={draft.title} onChange={(event) => updateDraft('title', event.target.value)} placeholder="Ej. Bolso Jardín" />
+              </label>
+              <label>
+                Precio
+                <input type="text" value={draft.price} onChange={(event) => updateDraft('price', event.target.value)} placeholder="Ej. 120 €" />
+              </label>
+              <label>
+                Categoría
+                <input type="text" value={draft.category} onChange={(event) => updateDraft('category', event.target.value)} placeholder="Bolsos bordados" />
+              </label>
+              <label>
+                Disponibilidad
+                <select value={draft.availability} onChange={(event) => updateDraft('availability', event.target.value)}>
+                  {PRODUCT_AVAILABILITY_OPTIONS.map((availability) => (
+                    <option key={availability} value={availability}>{availability}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Cantidad
+                <input type="number" min="0" step="1" value={draft.stock} onChange={(event) => updateDraft('stock', event.target.value)} placeholder="1" />
+              </label>
+              <label className="management-create-product-form__wide">
+                Imagen
+                <input type="text" value={draft.image} onChange={(event) => updateDraft('image', event.target.value)} placeholder="/media/imagen.png o https://..." />
+              </label>
+              <label className="management-create-product-form__wide">
+                Descripción
+                <textarea rows={3} value={draft.description} onChange={(event) => updateDraft('description', event.target.value)} placeholder="Describe materiales, estilo, medidas o intención de la pieza" />
+              </label>
+            </div>
+            {message ? <p className="management-note">{message}</p> : null}
+          </form>
+
+          <div className="product-grid product-grid--shop">
+            {productsList.map((product) => (
+              <article key={'management-product-' + product.slug} className="product-card product-card--shop management-product-card">
+                {product.localVideo ? (
+                  <SmartVideo className="product-card__video" primarySrc={product.localVideo} controls />
+                ) : (
+                  <img src={product.image} alt={product.alt} />
+                )}
+                <div className="product-card__body">
+                  <div className="product-card__labels">
+                    <p className="collection-card__tag">{product.category}</p>
+                    <span className={'product-availability product-availability--' + getProductAvailabilityClass(product.availability)}>
+                      {normalizeProductAvailability(product.availability)}
+                    </span>
+                  </div>
+                  <h3>{product.title}</h3>
+                  <p>{product.description}</p>
+                  <div className="product-card__meta">
+                    <strong>{product.price}</strong>
+                  </div>
+                  <div className="management-product-controls">
+                    <label>
+                      Precio
+                      <input
+                        type="text"
+                        value={product.price}
+                        onChange={(event) => onUpdateProduct(product.slug, { price: event.target.value })}
+                      />
+                    </label>
+                    <label>
+                      Categoría
+                      <input
+                        type="text"
+                        value={product.category}
+                        onChange={(event) => onUpdateProduct(product.slug, { category: event.target.value, tag: event.target.value })}
+                      />
+                    </label>
+                    <label>
+                      Disponibilidad
+                      <select
+                        value={normalizeProductAvailability(product.availability)}
+                        onChange={(event) => onUpdateProduct(product.slug, { availability: event.target.value })}
+                      >
+                        {PRODUCT_AVAILABILITY_OPTIONS.map((availability) => (
+                          <option key={availability} value={availability}>{availability}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Cantidad
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={normalizeProductStock(product.stock)}
+                        onChange={(event) => onUpdateProduct(product.slug, { stock: normalizeProductStock(event.target.value) })}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="button button--secondary management-product-delete"
+                      onClick={() => onDeleteProduct(product.slug)}
+                    >
+                      Retirar de tienda
+                    </button>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </>
+      ) : (
+        <p>Abre el acceso privado para revisar el catalogo.</p>
+      )}
+    </article>
+  )
+}
+
+function ManagementPage({
+  user,
+  orders,
+  productsList,
+  onUpdateOrderStatus,
+  onUpdateOrderDetails,
+  onSyncOrders,
+  syncMessage,
+  isSyncing,
+  pendingSyncCount,
+  onUpdateProduct,
+  onCreateProduct,
+  onDeleteProduct
+}) {
+  const [statusFilter, setStatusFilter] = useState('Todos')
+  const [paymentFilter, setPaymentFilter] = useState('Todos')
+  const [shippingFilter, setShippingFilter] = useState('Todos')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [copyMessage, setCopyMessage] = useState('')
+  const [saleDrafts, setSaleDrafts] = useState({})
+  const [businessSettings, setBusinessSettings] = useState({
+    bizum: '',
+    paypal: '',
+    transferOwner: '',
+    contactEmail: '',
+    contactWhatsapp: '',
+    paymentNote: '',
+    shippingNote: ''
+  })
+  const [settingsMessage, setSettingsMessage] = useState('')
+  const [journalMetrics, setJournalMetrics] = useState(null)
+  const [journalVariant, setJournalVariant] = useState('A')
+  const [memoryMessage, setMemoryMessage] = useState('')
+  const [memoryTick, setMemoryTick] = useState(0)
+
+  const statusCounts = orders.reduce((acc, order) => {
+    acc[order.status] = (acc[order.status] ?? 0) + 1
+    return acc
+  }, {})
+  const productAvailabilityCounts = productsList.reduce((acc, product) => {
+    const availability = normalizeProductAvailability(product.availability)
+    acc[availability] = (acc[availability] ?? 0) + 1
+    return acc
+  }, {})
+  const catalogReadyCount = productsList.filter((product) => product.price !== 'Consultar').length
+  const pendingOrders = orders.filter((order) => order.status !== 'Listo para entregar')
+  const normalizedSearchTerm = searchTerm.trim().toLowerCase()
+  const filteredOrders = orders
+    .filter((order) => statusFilter === 'Todos' || order.status === statusFilter)
+    .filter((order) => paymentFilter === 'Todos' || (order.paymentStatus || 'Pendiente') === paymentFilter)
+    .filter((order) => shippingFilter === 'Todos' || (order.shippingStatus || 'Sin preparar') === shippingFilter)
+    .filter((order) => {
+      if (!normalizedSearchTerm) return true
+      return [order.reference, order.name, order.whatsapp, order.idea, order.shippingAddress, order.internalNotes]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(normalizedSearchTerm))
+    })
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  const paidOrders = orders.filter((order) => order.paymentStatus === 'Pagado')
+  const signalOrders = orders.filter((order) => order.paymentStatus === 'Señal recibida')
+  const pendingPaymentOrders = orders.filter((order) => (order.paymentStatus || 'Pendiente') === 'Pendiente')
+  const shippingPendingOrders = orders.filter((order) => (order.shippingStatus || 'Sin preparar') !== 'Entregado')
+  const paidTotal = paidOrders.reduce((total, order) => total + parseEuroAmount(order.finalPrice), 0)
+  const pendingTotal = pendingPaymentOrders.reduce((total, order) => total + parseEuroAmount(order.finalPrice), 0)
+  const configuredSettingCount = [
+    businessSettings.bizum,
+    businessSettings.paypal,
+    businessSettings.transferOwner,
+    businessSettings.contactEmail,
+    businessSettings.contactWhatsapp
+  ].filter(Boolean).length
+  const localMemoryItems = LOCAL_MEMORY_BLOCKS.map((item) => {
+    const value = readLocalMemoryValue(item.key)
+    return {
+      ...item,
+      hasData: Boolean(value),
+      size: formatLocalMemorySize(value)
+    }
+  })
+  const localMemoryActiveCount = localMemoryItems.filter((item) => item.hasData).length
+
+  useEffect(() => {
+    setBusinessSettings(readBusinessSettings())
+    try {
+      const metricsRaw = window.localStorage.getItem(JOURNAL_CTA_METRICS_KEY)
+      const variantRaw = window.localStorage.getItem(JOURNAL_CTA_VARIANT_KEY)
+      setJournalMetrics(metricsRaw ? JSON.parse(metricsRaw) : null)
+      setJournalVariant(variantRaw === 'B' ? 'B' : 'A')
+    } catch {
+      setJournalMetrics(null)
+      setJournalVariant('A')
+    }
+  }, [])
+
+  const resetJournalMetrics = () => {
+    try {
+      window.localStorage.removeItem(JOURNAL_CTA_METRICS_KEY)
+      window.localStorage.removeItem(JOURNAL_CTA_VARIANT_KEY)
+      setJournalMetrics(null)
+      setJournalVariant('A')
+      setCopyMessage('Métricas del diario reiniciadas.')
+    } catch {
+      setCopyMessage('No se pudieron reiniciar las métricas en este navegador.')
+    }
+  }
+
+  const scrollToCatalogManager = () => {
+    document.getElementById('gestion-catalogo').scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  const buildOrderWhatsappHref = (order) => {
+    const text = `Hola ${order.name || ''}, soy Atelier Lumière. Te escribo sobre tu pedido ${order.reference || ''}. Estado actual: ${order.status}.`
+    const cleanPhone = String(order.whatsapp || '').replace(/[^\d+]/g, '')
+    return cleanPhone
+      ? `https://wa.me/${cleanPhone.replace(/^\+/, '')}?text=${encodeURIComponent(text)}`
+      : `https://wa.me/34612345678?text=${encodeURIComponent(text)}`
+  }
+
+  const handleCopyReference = async (reference) => {
+    if (!reference) return
+    try {
+      await navigator.clipboard.writeText(reference)
+      setCopyMessage(`Referencia ${reference} copiada.`)
+    } catch {
+      setCopyMessage('No se pudo copiar la referencia en este navegador.')
+    }
+  }
+
+  const getSaleDraft = (order) => saleDrafts[order.id] || {
+    finalPrice: order.finalPrice || '',
+    paymentStatus: order.paymentStatus || 'Pendiente',
+    shippingStatus: order.shippingStatus || 'Sin preparar',
+    targetDate: order.targetDate || '',
+    shippingAddress: order.shippingAddress || '',
+    internalNotes: order.internalNotes || ''
+  }
+
+  const handleSaleDraftChange = (order, field, value) => {
+    setSaleDrafts((current) => ({
+      ...current,
+      [order.id]: {
+        ...getSaleDraft(order),
+        ...current[order.id],
+        [field]: value
+      }
+    }))
+  }
+
+  const handleSaveSaleDetails = (order) => {
+    const draft = getSaleDraft(order)
+    onUpdateOrderDetails(order.id, draft)
+  }
+
+  const handleExportOrders = (orderList, scopeLabel) => {
+    if (orderList.length === 0) {
+      setCopyMessage('No hay pedidos para exportar con ese filtro.')
+      return
+    }
+
+    try {
+      const csv = buildOrdersCsv(orderList)
+      const dateStamp = new Date().toISOString().slice(0, 10)
+      downloadTextFile(csv, `atelier-lumiere-pedidos-${scopeLabel}-${dateStamp}.csv`, 'text/csv;charset=utf-8')
+      setCopyMessage(`Pedidos exportados: ${orderList.length}.`)
+    } catch {
+      setCopyMessage('No se pudo preparar el archivo de pedidos.')
+    }
+  }
+
+  const handleBusinessSettingChange = (field, value) => {
+    setBusinessSettings((current) => ({
+      ...current,
+      [field]: value
+    }))
+    setSettingsMessage('')
+  }
+
+  const handleSaveBusinessSettings = () => {
+    try {
+      window.localStorage.setItem(PAYMENT_SETTINGS_STORAGE_KEY, JSON.stringify(businessSettings))
+      setSettingsMessage('Configuración comercial guardada en este equipo.')
+    } catch {
+      setSettingsMessage('No se pudo guardar la configuración en este navegador.')
+    }
+  }
+
+  const handleExportLocalMemory = () => {
+    try {
+      const storage = LOCAL_MEMORY_BLOCKS.reduce((acc, item) => {
+        acc[item.key] = readLocalMemoryValue(item.key)
+        return acc
+      }, {})
+      const backup = {
+        project: 'Atelier Lumiere',
+        exportedAt: new Date().toISOString(),
+        storage
+      }
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'atelier-lumiere-memoria-local.json'
+      link.click()
+      URL.revokeObjectURL(url)
+      setMemoryMessage('Copia descargada. Es un respaldo local de este navegador.')
+    } catch {
+      setMemoryMessage('No se pudo preparar la copia en este navegador.')
+    }
+  }
+
+  const handleClearLocalMemory = (label, keys) => {
+    const confirmed = window.confirm(`Vas a limpiar: ${label}. Esta acción solo afecta a la memoria local de este navegador. Quieres continuar?`)
+    if (!confirmed) return
+
+    try {
+      keys.forEach((key) => window.localStorage.removeItem(key))
+      setMemoryTick((current) => current + 1)
+      setMemoryMessage(`${label} limpiado en este navegador. Recarga la pagina para ver todos los cambios aplicados.`)
+    } catch {
+      setMemoryMessage(`No se pudo limpiar ${label.toLowerCase()} en este navegador.`)
+    }
+  }
+
+  const handleImportLocalMemory = (event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) return
+
+    const reader = new FileReader()
+
+    reader.onload = () => {
+      try {
+        const backup = JSON.parse(String(reader.result || '{}'))
+        const storage = backup?.storage
+
+        if (!storage || typeof storage !== 'object') {
+          setMemoryMessage('La copia no tiene el formato esperado.')
+          return
+        }
+
+        const confirmed = window.confirm('Vas a restaurar una copia local. Esto puede sobrescribir carrito, catálogo, pedidos y ajustes guardados en este navegador. Quieres continuar?')
+        if (!confirmed) return
+
+        LOCAL_MEMORY_BLOCKS.forEach((item) => {
+          if (!Object.prototype.hasOwnProperty.call(storage, item.key)) return
+
+          const value = storage[item.key]
+          if (typeof value === 'string') {
+            window.localStorage.setItem(item.key, value)
+          } else {
+            window.localStorage.removeItem(item.key)
+          }
+        })
+
+        setMemoryTick((current) => current + 1)
+        setMemoryMessage('Copia restaurada en este navegador. Recarga la página para aplicar todos los cambios.')
+      } catch {
+        setMemoryMessage('No se pudo leer esa copia. Revisa que sea el JSON descargado desde esta web.')
+      }
+    }
+
+    reader.onerror = () => {
+      setMemoryMessage('No se pudo abrir el archivo de copia.')
+    }
+
+    reader.readAsText(file)
+  }
+
+  return (
+    <>
+      <PageHero
+        eyebrow="Gestión privada"
+        title="Ventas, pedidos y tienda"
+        text="Un acceso interno para revisar solicitudes, ordenar la tienda y preparar la operativa real."
+        image={mediaConfig.visualDetailA}
+        alt="Mesa de trabajo con hilos y piezas preparadas"
+        actions={[
+          { label: 'Ver tienda', href: '#/coleccion' },
+          { label: 'Volver a acceder', href: '#/acceder', kind: 'secondary' }
+        ]}
+      />
+
+      <PageSection className="section-block--soft">
+        <div className="container management-grid">
+          <article className="quote-panel management-access-panel">
+            <p className="eyebrow">Propietaria</p>
+            <h2>Panel abierto</h2>
+            <p>Esta zona queda solo para ti: pedidos, inventario, seguimiento y preparación de la tienda.</p>
+            <div className="management-actions">
+              <button type="button" className="button button--primary" onClick={scrollToCatalogManager}>Revisar catálogo</button>
+              <button type="button" className="button button--secondary" onClick={onSyncOrders} disabled={!user || isSyncing}>
+                {isSyncing ? 'Sincronizando...' : 'Sincronizar pedidos'}
+              </button>
+            </div>
+            {!user ? <p className="management-note">Para sincronizar con Firebase, entra con tu cuenta en Acceder.</p> : null}
+            {user?.profile?.ownerSource === 'local-config' ? (
+              <p className="management-note">Modo propietaria local activo. La gestión se abre en este equipo; para sincronizar todos los pedidos en Firebase falta dejar el rol definitivo en la base de datos.</p>
+            ) : null}
+            {syncMessage ? <p className="management-note">{syncMessage}</p> : null}
+            {copyMessage ? <p className="management-note">{copyMessage}</p> : null}
+          </article>
+
+          <div className="management-summary">
+            <article className="mini-stat-card">
+              <strong>{orders.length}</strong>
+              <span>Solicitudes totales</span>
+            </article>
+            <article className="mini-stat-card">
+              <strong>{pendingOrders.length}</strong>
+              <span>Pendientes</span>
+            </article>
+            <article className="mini-stat-card">
+              <strong>{catalogReadyCount}</strong>
+              <span>Piezas con precio</span>
+            </article>
+            <article className="mini-stat-card">
+              <strong>{pendingSyncCount}</strong>
+              <span>Por sincronizar</span>
+            </article>
+            <article className="mini-stat-card">
+              <strong>{paidOrders.length}</strong>
+              <span>Pagados</span>
+            </article>
+            <article className="mini-stat-card">
+              <strong>{shippingPendingOrders.length}</strong>
+              <span>Por entregar</span>
+            </article>
+          </div>
+
+          <article className="quote-panel management-metrics-panel">
+            <p className="eyebrow">Métricas del diario</p>
+            <h3>Conversion local</h3>
+            <p>Variante activa para el boton principal: <strong>{journalVariant}</strong>.</p>
+            <ul className="note-list">
+              <li>Clicks CTA encargo: {journalMetrics?.journal_order_cta_A ?? 0} (A) / {journalMetrics?.journal_order_cta_B ?? 0} (B)</li>
+              <li>Clicks CTA colección: {journalMetrics?.journal_collection_cta ?? 0}</li>
+              <li>Solicitudes rápidas enviadas: {journalMetrics?.quick_order_submit ?? 0}</li>
+            </ul>
+            <button type="button" className="button button--secondary" onClick={resetJournalMetrics}>
+              Reiniciar métricas
+            </button>
+          </article>
+
+          <article className="quote-panel management-inventory-panel">
+            <p className="eyebrow">Inventario</p>
+            <h3>Estado actual de la tienda</h3>
+            <div className="management-status-strip" aria-label="Resumen de inventario">
+              <span>Disponible: {productAvailabilityCounts.Disponible ?? 0}</span>
+              <span>Reservado: {productAvailabilityCounts.Reservado ?? 0}</span>
+              <span>Vendido: {productAvailabilityCounts.Vendido ?? 0}</span>
+              <span>Por encargo: {productAvailabilityCounts['Por encargo'] ?? 0}</span>
+            </div>
+          </article>
+
+          <article className="quote-panel management-storage-panel">
+            <p className="eyebrow">Memoria de la web</p>
+            <h3>Dónde se guarda cada cosa</h3>
+            <p>Ahora mismo hay {localMemoryActiveCount} bloques con datos guardados en este navegador.</p>
+            <div className="management-memory-list" aria-live="polite">
+              {localMemoryItems.map((item) => (
+                <div className="management-memory-item" key={`${item.key}-${memoryTick}`}>
+                  <div>
+                    <strong>{item.label}</strong>
+                    <span>{item.description}</span>
+                  </div>
+                  <span className={`memory-status ${item.hasData ? 'is-filled' : ''}`}>
+                    {item.hasData ? item.size : 'Vacío'}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="management-actions">
+              <button type="button" className="button button--primary" onClick={handleExportLocalMemory}>
+                Descargar copia
+              </button>
+              <label className="button button--secondary management-memory-import">
+                Restaurar copia
+                <input type="file" accept="application/json,.json" onChange={handleImportLocalMemory} />
+              </label>
+              <button
+                type="button"
+                className="button button--secondary"
+                onClick={() => handleClearLocalMemory('Carrito', [CART_STORAGE_KEY])}
+              >
+                Vaciar carrito local
+              </button>
+              <button
+                type="button"
+                className="button button--secondary"
+                onClick={() => handleClearLocalMemory('Cambios del catálogo local', [
+                  CUSTOM_PRODUCTS_STORAGE_KEY,
+                  CATALOG_OVERRIDES_STORAGE_KEY,
+                  CATALOG_DELETED_STORAGE_KEY
+                ])}
+              >
+                Reiniciar catálogo local
+              </button>
+            </div>
+            {memoryMessage ? <p className="management-note">{memoryMessage}</p> : null}
+            <p className="management-note">Usuarios y acceso ya dependen de Firebase. El siguiente paso grande será mover catálogo y ventas definitivas a Firebase para que no dependan solo de este equipo.</p>
+          </article>
+
+          <article className="quote-panel management-payment-panel">
+            <p className="eyebrow">Pagos</p>
+            <h3>Primera fase de cobro</h3>
+            <ul className="note-list">
+              <li>Bizum manual para reservas rápidas.</li>
+              <li>Transferencia para importes altos o encargos.</li>
+              <li>PayPal manual como opción extra para clientas que lo prefieran.</li>
+            </ul>
+            <p className="management-note">Cuando la compra esté más cerrada, el siguiente paso natural es integrar PayPal o Stripe dentro de la web.</p>
+          </article>
+
+          <article className="quote-panel management-business-panel">
+            <p className="eyebrow">Configuración comercial</p>
+            <h3>Pagos, contacto y entrega</h3>
+            <div className="management-status-strip" aria-label="Resumen de configuración comercial">
+              <span>Campos activos: {configuredSettingCount}</span>
+              <span>Bizum: {businessSettings.bizum ? 'Listo' : 'Pendiente'}</span>
+              <span>PayPal: {businessSettings.paypal ? 'Listo' : 'Pendiente'}</span>
+            </div>
+            <div className="management-settings-form">
+              <label>
+                Bizum
+                <input
+                  type="text"
+                  value={businessSettings.bizum}
+                  onChange={(event) => handleBusinessSettingChange('bizum', event.target.value)}
+                  placeholder="Teléfono o alias de Bizum"
+                />
+              </label>
+              <label>
+                PayPal
+                <input
+                  type="text"
+                  value={businessSettings.paypal}
+                  onChange={(event) => handleBusinessSettingChange('paypal', event.target.value)}
+                  placeholder="Correo o enlace de PayPal"
+                />
+              </label>
+              <label>
+                Titular transferencia
+                <input
+                  type="text"
+                  value={businessSettings.transferOwner}
+                  onChange={(event) => handleBusinessSettingChange('transferOwner', event.target.value)}
+                  placeholder="Nombre de la titular"
+                />
+              </label>
+              <label>
+                Correo de contacto
+                <input
+                  type="email"
+                  value={businessSettings.contactEmail}
+                  onChange={(event) => handleBusinessSettingChange('contactEmail', event.target.value)}
+                  placeholder="correo@atelier.com"
+                />
+              </label>
+              <label>
+                WhatsApp de contacto
+                <input
+                  type="text"
+                  value={businessSettings.contactWhatsapp}
+                  onChange={(event) => handleBusinessSettingChange('contactWhatsapp', event.target.value)}
+                  placeholder="+34..."
+                />
+              </label>
+              <label className="management-settings-form__wide">
+                Nota de pago
+                <textarea
+                  rows={3}
+                  value={businessSettings.paymentNote}
+                  onChange={(event) => handleBusinessSettingChange('paymentNote', event.target.value)}
+                  placeholder="Reserva, señal o confirmación de pago"
+                />
+              </label>
+              <label className="management-settings-form__wide">
+                Nota de envío
+                <textarea
+                  rows={3}
+                  value={businessSettings.shippingNote}
+                  onChange={(event) => handleBusinessSettingChange('shippingNote', event.target.value)}
+                  placeholder="Plazos, recogida, embalaje o entrega"
+                />
+              </label>
+              <button type="button" className="button button--primary" onClick={handleSaveBusinessSettings}>
+                Guardar configuración
+              </button>
+            </div>
+            {settingsMessage ? <p className="management-note">{settingsMessage}</p> : null}
+          </article>
+
+          <CatalogManagerPanel productsList={productsList} isVisible onUpdateProduct={onUpdateProduct} onCreateProduct={onCreateProduct} onDeleteProduct={onDeleteProduct} />
+
+          <article className="quote-panel management-orders-panel">
+            <p className="eyebrow">Ventas y pedidos</p>
+            <h3>Seguimiento de solicitudes</h3>
+            {orders.length > 0 ? (
+              <>
+                <div className="management-status-strip" aria-label="Resumen por estado">
+                  <span>Recibido: {statusCounts.Recibido ?? 0}</span>
+                  <span>En proceso: {statusCounts['En proceso'] ?? 0}</span>
+                  <span>Listo: {statusCounts['Listo para entregar'] ?? 0}</span>
+                  <span>Pagado: {paidOrders.length}</span>
+                  <span>Señal: {signalOrders.length}</span>
+                  <span>Pendiente pago: {pendingPaymentOrders.length}</span>
+                </div>
+                <div className="management-money-strip" aria-label="Resumen de importes">
+                  <span>Cobrado: {formatEuroAmount(paidTotal)}</span>
+                  <span>Pendiente estimado: {formatEuroAmount(pendingTotal)}</span>
+                  <span>Pedidos visibles: {filteredOrders.length}</span>
+                </div>
+                <div className="management-export-bar">
+                  <div>
+                    <strong>Exportación comercial</strong>
+                    <span>Descarga un CSV para abrirlo en Excel o guardarlo como copia externa.</span>
+                  </div>
+                  <div className="management-actions">
+                    <button type="button" className="button button--secondary" onClick={() => handleExportOrders(filteredOrders, 'filtrados')}>
+                      Exportar visibles
+                    </button>
+                    <button type="button" className="button button--secondary" onClick={() => handleExportOrders(orders, 'todos')}>
+                      Exportar todos
+                    </button>
+                  </div>
+                </div>
+                <div className="management-filters">
+                  <label>
+                    Buscar
+                    <input
+                      type="search"
+                      value={searchTerm}
+                      onChange={(event) => setSearchTerm(event.target.value)}
+                      placeholder="Nombre, teléfono o referencia"
+                    />
+                  </label>
+                  <label>
+                    Estado
+                    <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+                      <option value="Todos">Todos</option>
+                      <option value="Recibido">Recibido</option>
+                      <option value="En proceso">En proceso</option>
+                      <option value="Listo para entregar">Listo para entregar</option>
+                    </select>
+                  </label>
+                  <label>
+                    Pago
+                    <select value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}>
+                      <option value="Todos">Todos</option>
+                      <option value="Pendiente">Pendiente</option>
+                      <option value="Señal recibida">Señal recibida</option>
+                      <option value="Pagado">Pagado</option>
+                    </select>
+                  </label>
+                  <label>
+                    Envío
+                    <select value={shippingFilter} onChange={(event) => setShippingFilter(event.target.value)}>
+                      <option value="Todos">Todos</option>
+                      <option value="Sin preparar">Sin preparar</option>
+                      <option value="Preparando">Preparando</option>
+                      <option value="Enviado">Enviado</option>
+                      <option value="Entregado">Entregado</option>
+                    </select>
+                  </label>
+                </div>
+              </>
+            ) : null}
+            {orders.length === 0 ? (
+              <p>Aún no hay solicitudes registradas.</p>
+            ) : filteredOrders.length === 0 ? (
+              <p>No hay pedidos con ese filtro.</p>
+            ) : (
+              <div className="login-orders-list">
+                {filteredOrders.map((order) => (
+                  <article key={`management-${order.id}`} className="login-orders-item">
+                    <div className="login-orders-item__header">
+                      <strong>{order.reference || 'Sin referencia'}</strong>
+                      <span className={`order-status-badge order-status-badge--${order.status.replace(/\s+/g, '-').toLowerCase()}`}>
+                        {order.status}
+                      </span>
+                    </div>
+                    <span>{order.name} · {order.whatsapp}</span>
+                    <p>{order.idea}</p>
+                    <small>{new Date(order.createdAt).toLocaleString('es-ES')}</small>
+                    <div className="management-order-actions">
+                      <a className="button button--secondary" href={buildOrderWhatsappHref(order)} target="_blank" rel="noreferrer">
+                        Contactar
+                      </a>
+                      <button type="button" className="button button--secondary" onClick={() => handleCopyReference(order.reference)}>
+                        Copiar ref.
+                      </button>
+                    </div>
+                    <label>
+                      Estado
+                      <select value={order.status} onChange={(event) => onUpdateOrderStatus(order.id, event.target.value)}>
+                        <option value="Recibido">Recibido</option>
+                        <option value="En proceso">En proceso</option>
+                        <option value="Listo para entregar">Listo para entregar</option>
+                      </select>
+                    </label>
+                    <details className="management-sale-card">
+                      <summary>Ficha de venta</summary>
+                      <div className="management-sale-form">
+                        <label>
+                          Precio final
+                          <input
+                            type="text"
+                            value={getSaleDraft(order).finalPrice}
+                            onChange={(event) => handleSaleDraftChange(order, 'finalPrice', event.target.value)}
+                            placeholder="Ej. 120 EUR"
+                          />
+                        </label>
+                        <label>
+                          Pago
+                          <select
+                            value={getSaleDraft(order).paymentStatus}
+                            onChange={(event) => handleSaleDraftChange(order, 'paymentStatus', event.target.value)}
+                          >
+                            <option value="Pendiente">Pendiente</option>
+                            <option value="Señal recibida">Señal recibida</option>
+                            <option value="Pagado">Pagado</option>
+                          </select>
+                        </label>
+                        <label>
+                          Envío
+                          <select
+                            value={getSaleDraft(order).shippingStatus}
+                            onChange={(event) => handleSaleDraftChange(order, 'shippingStatus', event.target.value)}
+                          >
+                            <option value="Sin preparar">Sin preparar</option>
+                            <option value="Preparando">Preparando</option>
+                            <option value="Enviado">Enviado</option>
+                            <option value="Entregado">Entregado</option>
+                          </select>
+                        </label>
+                        <label>
+                          Fecha objetivo
+                          <input
+                            type="date"
+                            value={getSaleDraft(order).targetDate}
+                            onChange={(event) => handleSaleDraftChange(order, 'targetDate', event.target.value)}
+                          />
+                        </label>
+                        <label className="management-sale-form__wide">
+                          Dirección de envío
+                          <textarea
+                            rows={2}
+                            value={getSaleDraft(order).shippingAddress}
+                            onChange={(event) => handleSaleDraftChange(order, 'shippingAddress', event.target.value)}
+                            placeholder="Dirección, código postal, ciudad"
+                          />
+                        </label>
+                        <label className="management-sale-form__wide">
+                          Notas internas
+                          <textarea
+                            rows={3}
+                            value={getSaleDraft(order).internalNotes}
+                            onChange={(event) => handleSaleDraftChange(order, 'internalNotes', event.target.value)}
+                            placeholder="Materiales, medidas, acuerdos o dudas"
+                          />
+                        </label>
+                        <button type="button" className="button button--primary" onClick={() => handleSaveSaleDetails(order)}>
+                          Guardar ficha
+                        </button>
+                      </div>
+                    </details>
+                  </article>
+                ))}
+              </div>
+            )}
+          </article>
+        </div>
+      </PageSection>
+    </>
+  )
+}
+
+function QuickOrderForm({ onCreateOrder, source = 'orders_quick_form', title = 'Solicitud rápida', intro = 'Déjame una idea y preparo una referencia para seguir el encargo.' }) {
+  const [form, setForm] = useState({ name: '', whatsapp: '', idea: '' })
+  const [message, setMessage] = useState('')
+
+  const handleSubmit = (event) => {
+    event.preventDefault()
+    const name = form.name.trim()
+    const whatsapp = form.whatsapp.trim()
+    const idea = form.idea.trim()
+
+    if (name.length < 2 || whatsapp.length < 6 || idea.length < 10) {
+      setMessage('Completa nombre, contacto y una idea breve para crear la solicitud.')
+      return
+    }
+
+    const order = onCreateOrder({ name, whatsapp, idea, source })
+    setForm({ name: '', whatsapp: '', idea: '' })
+    setMessage('Solicitud guardada. Referencia: ' + order.reference + '.')
+  }
+
+  return (
+    <form className="journal-quick-form" onSubmit={handleSubmit}>
+      <h3>{title}</h3>
+      <p>{intro}</p>
+      <div className="journal-quick-form__grid">
+        <label>
+          Nombre
+          <input type="text" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="Tu nombre" />
+        </label>
+        <label>
+          Contacto
+          <input type="text" value={form.whatsapp} onChange={(event) => setForm((current) => ({ ...current, whatsapp: event.target.value }))} placeholder="WhatsApp o teléfono" />
+        </label>
+      </div>
+      <label>
+        Idea del encargo
+        <textarea rows={3} value={form.idea} onChange={(event) => setForm((current) => ({ ...current, idea: event.target.value }))} placeholder="Ejemplo: iniciales, flores, fecha especial o pieza deseada" />
+      </label>
+      <button type="submit" className="button button--primary">Crear referencia</button>
+      {message ? <p className="journal-quick-form__message">{message}</p> : null}
+    </form>
+  )
+}
+
+function OrdersPage({ onCreateOrder }) {
   return (
     <>
       <PageHero
         eyebrow="Encargos personalizados"
-        title="Tu historia bordada con intención"
-        text="Un espacio pensado para transformar nombres, fechas y recuerdos en una pieza bordada creada a mano para ti."
+        title="Bordamos tu idea"
+        text="Nombres, fechas, flores, recuerdos o detalles especiales convertidos en una pieza hecha a mano."
         image={mediaConfig.portrait}
         alt="Creadora bordando una pieza personalizada junto a la ventana"
-        actions={[{ label: 'Escribir ahora', href: 'mailto:atelier@atelierlumiere.com' }]}
+        videoSrc={mediaConfig.ordersVideoSrc}
+        videoLoopEnd={6}
+        actions={[
+          { label: 'Crear solicitud', href: '#encargo-formulario' },
+          { label: 'Ver colección', href: '#/coleccion', kind: 'secondary' }
+        ]}
       />
 
-      <section className="section-block section-block--soft">
+      <PageSection className="section-block--soft">
         <div className="container process-layout">
           <div className="process-copy">
             <div className="section-heading section-heading--compact">
-              <p className="eyebrow">Cómo funciona</p>
-              <h2>Del recuerdo al bordado final</h2>
-              <p>
-                Te acompañamos desde la idea inicial hasta la entrega final, cuidando materiales, dibujo y acabado en cada encargo.
-              </p>
+              <p className="eyebrow">Proceso</p>
+              <h2>De la idea a la pieza final</h2>
+              <p>Un encargo avanza en pocas decisiones claras: idea, boceto, bordado y entrega.</p>
             </div>
             <ol className="step-list step-list--premium">
               {processSteps.map((step) => (
@@ -1469,169 +2509,61 @@ function OrdersPage() {
           </div>
 
           <article className="quote-panel">
-            <p className="eyebrow">Encargo a medida</p>
-            <h3>Piezas creadas para bodas, recuerdos, homenajes o regalos</h3>
-            <p>
-              Piezas creadas para bodas, nacimientos, homenajes o regalos con significado, siempre con un ritmo lento y cuidado.
-            </p>
-            <a className="button button--dark" href="mailto:atelier@atelierlumiere.com">
-              Solicitar un encargo
-            </a>
+            <p className="eyebrow">Para empezar</p>
+            <h3>Cuéntame qué quieres bordar</h3>
+            <ul className="note-list">
+              <li>Tipo de pieza: bolso, cojín, prenda, bastidor o regalo.</li>
+              <li>Motivo principal: iniciales, fecha, flores, frase o recuerdo.</li>
+              <li>Plazo ideal y cualquier referencia visual que tengas.</li>
+            </ul>
           </article>
         </div>
-      </section>
+      </PageSection>
+
+      <PageSection id="encargo-formulario" className="section-block--compact-top">
+        <div className="container journal-conversion__grid journal-conversion__grid--simple">
+          <article className="journal-conversion__card">
+            <p className="eyebrow">Solicitud guiada</p>
+            <h3>Abre una referencia para tu encargo</h3>
+            <p>La solicitud queda guardada para poder revisarla después desde tu acceso.</p>
+          </article>
+          <QuickOrderForm onCreateOrder={onCreateOrder} source="orders_quick_form" intro="Déjame una idea y crearé una referencia para seguirla con calma." />
+        </div>
+      </PageSection>
     </>
   )
 }
 
 function JournalPage({ onCreateOrder }) {
-  const [orderCtaVariant] = useState(getJournalOrderCtaVariant)
-  const [quickOrderForm, setQuickOrderForm] = useState({
-    name: '',
-    whatsapp: '',
-    idea: ''
-  })
-  const [quickOrderMessage, setQuickOrderMessage] = useState('')
-
-  const handleQuickOrderSubmit = (event) => {
-    event.preventDefault()
-    const name = quickOrderForm.name.trim()
-    const whatsapp = quickOrderForm.whatsapp.trim()
-    const idea = quickOrderForm.idea.trim()
-
-    if (name.length < 2 || whatsapp.length < 6 || idea.length < 10) {
-      setQuickOrderMessage('Completa nombre, WhatsApp y una idea breve (mínimo 10 caracteres).')
-      return
-    }
-
-    trackJournalCtaClick('quick_order_submit')
-    const createdOrder = onCreateOrder({
-      name,
-      whatsapp,
-      idea,
-      source: 'journal_quick_form'
-    })
-
-    const text = `Hola, soy ${name}. Mi WhatsApp es ${whatsapp}. Referencia: ${createdOrder.reference}. Idea de encargo: ${idea}`
-    window.open(`https://wa.me/34612345678?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
-    setQuickOrderMessage(`Te redirigí a WhatsApp. Referencia de seguimiento: ${createdOrder.reference}.`)
-  }
-
   return (
     <>
-      <PageHero
-        eyebrow="Diario del taller"
-        title="Historias, proceso y escenas del atelier"
-        text="Un cuaderno visual para compartir inspiración, procesos y pequeños instantes del taller."
-        image={mediaConfig.visualDetailA}
-        alt="Mesa del taller con bocetos, flores y materiales"
-      />
-
-      <section className="section-block section-block--soft">
-        <div className="container journal-featured">
-          <article className="journal-featured__lead">
-            <img src={journalEntries[0].image} alt={journalEntries[0].alt} />
-            <div className="journal-featured__copy">
-              <p className="journal-card__meta">{journalEntries[0].meta}</p>
-              <h2>{journalEntries[0].title}</h2>
-              <p>{journalEntries[0].text}</p>
-            </div>
-          </article>
-        </div>
-      </section>
-
       <section className="collection-hero collection-hero--journal">
         <div className="collection-hero__media">
-          <SmartVideo
-            controls={false}
-            autoPlay
-            loop
-            muted
-            poster={mediaConfig.heroPoster}
-            primarySrc={mediaConfig.journalVideo}
-            fallbackSrc={mediaConfig.atelierVideo}
-          />
+          <SmartVideo controls={false} autoPlay loop muted poster={mediaConfig.heroPoster} primarySrc={mediaConfig.journalVideo} fallbackSrc={mediaConfig.atelierVideo} />
         </div>
         <div className="collection-hero__veil" />
         <div className="container collection-hero__grid">
           <div className="collection-hero__copy">
-            <p className="eyebrow">Vídeo del diario · 50 segundos</p>
-            <h2>Una cápsula completa para vivir el taller en movimiento</h2>
-            <p>
-              Integramos el vídeo largo en formato inmersivo para mantener la misma estética potente de la colección y reforzar la sección Diario.
-            </p>
-            <a className="button button--primary" href="#/diario#diario-entradas">
-              Ver entradas del diario
-            </a>
+            <p className="eyebrow">Diario del taller</p>
+            <h2>Proceso, inspiración y piezas en marcha</h2>
+            <p>Un cuaderno visual para ver cómo nacen los bordados antes de llegar a la colección.</p>
+            <a className="button button--primary" href="#diario-entradas">Ver entradas</a>
           </div>
         </div>
       </section>
 
-      <section className="section-block section-block--soft journal-conversion">
-        <div className="container journal-conversion__grid">
+      <PageSection className="section-block--soft journal-conversion">
+        <div className="container journal-conversion__grid journal-conversion__grid--simple">
           <article className="journal-conversion__card">
-            <p className="eyebrow">Después del vídeo</p>
-            <h3>¿Quieres una pieza inspirada en este proceso?</h3>
-            <p>Cuéntame tu idea y te propongo formato, paleta y acabado en menos de 48h.</p>
-            <a
-              className="button button--primary"
-              href="#/encargos"
-              onClick={() => trackJournalCtaClick(`journal_order_cta_${orderCtaVariant}`)}
-            >
-              {orderCtaVariant === 'B' ? 'Quiero mi pieza' : 'Pedir encargo'}
-            </a>
+            <p className="eyebrow">Encargo inspirado</p>
+            <h3>¿Quieres una pieza nacida de este proceso?</h3>
+            <p>Cuéntame tu idea y preparo una referencia para seguir formato, paleta y acabado.</p>
           </article>
-
-          <article className="journal-conversion__card journal-conversion__card--secondary">
-            <p className="eyebrow">Siguiente paso</p>
-            <h3>Ver colección completa</h3>
-            <p>Si prefieres empezar por una pieza ya disponible, revisa la colección y añade al carrito.</p>
-            <a className="button button--secondary" href="#/coleccion" onClick={() => trackJournalCtaClick('journal_collection_cta')}>
-              Ir a colección
-            </a>
-          </article>
+          <QuickOrderForm onCreateOrder={onCreateOrder} source="journal_quick_form" title="Solicitud rápida" intro="Déjame una idea inspirada en el diario del taller." />
         </div>
+      </PageSection>
 
-        <form className="journal-quick-form" onSubmit={handleQuickOrderSubmit}>
-          <h3>Solicitud rápida de encargo</h3>
-          <p>Déjame una idea y te llevo directamente a WhatsApp con el mensaje ya preparado.</p>
-          <div className="journal-quick-form__grid">
-            <label>
-              Nombre
-              <input
-                type="text"
-                value={quickOrderForm.name}
-                onChange={(event) => setQuickOrderForm((current) => ({ ...current, name: event.target.value }))}
-                placeholder="Tu nombre"
-              />
-            </label>
-            <label>
-              WhatsApp
-              <input
-                type="text"
-                value={quickOrderForm.whatsapp}
-                onChange={(event) => setQuickOrderForm((current) => ({ ...current, whatsapp: event.target.value }))}
-                placeholder="+34..."
-              />
-            </label>
-          </div>
-          <label>
-            Idea del encargo
-            <textarea
-              rows={3}
-              value={quickOrderForm.idea}
-              onChange={(event) => setQuickOrderForm((current) => ({ ...current, idea: event.target.value }))}
-              placeholder="Ejemplo: cojín bordado para regalo con iniciales y fecha"
-            />
-          </label>
-          <button type="submit" className="button button--primary">
-            Enviar a WhatsApp
-          </button>
-          {quickOrderMessage ? <p className="journal-quick-form__message">{quickOrderMessage}</p> : null}
-        </form>
-      </section>
-
-      <section id="diario-entradas" className="section-block">
+      <PageSection id="diario-entradas">
         <div className="container journal-grid journal-grid--large">
           {journalEntries.map((entry) => (
             <article key={entry.slug} className="journal-card journal-card--editorial">
@@ -1640,14 +2572,12 @@ function JournalPage({ onCreateOrder }) {
                 <p className="journal-card__meta">{entry.meta}</p>
                 <h3>{entry.title}</h3>
                 <p>{entry.text}</p>
-                <a className="text-link" href="#/diario">
-                  Escuchar cápsula
-                </a>
+                <a className="text-link" href="#/diario">Leer entrada</a>
               </div>
             </article>
           ))}
         </div>
-      </section>
+      </PageSection>
     </>
   )
 }
@@ -1655,33 +2585,35 @@ function JournalPage({ onCreateOrder }) {
 function AboutPage() {
   return (
     <>
-      <PageHero
-        eyebrow="Sobre mí"
-        title="Una marca construida desde la calma y el detalle"
-        text="La historia personal detrás del atelier: inspiración cotidiana, oficio manual y una búsqueda constante de belleza serena."
-        image={mediaConfig.portrait}
-        alt="Retrato de la creadora en el atelier"
-      />
-
-      <section className="section-block">
-        <div className="container split-panels split-panels--single">
-          <article className="story-card story-card--premium">
-            <img src={mediaConfig.visualDetailC} alt="Entrada al atelier con luz suave" />
-            <div className="story-card__body">
-              <p className="eyebrow">Atelier Lumière</p>
-              <h2>Una historia de luz, hilo y piezas que perduran</h2>
-              <p>
-                Un recorrido por la sensibilidad que da forma a cada colección, entre materia noble, ritmo lento y detalle humano.
-              </p>
-              <ul className="note-list">
-                {aboutNotes.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
+      <section className="collection-hero collection-hero--about">
+        <div className="collection-hero__media">
+          <img src={mediaConfig.portrait} alt="Retrato de la creadora en el atelier" />
+        </div>
+        <div className="collection-hero__veil" />
+        <div className="container collection-hero__grid">
+          <div className="collection-hero__copy">
+            <p className="eyebrow">Sobre mí</p>
+            <h1>La calma también se borda</h1>
+            <p>Atelier Lumière nace de trabajar despacio, mirar los detalles y crear piezas que acompañan recuerdos reales.</p>
+            <div className="hero-actions">
+              <a className="button button--primary" href="#/encargos">Pedir un encargo</a>
+              <a className="button button--secondary" href="#/contacto">Contactar</a>
             </div>
-          </article>
+          </div>
         </div>
       </section>
+
+      <PageSection>
+        <div className="container about-brief">
+          <div>
+            <p className="eyebrow">Atelier Lumière</p>
+            <h2>Una forma de crear pequeña, cuidada y personal</h2>
+          </div>
+          <ul className="note-list about-brief__notes">
+            {aboutNotes.map((note) => <li key={note}>{note}</li>)}
+          </ul>
+        </div>
+      </PageSection>
     </>
   )
 }
@@ -1697,13 +2629,13 @@ function ContactPage() {
         alt="Atelier luminoso listo para recibir encargos"
       />
 
-      <section className="section-block section-block--soft">
+      <PageSection className="section-block--soft">
         <div className="container info-form-grid">
           <article className="contact-card">
             <p className="eyebrow">Información</p>
             <h3>Escríbeme y cuéntame tu idea</h3>
             <div className="contact-list">
-              {contactDetails.map((item) =>
+              {contactDetails.map((item) => (
                 item.href ? (
                   <a key={item.label} href={item.href}>
                     <strong>{item.label}</strong>
@@ -1715,7 +2647,7 @@ function ContactPage() {
                     <span>{item.value}</span>
                   </div>
                 )
-              )}
+              ))}
             </div>
           </article>
 
@@ -1732,12 +2664,99 @@ function ContactPage() {
               Mensaje
               <textarea rows="6" placeholder="Cuéntame qué te gustaría bordar" />
             </label>
-            <button type="button" className="button button--primary">
-              Enviar mensaje
-            </button>
+            <button type="button" className="button button--primary">Preparar mensaje</button>
           </form>
         </div>
-      </section>
+      </PageSection>
+    </>
+  )
+}
+
+const legalPages = {
+  '/aviso-legal': {
+    eyebrow: 'Aviso legal',
+    title: 'Información del atelier',
+    intro: 'Esta página recoge los datos básicos del proyecto y el uso general de la web.',
+    sections: [
+      {
+        title: 'Titularidad',
+        text: 'Atelier Lumière es una marca artesanal en preparación. Antes de publicar la tienda definitiva, sustituye este texto por el nombre legal, NIF/CIF, domicilio fiscal y correo de contacto reales.'
+      },
+      {
+        title: 'Uso de la web',
+        text: 'El contenido de la web presenta piezas bordadas, encargos personalizados, diario del taller y vías de contacto. Las imágenes, textos y diseños no deben reutilizarse sin autorización.'
+      },
+      {
+        title: 'Contacto',
+        text: 'Para cualquier consulta sobre la web, pedidos o encargos, puedes escribir al correo indicado en la página de contacto.'
+      }
+    ]
+  },
+  '/privacidad': {
+    eyebrow: 'Privacidad',
+    title: 'Cómo cuidamos tus datos',
+    intro: 'La web solo debe pedir los datos necesarios para responder consultas, gestionar encargos y hacer seguimiento de pedidos.',
+    sections: [
+      {
+        title: 'Datos que se solicitan',
+        text: 'Nombre, correo, Contactar, dirección de envío cuando sea necesaria y detalles del encargo. Estos datos se usan para preparar presupuestos, pedidos y comunicaciones relacionadas.'
+      },
+      {
+        title: 'Cuenta de cliente',
+        text: 'Si creas una cuenta, se guarda tu correo y el historial asociado a tus solicitudes. Puedes pedir la revisión o eliminación de tus datos escribiendo al atelier.'
+      },
+      {
+        title: 'Servicios externos',
+        text: 'La web puede apoyarse en Firebase para autenticación y base de datos. Antes de lanzar la tienda, conviene revisar la configuración definitiva y añadir los enlaces legales de esos servicios si procede.'
+      }
+    ]
+  },
+  '/condiciones': {
+    eyebrow: 'Condiciones',
+    title: 'Encargos, pagos y envíos',
+    intro: 'Estas condiciones ayudan a que cada compra o encargo tenga expectativas claras desde el principio.',
+    sections: [
+      {
+        title: 'Encargos personalizados',
+        text: 'Cada encargo se confirma después de revisar idea, materiales, plazo y presupuesto. Las piezas personalizadas pueden requerir una señal antes de empezar el trabajo.'
+      },
+      {
+        title: 'Pagos y disponibilidad',
+        text: 'Los precios mostrados pueden variar en piezas a medida según tamaño, técnica y materiales. Una pieza se considera reservada cuando el atelier confirma el pedido y las condiciones acordadas.'
+      },
+      {
+        title: 'Envíos y devoluciones',
+        text: 'Los plazos de envío dependen de la producción artesanal y del destino. En piezas personalizadas, las devoluciones deben tratarse caso por caso, salvo defecto o incidencia durante el envío.'
+      }
+    ]
+  }
+}
+
+function LegalPage({ page }) {
+  return (
+    <>
+      <PageHero
+        eyebrow={page.eyebrow}
+        title={page.title}
+        text={page.intro}
+        image={mediaConfig.visualLead}
+        alt="Mesa de atelier con materiales preparados"
+      />
+
+      <PageSection className="section-block--soft">
+        <div className="container legal-layout">
+          {page.sections.map((section) => (
+            <article key={section.title} className="quote-panel legal-panel">
+              <h3>{section.title}</h3>
+              <p>{section.text}</p>
+            </article>
+          ))}
+          <article className="quote-panel legal-panel legal-panel--note">
+            <p className="eyebrow">Pendiente de publicar</p>
+            <p>Antes de lanzar la tienda con ventas reales, revisa estos textos con tus datos legales definitivos.</p>
+          </article>
+        </div>
+      </PageSection>
     </>
   )
 }
@@ -1778,9 +2797,16 @@ function Footer() {
           ))}
         </div>
 
+        <div className="footer-column footer-legal">
+          <h2>Legal</h2>
+          <a href="#/aviso-legal">Aviso legal</a>
+          <a href="#/privacidad">Privacidad</a>
+          <a href="#/condiciones">Condiciones</a>
+        </div>
+
         <form className="footer-form">
           <h2>Newsletter</h2>
-          <p>Recibe novedades, historias del taller y nuevas colecciones.</p>
+          <p>Recibe novedades, historias del taller y nuevas colecciónes.</p>
           <div className="footer-form__row">
             <input type="email" placeholder="Tu correo electrónico" aria-label="Correo electrónico" />
             <button type="button">Suscribirme</button>
@@ -1792,43 +2818,67 @@ function Footer() {
 }
 
 export default function App() {
-  const CART_STORAGE_KEY = 'atelier-cart-v1'
   const [menuOpen, setMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [route, setRoute] = useState(getRouteFromHash(window.location.hash))
   const [cartItems, setCartItems] = useState([])
-  const [shopProducts, setShopProducts] = useState(products)
+  const [shopProducts, setShopProducts] = useState(() => mergeCatalogProducts(products))
   const [catalogRefreshTick, setCatalogRefreshTick] = useState(0)
   const [orders, setOrders] = useState([])
   const [authUser, setAuthUser] = useState(null)
-  const [authReady, setAuthReady] = useState(true)
+  const [authReady, setAuthReady] = useState(!isFirebaseConfigured)
   const [authError, setAuthError] = useState('')
   const [authMessage, setAuthMessage] = useState('')
   const [syncMessage, setSyncMessage] = useState('')
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncQueue, setSyncQueue] = useState([])
+  const [cartPulse, setCartPulse] = useState(false)
 
   const cartCount = cartItems.reduce((total, item) => total + item.qty, 0)
 
   const handleAddToCart = (product) => {
+    if (!isProductAvailableForCart(product)) {
+      return
+    }
+
     setCartItems((items) => {
+      const stock = normalizeProductStock(product.stock)
       const existing = items.find((item) => item.slug === product.slug)
       if (existing) {
-        return items.map((item) => (item.slug === product.slug ? { ...item, qty: item.qty + 1 } : item))
+        return items.map((item) => (
+          item.slug === product.slug ? { ...item, qty: Math.min(stock, item.qty + 1) } : item
+        ))
       }
       return [...items, { slug: product.slug, qty: 1 }]
     })
+    setCartPulse(true)
+  }
+
+  const handleSetCartQuantity = (slug, qty) => {
+    setCartItems((items) => items.flatMap((item) => {
+      if (item.slug !== slug) return [item]
+
+      const product = shopProducts.find((entry) => entry.slug === slug)
+      const stock = normalizeProductStock(product?.stock)
+      const nextQty = Math.min(stock, Math.max(0, Number.parseInt(qty, 10) || 0))
+
+      return nextQty > 0 ? [{ ...item, qty: nextQty }] : []
+    }))
+  }
+
+  const handleRemoveFromCart = (slug) => {
+    setCartItems((items) => items.filter((item) => item.slug !== slug))
   }
 
   const loadShopProducts = async () => {
     try {
-      const response = await fetch(`${import.meta.env.BASE_URL}data/shop-products.json?v=${Date.now()}`, {
+      const response = await fetch(`${resolveAppPath('data/shop-products.json')}?v=${Date.now()}`, {
         cache: 'no-store'
       })
       if (!response.ok) return false
       const payload = await response.json()
-      if (Array.isArray(payload?.products) && payload.products.length > 0) {
-        setShopProducts(payload.products.map(normalizeShopProduct))
+      if (Array.isArray(payload.products)) {
+        setShopProducts(mergeCatalogProducts(payload.products))
         setCatalogRefreshTick((value) => value + 1)
         return true
       }
@@ -1839,19 +2889,149 @@ export default function App() {
     }
   }
 
-  const parseFirebaseApiError = async (response) => {
+  const handleUpdateCatalogProduct = (slug, changes) => {
+    setShopProducts((items) => {
+      const updatedAt = new Date().toISOString()
+      const normalizedChanges = { ...changes, updatedAt }
+      const nextItems = items.map((product) => (
+        product.slug === slug ? normalizeShopProduct({ ...product, ...normalizedChanges }) : product
+      ))
+
+      try {
+        const overrides = readCatalogOverrides()
+        const currentOverride = overrides[slug] || {}
+        window.localStorage.setItem(
+          CATALOG_OVERRIDES_STORAGE_KEY,
+          JSON.stringify({ ...overrides, [slug]: { ...currentOverride, ...normalizedChanges } })
+        )
+      } catch {
+        // Si falla el guardado, al menos se ve actualizado durante la sesión.
+      }
+
+      return nextItems
+    })
+  }
+
+  const handleCreateCatalogProduct = (draft) => {
+    const title = draft.title.trim()
+    const category = draft.category.trim()
+    const price = draft.price.trim()
+    const description = draft.description.trim()
+    const stock = normalizeProductStock(draft.stock)
+    const image = draft.image.trim() || './media/atelier-hero.png'
+
+    if (title.length < 3) {
+      return { ok: false, message: 'Escribe un nombre de al menos 3 caracteres.' }
+    }
+
+    if (category.length < 2) {
+      return { ok: false, message: 'Indica una categoría.' }
+    }
+
+    if (!price) {
+      return { ok: false, message: 'Indica un precio o escribe Consultar.' }
+    }
+
+    const existingSlugs = new Set(shopProducts.map((product) => product.slug))
+    const baseSlug = slugifyProductValue(title)
+    let slug = baseSlug
+    let suffix = 2
+
+    while (existingSlugs.has(slug)) {
+      slug = `${baseSlug}-${suffix}`
+      suffix += 1
+    }
+
+    const nextProduct = {
+      slug,
+      title,
+      category,
+      tag: category,
+      badge: 'Nuevo',
+      featuredRank: 0,
+      price,
+      description: description || 'Pieza creada desde el panel de gestión.',
+      image,
+      alt: title,
+      availability: normalizeProductAvailability(draft.availability),
+      stock
+    }
+
     try {
-      const payload = await response.json()
-      return payload?.error?.message || `HTTP_${response.status}`
+      const customProducts = readCustomProducts()
+      writeCustomProducts([nextProduct, ...customProducts])
+      const deletedSlugs = new Set(readDeletedProductSlugs())
+      deletedSlugs.delete(slug)
+      writeDeletedProductSlugs(Array.from(deletedSlugs))
+      setShopProducts((items) => [normalizeShopProduct(nextProduct), ...items])
+      setCatalogRefreshTick((value) => value + 1)
+      return { ok: true, message: 'Pieza añadida al catálogo.' }
     } catch {
-      return `HTTP_${response.status}`
+      return { ok: false, message: 'No se pudo guardar la pieza en este navegador.' }
     }
   }
 
-  const handleAuthSessionExpired = () => {
-    setAuthUser(null)
-    window.localStorage.removeItem(AUTH_STORAGE_KEY)
-    setAuthError('Tu sesión ha caducado. Inicia sesión de nuevo para continuar.')
+  const handleDeleteCatalogProduct = (slug) => {
+    const product = shopProducts.find((item) => item.slug === slug)
+    const confirmed = window.confirm(`¿Retirar "${product?.title || 'esta pieza'}" de la tienda?`)
+
+    if (!confirmed) return
+
+    setShopProducts((items) => items.filter((product) => product.slug !== slug))
+    setCartItems((items) => items.filter((item) => item.slug !== slug))
+
+    try {
+      const customProducts = readCustomProducts()
+      const nextCustomProducts = customProducts.filter((product) => product.slug !== slug)
+      writeCustomProducts(nextCustomProducts)
+
+      const deletedSlugs = new Set(readDeletedProductSlugs())
+      deletedSlugs.add(slug)
+      writeDeletedProductSlugs(Array.from(deletedSlugs))
+    } catch {
+      // Si falla el guardado, al menos retiramos la pieza durante esta sesión.
+    }
+  }
+
+  const loadUserProfile = async (user, createIfMissing = false) => {
+    if (!firebaseDb || !user?.uid) return null
+
+    const userRef = doc(firebaseDb, 'usuarios', user.uid)
+    const snapshot = await getDoc(userRef)
+
+    if (snapshot.exists()) {
+      return snapshot.data()
+    }
+
+    if (!createIfMissing) {
+      return null
+    }
+
+    const profilePayload = buildUserProfilePayload(user)
+    await setDoc(userRef, profilePayload, { merge: true })
+    return profilePayload
+  }
+
+  const saveUserProfile = async (user) => {
+    if (!firebaseDb || !user?.uid) return null
+
+    const userRef = doc(firebaseDb, 'usuarios', user.uid)
+    const snapshot = await getDoc(userRef)
+    const baseProfile = snapshot.exists() ? snapshot.data() : buildUserProfilePayload(user)
+    const nextProfile = {
+      ...baseProfile,
+      uid: user.uid,
+      email: user.email || '',
+      displayName: baseProfile.displayName || user.displayName || user.email?.split('@')[0] || 'Cliente',
+      updatedAt: new Date().toISOString()
+    }
+
+    if (!baseProfile.createdAt) {
+      nextProfile.createdAt = new Date().toISOString()
+    }
+
+    await setDoc(userRef, nextProfile, { merge: true })
+    return nextProfile
   }
 
   const enqueueSyncAction = (action) => {
@@ -1868,6 +3048,8 @@ export default function App() {
           await saveOrderToFirestore(action.order, activeUser)
         } else if (action.type === 'status' && action.order) {
           await patchOrderStatusToFirestore(action.order, activeUser)
+        } else if (action.type === 'details' && action.order) {
+          await patchOrderDetailsToFirestore(action.order, activeUser)
         }
       } catch {
         pending.push(action)
@@ -1877,200 +3059,94 @@ export default function App() {
     setSyncQueue(pending)
   }
 
-  const refreshAuthSession = async (currentUser) => {
-    if (!currentUser?.refreshToken) {
-      throw new Error('INVALID_REFRESH_TOKEN')
-    }
-
-    const response = await fetch(`https://securetoken.googleapis.com/v1/token?key=${FIREBASE_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'refresh_token',
-        refresh_token: currentUser.refreshToken
-      }).toString()
-    })
-
-    if (!response.ok) {
-      const message = await parseFirebaseApiError(response)
-      throw new Error(message)
-    }
-
-    const payload = await response.json()
-    const nextUser = {
-      ...currentUser,
-      idToken: payload.id_token,
-      refreshToken: payload.refresh_token,
-      localId: payload.user_id || currentUser.localId
-    }
-    setAuthUser(nextUser)
-    window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
-    return nextUser
-  }
-
-  const callFirebaseAuth = async (endpoint, email, password) => {
-    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/${endpoint}?key=${FIREBASE_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: email.trim(),
-        password,
-        returnSecureToken: true
-      })
-    })
-
-    if (!response.ok) {
-      const message = await parseFirebaseApiError(response)
-      throw new Error(message)
-    }
-
-    return response.json()
-  }
-
   const saveOrderToFirestore = async (order, currentUser) => {
-    if (!FIREBASE_PROJECT_ID || !currentUser?.idToken || !currentUser?.localId) return
+    if (!firebaseDb || !currentUser?.localId) return
 
-    await fetch(`https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/orders?documentId=${encodeURIComponent(order.id)}`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${currentUser.idToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        fields: {
-          id: toFirestoreString(order.id),
-          name: toFirestoreString(order.name),
-          whatsapp: toFirestoreString(order.whatsapp),
-          idea: toFirestoreString(order.idea),
-          source: toFirestoreString(order.source),
-          status: toFirestoreString(order.status),
-          createdAt: toFirestoreString(order.createdAt),
-          reference: toFirestoreString(order.reference),
-          ownerId: toFirestoreString(currentUser.localId)
-        }
-      })
-    }).then(async (response) => {
-      if (!response.ok) {
-        const message = await parseFirebaseApiError(response)
-        throw new Error(message)
-      }
-    })
+    await setDoc(doc(firebaseDb, 'orders', order.id), {
+      ...order,
+      ownerId: order.ownerId && order.ownerId !== 'guest' ? order.ownerId : currentUser.localId,
+      updatedAt: new Date().toISOString()
+    }, { merge: true })
   }
 
   const patchOrderStatusToFirestore = async (order, currentUser) => {
-    if (!FIREBASE_PROJECT_ID || !currentUser?.idToken) return
-    await fetch(`https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/orders/${encodeURIComponent(order.id)}?updateMask.fieldPaths=status`, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${currentUser.idToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        fields: {
-          status: toFirestoreString(order.status)
-        }
-      })
-    }).then(async (response) => {
-      if (!response.ok) {
-        const message = await parseFirebaseApiError(response)
-        throw new Error(message)
-      }
+    if (!firebaseDb || !currentUser?.localId) return
+
+    await updateDoc(doc(firebaseDb, 'orders', order.id), {
+      status: order.status,
+      updatedAt: new Date().toISOString()
     })
+  }
+
+  const handleClearCart = () => {
+    setCartItems([])
+  }
+
+  const patchOrderDetailsToFirestore = async (order, currentUser) => {
+    if (!firebaseDb || !currentUser?.localId) return
+
+    await setDoc(doc(firebaseDb, 'orders', order.id), {
+      finalPrice: order.finalPrice || '',
+      paymentStatus: order.paymentStatus || 'Pendiente',
+      shippingStatus: order.shippingStatus || 'Sin preparar',
+      targetDate: order.targetDate || '',
+      shippingAddress: order.shippingAddress || '',
+      internalNotes: order.internalNotes || '',
+      updatedAt: new Date().toISOString()
+    }, { merge: true })
   }
 
   const fetchOrdersFromFirestore = async (currentUser) => {
-    if (!FIREBASE_PROJECT_ID || !currentUser?.idToken || !currentUser?.localId) return []
-    const response = await fetch(`https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents:runQuery`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${currentUser.idToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        structuredQuery: {
-          from: [{ collectionId: 'orders' }],
-          where: {
-            fieldFilter: {
-              field: { fieldPath: 'ownerId' },
-              op: 'EQUAL',
-              value: toFirestoreString(currentUser.localId)
-            }
-          },
-          orderBy: [
-            {
-              field: { fieldPath: 'createdAt' },
-              direction: 'DESCENDING'
-            }
-          ],
-          limit: 100
-        }
-      })
-    })
-    if (!response.ok) {
-      const message = await parseFirebaseApiError(response)
-      throw new Error(message)
-    }
-    const payload = await response.json()
-    const docs = Array.isArray(payload)
-      ? payload.map((entry) => entry.document).filter(Boolean)
-      : []
+    if (!firebaseDb || !currentUser?.localId) return []
 
-    return docs
-      .map((doc) => ({
-        id: fromFirestoreString(doc.fields?.id) || doc.name?.split('/').pop(),
-        name: fromFirestoreString(doc.fields?.name),
-        whatsapp: fromFirestoreString(doc.fields?.whatsapp),
-        idea: fromFirestoreString(doc.fields?.idea),
-        source: fromFirestoreString(doc.fields?.source) || 'firebase_sync',
-        status: fromFirestoreString(doc.fields?.status) || 'Recibido',
-        createdAt: fromFirestoreString(doc.fields?.createdAt) || new Date().toISOString(),
-        reference: fromFirestoreString(doc.fields?.reference),
-        ownerId: fromFirestoreString(doc.fields?.ownerId)
-      }))
-      .filter((item) => item.ownerId === currentUser.localId)
+    const canReadAllOrders = currentUser?.profile?.role === 'owner'
+      && currentUser?.profile?.ownerSource !== 'local-config'
+    const ordersQuery = canReadAllOrders
+      ? query(collection(firebaseDb, 'orders'), limit(200))
+      : query(
+        collection(firebaseDb, 'orders'),
+        where('ownerId', '==', currentUser.localId),
+        limit(100)
+      )
+
+    const snapshot = await getDocs(ordersQuery)
+
+    return snapshot.docs
+      .map((orderDoc) => normalizeOrderRecord(orderDoc.id, orderDoc.data()))
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
   }
 
   const handleLogin = async (email, password) => {
-    if (!isFirebaseConfigured) return
+    if (!isFirebaseConfigured || !firebaseAuth) return
     setAuthError('')
     setAuthMessage('')
     setAuthReady(false)
     try {
-      const payload = await callFirebaseAuth('accounts:signInWithPassword', email, password)
-      const nextUser = {
-        email: payload.email,
-        idToken: payload.idToken,
-        localId: payload.localId,
-        refreshToken: payload.refreshToken
-      }
-      setAuthUser(nextUser)
-      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
+      await setPersistence(firebaseAuth, browserLocalPersistence)
+      const credential = await signInWithEmailAndPassword(firebaseAuth, email.trim(), password)
+      const profile = await loadUserProfile(credential.user, true)
+      setAuthUser(buildAuthUserState(credential.user, profile))
       setAuthMessage('Sesión iniciada correctamente.')
     } catch (error) {
-      setAuthError(normalizeFirebaseErrorMessage(error?.message))
+      setAuthError(normalizeFirebaseErrorMessage(error?.code || error?.message))
     } finally {
       setAuthReady(true)
     }
   }
 
   const handleRegister = async (email, password) => {
-    if (!isFirebaseConfigured) return
+    if (!isFirebaseConfigured || !firebaseAuth) return
     setAuthError('')
     setAuthMessage('')
     setAuthReady(false)
     try {
-      const payload = await callFirebaseAuth('accounts:signUp', email, password)
-      const nextUser = {
-        email: payload.email,
-        idToken: payload.idToken,
-        localId: payload.localId,
-        refreshToken: payload.refreshToken
-      }
-      setAuthUser(nextUser)
-      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
+      await setPersistence(firebaseAuth, browserLocalPersistence)
+      const credential = await createUserWithEmailAndPassword(firebaseAuth, email.trim(), password)
+      const profile = await saveUserProfile(credential.user)
+      setAuthUser(buildAuthUserState(credential.user, profile))
       setAuthMessage('Cuenta creada correctamente.')
     } catch (error) {
-      setAuthError(normalizeFirebaseErrorMessage(error?.message))
+      setAuthError(normalizeFirebaseErrorMessage(error?.code || error?.message))
     } finally {
       setAuthReady(true)
     }
@@ -2079,8 +3155,15 @@ export default function App() {
   const handleLogout = async () => {
     setAuthError('')
     setAuthMessage('')
+    try {
+      if (firebaseAuth) {
+        await signOut(firebaseAuth)
+      }
+    } catch (error) {
+      setAuthError(normalizeFirebaseErrorMessage(error?.code || error?.message))
+      return
+    }
     setAuthUser(null)
-    window.localStorage.removeItem(AUTH_STORAGE_KEY)
     setAuthMessage('Sesión cerrada.')
   }
 
@@ -2091,17 +3174,16 @@ export default function App() {
       reference,
       status: 'Recibido',
       createdAt: new Date().toISOString(),
-      ownerId: authUser?.localId ?? 'guest',
+      ownerId: authUser?.localId || 'guest',
+      customerEmail: '',
+      paymentPreference: 'Por confirmar',
+      deliveryPreference: 'Por confirmar',
       ...orderDraft
     }
     setOrders((items) => [nextOrder, ...items])
     if (authUser) {
-      saveOrderToFirestore(nextOrder, authUser).catch((error) => {
-        if (isFirebaseTokenError(error?.message)) {
-          handleAuthSessionExpired()
-        } else {
-          enqueueSyncAction({ type: 'create', order: nextOrder })
-        }
+      saveOrderToFirestore(nextOrder, authUser).catch(() => {
+        enqueueSyncAction({ type: 'create', order: nextOrder })
       })
     } else {
       enqueueSyncAction({ type: 'create', order: nextOrder })
@@ -2117,15 +3199,9 @@ export default function App() {
       if (authUser) {
         const changed = updated.find((order) => order.id === orderId)
         if (changed) {
-          patchOrderStatusToFirestore(changed, authUser).catch((error) => {
-            if (isFirebaseTokenError(error?.message)) {
-              handleAuthSessionExpired()
-            } else {
-              enqueueSyncAction({ type: 'status', order: changed })
-            }
+          patchOrderStatusToFirestore(changed, authUser).catch(() => {
+            enqueueSyncAction({ type: 'status', order: changed })
           })
-        } else if (changed) {
-          enqueueSyncAction({ type: 'status', order: changed })
         }
       }
       return updated
@@ -2137,45 +3213,45 @@ export default function App() {
       setSyncMessage('Inicia sesión para sincronizar pedidos.')
       return
     }
-    if (!FIREBASE_PROJECT_ID) {
-      setSyncMessage('Falta VITE_FIREBASE_PROJECT_ID para sincronizar con Firestore.')
+    if (!firebaseDb) {
+      setSyncMessage('Firebase no está disponible para sincronizar pedidos.')
       return
     }
     setIsSyncing(true)
     setSyncMessage('')
 
-    const runSync = async (activeUser) => {
-      await consumeSyncQueue(activeUser)
-      for (const order of orders) {
-        await saveOrderToFirestore(order, activeUser)
-      }
-      const remoteOrders = await fetchOrdersFromFirestore(activeUser)
-      const localMap = new Map(orders.map((order) => [order.id, order]))
-      for (const remoteOrder of remoteOrders) {
-        localMap.set(remoteOrder.id, remoteOrder)
-      }
-      setOrders(Array.from(localMap.values()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
-    }
-
     try {
-      await runSync(authUser)
+      await consumeSyncQueue(authUser)
+      for (const order of orders) {
+        await saveOrderToFirestore(order, authUser)
+      }
+      const remoteOrders = await fetchOrdersFromFirestore(authUser)
+      setOrders((items) => mergeOrdersById(items, remoteOrders))
       setSyncMessage('Pedidos sincronizados con Firebase correctamente.')
     } catch (error) {
-      if (isFirebaseTokenError(error?.message)) {
-        try {
-          const refreshedUser = await refreshAuthSession(authUser)
-          await runSync(refreshedUser)
-          setSyncMessage('Sesión renovada y sincronización completada correctamente.')
-        } catch (refreshError) {
-          setSyncMessage(normalizeFirebaseErrorMessage(refreshError?.message))
-          handleAuthSessionExpired()
-        }
-      } else {
-        setSyncMessage(normalizeFirebaseErrorMessage(error?.message))
-      }
+      setSyncMessage(normalizeFirebaseErrorMessage(error?.code || error?.message))
     } finally {
       setIsSyncing(false)
     }
+  }
+
+  const handleUpdateOrderDetails = (orderId, details) => {
+    setOrders((items) => {
+      const updated = items.map((order) => (
+        order.id === orderId ? { ...order, ...details, updatedAt: new Date().toISOString() } : order
+      ))
+      const changed = updated.find((order) => order.id === orderId)
+      if (changed) {
+        if (authUser) {
+          patchOrderDetailsToFirestore(changed, authUser).catch(() => {
+            enqueueSyncAction({ type: 'details', order: changed })
+          })
+        } else {
+          enqueueSyncAction({ type: 'details', order: changed })
+        }
+      }
+      return updated
+    })
   }
 
   useEffect(() => {
@@ -2228,6 +3304,12 @@ export default function App() {
   }, [cartItems])
 
   useEffect(() => {
+    if (!cartPulse) return undefined
+    const timeoutId = window.setTimeout(() => setCartPulse(false), 720)
+    return () => window.clearTimeout(timeoutId)
+  }, [cartPulse])
+
+  useEffect(() => {
     try {
       window.localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders))
     } catch {
@@ -2273,15 +3355,48 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (!isFirebaseConfigured) return
-    try {
-      const savedAuth = window.localStorage.getItem(AUTH_STORAGE_KEY)
-      if (!savedAuth) return
-      const parsed = JSON.parse(savedAuth)
-      if (!parsed?.email || !parsed?.idToken) return
-      setAuthUser(parsed)
-    } catch {
-      // Si falla, no restauramos sesión.
+    if (!isFirebaseConfigured || !firebaseAuth) {
+      setAuthReady(true)
+      return undefined
+    }
+
+    let isMounted = true
+    setAuthReady(false)
+
+    const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
+      if (!isMounted) return
+
+      if (!user) {
+        setAuthUser(null)
+        setAuthReady(true)
+        return
+      }
+
+      try {
+        const profile = await loadUserProfile(user, true)
+        const nextAuthUser = buildAuthUserState(user, profile)
+        const remoteOrders = await fetchOrdersFromFirestore(nextAuthUser)
+
+        if (!isMounted) return
+
+        setAuthError('')
+        setAuthUser(nextAuthUser)
+        setOrders((items) => mergeOrdersById(items, remoteOrders))
+      } catch (error) {
+        if (!isMounted) return
+
+        setAuthUser(buildAuthUserState(user))
+        setAuthError(normalizeFirebaseErrorMessage(error?.code || error?.message))
+      } finally {
+        if (isMounted) {
+          setAuthReady(true)
+        }
+      }
+    })
+
+    return () => {
+      isMounted = false
+      unsubscribe()
     }
   }, [])
 
@@ -2293,10 +3408,23 @@ export default function App() {
     document.title = routeTitles[route] || 'Atelier Lumière'
   }, [route])
 
+  const canAccessManagement = Boolean(authUser?.profile?.role === 'owner')
   let page = <HomePage productsList={shopProducts} />
-  if (route === '/coleccion') page = <CollectionPage onAddToCart={handleAddToCart} productsList={shopProducts} onRefreshCatalog={loadShopProducts} />
+  if (route === '/coleccion') page = <CollectionPage onAddToCart={handleAddToCart} productsList={shopProducts} />
   if (route === '/producto') page = <ProductPage onAddToCart={handleAddToCart} productsList={shopProducts} />
-  if (route === '/carrito') page = <CartPage cartItems={cartItems} onAddToCart={handleAddToCart} productsList={shopProducts} />
+  if (route === '/carrito') {
+    page = (
+      <CartPage
+        cartItems={cartItems}
+        onAddToCart={handleAddToCart}
+        onSetCartQuantity={handleSetCartQuantity}
+        onRemoveFromCart={handleRemoveFromCart}
+        onCreateOrder={handleCreateOrder}
+        onClearCart={handleClearCart}
+        productsList={shopProducts}
+      />
+    )
+  }
   if (route === '/acceder') {
     page = (
       <LoginPage
@@ -2309,17 +3437,60 @@ export default function App() {
         onLogout={handleLogout}
         orders={orders}
         onUpdateOrderStatus={handleUpdateOrderStatus}
+        onUpdateOrderDetails={handleUpdateOrderDetails}
         onSyncOrders={handleSyncOrders}
         syncMessage={syncMessage}
         isSyncing={isSyncing}
         pendingSyncCount={syncQueue.length}
+        ownerAccessRequired={false}
       />
     )
   }
-  if (route === '/encargos') page = <OrdersPage />
+  if (route === '/encargos') page = <OrdersPage onCreateOrder={handleCreateOrder} />
   if (route === '/diario') page = <JournalPage onCreateOrder={handleCreateOrder} />
+  if (route === '/gestion') {
+    page = canAccessManagement ? (
+      <ManagementPage
+        user={authUser}
+        orders={orders}
+        productsList={shopProducts}
+        onUpdateOrderStatus={handleUpdateOrderStatus}
+        onUpdateOrderDetails={handleUpdateOrderDetails}
+        onSyncOrders={handleSyncOrders}
+        syncMessage={syncMessage}
+        isSyncing={isSyncing}
+        pendingSyncCount={syncQueue.length}
+        onRefreshCatalog={loadShopProducts}
+        onUpdateProduct={handleUpdateCatalogProduct}
+        onCreateProduct={handleCreateCatalogProduct}
+        onDeleteProduct={handleDeleteCatalogProduct}
+      />
+    ) : (
+      <LoginPage
+        user={authUser}
+        authReady={authReady}
+        authError={authError}
+        authMessage={authMessage}
+        onLogin={handleLogin}
+        onRegister={handleRegister}
+        onLogout={handleLogout}
+        orders={orders}
+        onUpdateOrderStatus={handleUpdateOrderStatus}
+        onUpdateOrderDetails={handleUpdateOrderDetails}
+        onSyncOrders={handleSyncOrders}
+        syncMessage={syncMessage}
+        isSyncing={isSyncing}
+        pendingSyncCount={syncQueue.length}
+        ownerAccessRequired={true}
+      />
+    )
+  }
+
   if (route === '/sobre-mi') page = <AboutPage />
   if (route === '/contacto') page = <ContactPage />
+  if (route === '/aviso-legal' || route === '/privacidad' || route === '/condiciones') {
+    page = <LegalPage page={legalPages[route]} />
+  }
 
   return (
     <div className={`page-shell ${getRouteClass(route)}`}>
@@ -2327,7 +3498,7 @@ export default function App() {
         Saltar al contenido
       </a>
 
-      <Header isScrolled={isScrolled} menuOpen={menuOpen} setMenuOpen={setMenuOpen} route={route} cartCount={cartCount} />
+      <Header isScrolled={isScrolled} menuOpen={menuOpen} setMenuOpen={setMenuOpen} route={route} cartCount={cartCount} cartPulse={cartPulse} />
       <main id="main-content" data-catalog-refresh={catalogRefreshTick}>{page}</main>
       <Footer />
     </div>
