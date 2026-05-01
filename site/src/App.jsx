@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import {
   browserLocalPersistence,
   createUserWithEmailAndPassword,
@@ -54,32 +54,32 @@ const ORDER_STATUS_OPTIONS = [
   'Recibido',
   'Presupuesto enviado',
   'Aprobado',
-  'En producción',
+  'En producciÃ³n',
   'Listo para entregar',
   'Enviado',
   'Entregado',
   'Cerrado'
 ]
-const OPEN_ORDER_STATUSES = new Set(['Recibido', 'Presupuesto enviado', 'Aprobado', 'En producción', 'Listo para entregar', 'Enviado'])
-const PAYMENT_STATUS_OPTIONS = ['Pendiente', 'Señal recibida', 'Pagado']
+const OPEN_ORDER_STATUSES = new Set(['Recibido', 'Presupuesto enviado', 'Aprobado', 'En producciÃ³n', 'Listo para entregar', 'Enviado'])
+const PAYMENT_STATUS_OPTIONS = ['Pendiente', 'SeÃ±al recibida', 'Pagado']
 const SHIPPING_STATUS_OPTIONS = ['Sin preparar', 'Preparando', 'Enviado', 'Entregado']
-const MANAGEMENT_BOARD_STATUSES = ['Recibido', 'Presupuesto enviado', 'Aprobado', 'En producción', 'Listo para entregar', 'Enviado']
+const MANAGEMENT_BOARD_STATUSES = ['Recibido', 'Presupuesto enviado', 'Aprobado', 'En producciÃ³n', 'Listo para entregar', 'Enviado']
 
 const LOCAL_MEMORY_BLOCKS = [
   {
     key: CART_STORAGE_KEY,
     label: 'Carrito',
-    description: 'Piezas que una clienta ha añadido antes de confirmar el pedido.'
+    description: 'Piezas que una clienta ha aÃ±adido antes de confirmar el pedido.'
   },
   {
     key: CUSTOM_PRODUCTS_STORAGE_KEY,
     label: 'Piezas creadas',
-    description: 'Artículos nuevos publicados desde el panel de gestión.'
+    description: 'ArtÃ­culos nuevos publicados desde el panel de gestiÃ³n.'
   },
   {
     key: CATALOG_OVERRIDES_STORAGE_KEY,
-    label: 'Cambios de catálogo',
-    description: 'Precios, stock, estado e imágenes modificadas en piezas existentes.'
+    label: 'Cambios de catÃ¡logo',
+    description: 'Precios, stock, estado e imÃ¡genes modificadas en piezas existentes.'
   },
   {
     key: CATALOG_DELETED_STORAGE_KEY,
@@ -89,27 +89,27 @@ const LOCAL_MEMORY_BLOCKS = [
   {
     key: ORDERS_STORAGE_KEY,
     label: 'Pedidos locales',
-    description: 'Solicitudes guardadas en este navegador antes o después de sincronizar.'
+    description: 'Solicitudes guardadas en este navegador antes o despuÃ©s de sincronizar.'
   },
   {
     key: ORDERS_SYNC_QUEUE_KEY,
     label: 'Cola Firebase',
-    description: 'Pedidos pendientes de subir cuando haya sesión y conexión.'
+    description: 'Pedidos pendientes de subir cuando haya sesiÃ³n y conexiÃ³n.'
   },
   {
     key: PAYMENT_SETTINGS_STORAGE_KEY,
     label: 'Pagos y contacto',
-    description: 'Bizum, PayPal, notas de envío y datos comerciales internos.'
+    description: 'Bizum, PayPal, notas de envÃ­o y datos comerciales internos.'
   },
   {
     key: JOURNAL_CTA_METRICS_KEY,
-    label: 'Métricas del diario',
-    description: 'Clicks y pruebas locales para saber qué botones funcionan mejor.'
+    label: 'MÃ©tricas del diario',
+    description: 'Clicks y pruebas locales para saber quÃ© botones funcionan mejor.'
   },
   {
     key: JOURNAL_CTA_VARIANT_KEY,
     label: 'Variante diario',
-    description: 'La versión A/B activa del botón principal del diario.'
+    description: 'La versiÃ³n A/B activa del botÃ³n principal del diario.'
   }
 ]
 
@@ -122,7 +122,7 @@ const readLocalMemoryValue = (key) => {
 }
 
 const formatLocalMemorySize = (value) => {
-  if (!value) return 'Vacío'
+  if (!value) return 'VacÃ­o'
   const bytes = new Blob([value]).size
   if (bytes < 1024) return `${bytes} B`
   return `${(bytes / 1024).toFixed(1)} KB`
@@ -145,15 +145,15 @@ const buildOrdersCsv = (orderList) => {
     'Pago preferido',
     'Entrega',
     'Precio final',
-    'Señal',
-    'Método de pago usado',
+    'SeÃ±al',
+    'MÃ©todo de pago usado',
     'Estado pago',
     'Estado envio',
-    'Coste de envío',
+    'Coste de envÃ­o',
     'Seguimiento',
     'Inventario',
     'Fecha objetivo',
-    'Dirección',
+    'DirecciÃ³n',
     'Idea',
     'Piezas',
     'Notas internas'
@@ -234,8 +234,8 @@ const getOrderNextStep = (order) => {
   if (status === 'Recibido') return 'El atelier revisa disponibilidad, plazo y forma de pago.'
   if (status === 'Presupuesto enviado') return 'Revisa el presupuesto y confirma si quieres continuar.'
   if (status === 'Aprobado') return 'Pedido aprobado. El atelier prepara la pieza o reserva.'
-  if (status === 'En producción') return 'La pieza está en trabajo dentro del atelier.'
-  if (status === 'Listo para entregar') return 'Pedido listo para recogida o envío.'
+  if (status === 'En producciÃ³n') return 'La pieza estÃ¡ en trabajo dentro del atelier.'
+  if (status === 'Listo para entregar') return 'Pedido listo para recogida o envÃ­o.'
   if (status === 'Enviado') return 'Pedido enviado. Revisa los datos de entrega.'
   if (status === 'Entregado') return 'Pedido entregado.'
   return 'Pedido cerrado.'
@@ -244,27 +244,27 @@ const getOrderNextStep = (order) => {
 const getOrderItemsLabel = (order) => {
   if (!Array.isArray(order.cartLines) || order.cartLines.length === 0) return 'Sin piezas de carrito'
   const itemCount = order.cartLines.reduce((total, line) => total + (Number(line.qty) || 1), 0)
-  return `${itemCount} pieza(s) · ${order.cartLines.length} referencia(s)`
+  return `${itemCount} pieza(s) Â· ${order.cartLines.length} referencia(s)`
 }
 
 const buildClientOrderMessage = (order) => [
-  `Hola ${order.name || ''}, soy Atelier Lumière.`,
+  `Hola ${order.name || ''}, soy Atelier LumiÃ¨re.`,
   `Te escribo sobre tu pedido ${order.reference || 'sin referencia'}.`,
   `Estado actual: ${normalizeOrderStatus(order.status)}.`,
   `Siguiente paso: ${getOrderNextStep(order)}`,
   order.finalPrice ? `Importe: ${order.finalPrice}.` : null,
-  order.depositAmount ? `Señal registrada: ${order.depositAmount}.` : null,
+  order.depositAmount ? `SeÃ±al registrada: ${order.depositAmount}.` : null,
   order.paymentMethodUsed ? `Pago por: ${order.paymentMethodUsed}.` : null,
-  order.trackingCode ? `Seguimiento del envío: ${order.trackingCode}.` : null
+  order.trackingCode ? `Seguimiento del envÃ­o: ${order.trackingCode}.` : null
 ].filter(Boolean).join('\n')
 
 const buildCustomerOrderReceipt = (order) => {
   const cartLines = Array.isArray(order.cartLines) && order.cartLines.length > 0
-    ? order.cartLines.map((line) => `- ${line.title || line.slug} x${line.qty || 1} · ${line.price || 'Precio a confirmar'}`).join('\n')
+    ? order.cartLines.map((line) => `- ${line.title || line.slug} x${line.qty || 1} Â· ${line.price || 'Precio a confirmar'}`).join('\n')
     : '- Pedido sin piezas de carrito.'
 
   return [
-    'Atelier Lumiere · referencia de pedido',
+    'Atelier Lumiere Â· referencia de pedido',
     '',
     `Referencia: ${order.reference || 'Sin referencia'}`,
     `Fecha: ${order.createdAt ? new Date(order.createdAt).toLocaleString('es-ES') : new Date().toLocaleString('es-ES')}`,
@@ -303,14 +303,14 @@ const buildOrderSheetText = (order) => {
     `Pago preferido: ${order.paymentPreference || 'Por confirmar'}`,
     `Estado de pago: ${order.paymentStatus || 'Pendiente'}`,
     `Entrega: ${order.deliveryPreference || 'Por confirmar'}`,
-    `Estado de envío: ${order.shippingStatus || 'Sin preparar'}`,
-    `Coste de envío: ${order.shippingCost || 'Sin cerrar'}`,
+    `Estado de envÃ­o: ${order.shippingStatus || 'Sin preparar'}`,
+    `Coste de envÃ­o: ${order.shippingCost || 'Sin cerrar'}`,
     `Seguimiento: ${order.trackingCode || 'Sin seguimiento'}`,
     `Inventario: ${order.inventoryStatus || 'Sin actualizar'}`,
     `Fecha objetivo: ${order.targetDate || 'Sin fecha objetivo'}`,
     `Precio final: ${order.finalPrice || 'Sin cerrar'}`,
-    `Señal: ${order.depositAmount || 'Sin señal'}`,
-    `Método de pago usado: ${order.paymentMethodUsed || 'Por confirmar'}`,
+    `SeÃ±al: ${order.depositAmount || 'Sin seÃ±al'}`,
+    `MÃ©todo de pago usado: ${order.paymentMethodUsed || 'Por confirmar'}`,
     '',
     'Idea / solicitud:',
     order.idea || 'Sin detalle.',
@@ -318,8 +318,8 @@ const buildOrderSheetText = (order) => {
     'Piezas:',
     cartLines,
     '',
-    'Dirección de envío:',
-    order.shippingAddress || 'Sin dirección guardada.',
+    'DirecciÃ³n de envÃ­o:',
+    order.shippingAddress || 'Sin direcciÃ³n guardada.',
     '',
     'Notas internas:',
     order.internalNotes || 'Sin notas internas.'
@@ -349,7 +349,7 @@ const normalizeProductAvailability = (value) => (
 )
 
 const LEGACY_ORDER_STATUS_MAP = {
-  'En proceso': 'En producción'
+  'En proceso': 'En producciÃ³n'
 }
 
 const normalizeOrderStatus = (value) => {
@@ -431,16 +431,16 @@ const mergeCatalogProducts = (baseProducts, customProducts = readCustomProducts(
 )
 
 const routeTitles = {
-  '/': 'Atelier Lumière',
-  '/coleccion': 'Colección · Atelier Lumière',
-  '/producto': 'Producto · Atelier Lumière',
-  '/carrito': 'Carrito · Atelier Lumière',
-  '/acceder': 'Acceder · Atelier Lumière',
-  '/gestion': 'Acceso privado · Atelier Lumière',
-  '/encargos': 'Encargos · Atelier Lumière',
-  '/diario': 'Diario del taller · Atelier Lumière',
-  '/sobre-mi': 'Sobre mí · Atelier Lumière',
-  '/contacto': 'Contacto · Atelier Lumière'
+  '/': 'Atelier LumiÃ¨re',
+  '/coleccion': 'ColecciÃ³n Â· Atelier LumiÃ¨re',
+  '/producto': 'Producto Â· Atelier LumiÃ¨re',
+  '/carrito': 'Carrito Â· Atelier LumiÃ¨re',
+  '/acceder': 'Acceder Â· Atelier LumiÃ¨re',
+  '/gestion': 'Acceso privado Â· Atelier LumiÃ¨re',
+  '/encargos': 'Encargos Â· Atelier LumiÃ¨re',
+  '/diario': 'Diario del taller Â· Atelier LumiÃ¨re',
+  '/sobre-mi': 'Sobre mÃ­ Â· Atelier LumiÃ¨re',
+  '/contacto': 'Contacto Â· Atelier LumiÃ¨re'
 }
 
 const getRouteFromHash = (hash) => {
@@ -464,7 +464,7 @@ const trackJournalCtaClick = (ctaName) => {
     }
     window.localStorage.setItem(JOURNAL_CTA_METRICS_KEY, JSON.stringify(next))
   } catch {
-    // Si falla, no bloqueamos la acción principal.
+    // Si falla, no bloqueamos la acciÃ³n principal.
   }
 }
 
@@ -482,20 +482,20 @@ const getJournalOrderCtaVariant = () => {
 
 const FIREBASE_ERROR_MESSAGES = {
   'auth/user-not-found': 'No existe una cuenta con ese correo.',
-  'auth/invalid-email': 'El correo electrónico no es válido.',
-  'auth/missing-password': 'Introduce la contraseña para poder continuar.',
-  'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres.',
-  'auth/network-request-failed': 'No se pudo conectar con Firebase. Revisa tu conexión.',
-  INVALID_PASSWORD: 'La contraseña no es correcta.',
-  USER_DISABLED: 'La cuenta está deshabilitada.',
-  EMAIL_EXISTS: 'Este correo ya está registrado.',
-  TOO_MANY_ATTEMPTS_TRY_LATER: 'Demasiados intentos. Prueba más tarde.',
-  OPERATION_NOT_ALLOWED: 'Este método de acceso no está habilitado en Firebase.',
-  INVALID_ID_TOKEN: 'La sesión no es válida. Vuelve a iniciar sesión.',
-  TOKEN_EXPIRED: 'La sesión ha caducado. Vuelve a iniciar sesión.',
-  INVALID_REFRESH_TOKEN: 'La sesión no se puede renovar. Inicia sesión de nuevo.',
-  PERMISSION_DENIED: 'No tienes permisos para esta operación.',
-  UNAUTHENTICATED: 'Sesión no autenticada. Inicia sesión de nuevo.'
+  'auth/invalid-email': 'El correo electrÃ³nico no es vÃ¡lido.',
+  'auth/missing-password': 'Introduce la contraseÃ±a para poder continuar.',
+  'auth/weak-password': 'La contraseÃ±a debe tener al menos 6 caracteres.',
+  'auth/network-request-failed': 'No se pudo conectar con Firebase. Revisa tu conexiÃ³n.',
+  INVALID_PASSWORD: 'La contraseÃ±a no es correcta.',
+  USER_DISABLED: 'La cuenta estÃ¡ deshabilitada.',
+  EMAIL_EXISTS: 'Este correo ya estÃ¡ registrado.',
+  TOO_MANY_ATTEMPTS_TRY_LATER: 'Demasiados intentos. Prueba mÃ¡s tarde.',
+  OPERATION_NOT_ALLOWED: 'Este mÃ©todo de acceso no estÃ¡ habilitado en Firebase.',
+  INVALID_ID_TOKEN: 'La sesiÃ³n no es vÃ¡lida. Vuelve a iniciar sesiÃ³n.',
+  TOKEN_EXPIRED: 'La sesiÃ³n ha caducado. Vuelve a iniciar sesiÃ³n.',
+  INVALID_REFRESH_TOKEN: 'La sesiÃ³n no se puede renovar. Inicia sesiÃ³n de nuevo.',
+  PERMISSION_DENIED: 'No tienes permisos para esta operaciÃ³n.',
+  UNAUTHENTICATED: 'SesiÃ³n no autenticada. Inicia sesiÃ³n de nuevo.'
 }
 
 const LEGACY_FIREBASE_ERROR_CODES = {
@@ -515,7 +515,7 @@ const LEGACY_FIREBASE_ERROR_CODES = {
 }
 
 const normalizeFirebaseErrorMessage = (errorCode) => {
-  if (!errorCode) return 'No se pudo completar la operación en Firebase.'
+  if (!errorCode) return 'No se pudo completar la operaciÃ³n en Firebase.'
   const normalizedErrorCode = LEGACY_FIREBASE_ERROR_CODES[errorCode] || errorCode
   return FIREBASE_ERROR_MESSAGES[normalizedErrorCode] || `Error Firebase: ${errorCode}`
 }
@@ -722,7 +722,7 @@ function Header({ isScrolled, menuOpen, setMenuOpen, route, cartCount, cartPulse
     <header className={`site-header ${isScrolled ? 'is-scrolled' : ''}`}>
       <div className="container site-header__inner">
         <a className="brand-mark" href="#/" onClick={() => setMenuOpen(false)}>
-          Atelier Lumière
+          Atelier LumiÃ¨re
           <span>Broderie artisanale</span>
         </a>
 
@@ -733,13 +733,13 @@ function Header({ isScrolled, menuOpen, setMenuOpen, route, cartCount, cartPulse
           aria-controls="primary-navigation"
           onClick={() => setMenuOpen((open) => !open)}
         >
-          Menú
+          MenÃº
         </button>
 
         <nav
           id="primary-navigation"
           className={`site-nav ${menuOpen ? 'is-open' : ''}`}
-          aria-label="Navegación principal"
+          aria-label="NavegaciÃ³n principal"
         >
           {navItems.map((item) => (
             <a
@@ -759,7 +759,7 @@ function Header({ isScrolled, menuOpen, setMenuOpen, route, cartCount, cartPulse
           </a>
         </nav>
 
-        <div className="header-tools" aria-label="Accesos rápidos">
+        <div className="header-tools" aria-label="Accesos rÃ¡pidos">
           <a className={`cart-pill ${cartPulse ? 'is-pulsing' : ''}`} href="#/carrito" onClick={() => setMenuOpen(false)}>
             Carrito {cartCount}
           </a>
@@ -807,7 +807,7 @@ function SmartVideo({ primarySrc, fallbackSrc, poster, className = '', controls 
     >
       <source src={primarySrc} type="video/mp4" />
       {fallbackSrc ? <source src={fallbackSrc} type="video/mp4" /> : null}
-      Tu navegador no puede reproducir este vídeo.
+      Tu navegador no puede reproducir este vÃ­deo.
     </video>
   )
 }
@@ -884,15 +884,15 @@ function HomePage({ productsList }) {
         <div className="collection-hero__veil" />
         <div className="container collection-hero__grid">
           <div className="collection-hero__copy collection-hero__copy--home">
-            <p className="eyebrow">Atelier francés · bordado artesanal</p>
-            <h1>Atelier Lumière</h1>
+            <p className="eyebrow">Atelier francÃ©s Â· bordado artesanal</p>
+            <h1>Atelier LumiÃ¨re</h1>
             <p className="hero-v4__lead">
-              Piezas bordadas a mano, accesorios delicados y encargos creados con calma para convertir una idea en algo único.
+              Piezas bordadas a mano, accesorios delicados y encargos creados con calma para convertir una idea en algo Ãºnico.
             </p>
 
             <div className="hero-actions">
               <a className="button button--primary" href="#/coleccion">
-                Descubrir la colección
+                Descubrir la colecciÃ³n
               </a>
               <a className="button button--secondary" href="#/encargos">
                 Solicitar un encargo
@@ -913,9 +913,9 @@ function HomePage({ productsList }) {
       <PageSection id="home-collection" className="section-block--tinted">
         <div className="container">
           <SectionIntro
-            eyebrow="Colección destacada"
+            eyebrow="ColecciÃ³n destacada"
             title="Piezas listas para descubrir"
-            text="Una selección breve para entrar en el universo del atelier sin perderse entre demasiadas opciónes."
+            text="Una selecciÃ³n breve para entrar en el universo del atelier sin perderse entre demasiadas opciÃ³nes."
           />
 
           <div className="collection-grid collection-grid--featured-v3">
@@ -929,7 +929,7 @@ function HomePage({ productsList }) {
                   <div className="collection-card__footer">
                     <strong>{item.price}</strong>
                     <a className="text-link" href="#/coleccion">
-                      Ver colección
+                      Ver colecciÃ³n
                     </a>
                   </div>
                 </div>
@@ -945,7 +945,7 @@ function HomePage({ productsList }) {
             <img loading="lazy" src={mediaConfig.portrait} alt="Retrato cercano de la creadora bordando" />
             <div className="story-card__body">
               <p className="eyebrow">Encargos personalizados</p>
-              <h2>Piezas únicas creadas para momentos con historia</h2>
+              <h2>Piezas Ãºnicas creadas para momentos con historia</h2>
               <p>
                 Si tienes una idea, un nombre o una fecha especial, la convertimos en una pieza bordada con formato, color y acabado definidos contigo.
               </p>
@@ -968,8 +968,8 @@ function HomePage({ productsList }) {
           <article className="collection-service-cta collection-service-cta--home">
             <div>
               <p className="eyebrow">Diario del taller</p>
-              <h3>Proceso, inspiración y piezas en marcha</h3>
-              <p>Un espacio breve para ver cómo nacen los bordados antes de llegar a la colección.</p>
+              <h3>Proceso, inspiraciÃ³n y piezas en marcha</h3>
+              <p>Un espacio breve para ver cÃ³mo nacen los bordados antes de llegar a la colecciÃ³n.</p>
             </div>
             <div className="collection-service-cta__actions">
               <a className="button button--primary" href="#/diario">Entrar al diario</a>
@@ -1082,7 +1082,7 @@ function CollectionPage({ onAddToCart, productsList }) {
 
   const handleAddProductToCart = (product) => {
     onAddToCart(product)
-    setCartNotice(`${product.title} se ha añadido al carrito.`)
+    setCartNotice(`${product.title} se ha aÃ±adido al carrito.`)
   }
 
   return (
@@ -1102,9 +1102,9 @@ function CollectionPage({ onAddToCart, productsList }) {
         <div className="collection-hero__veil" />
         <div className="container collection-hero__grid">
           <div className="collection-hero__copy">
-            <p className="eyebrow">Colección</p>
-            <h1>Colección Atelier</h1>
-            <p>Piezas bordadas, accesorios y encargos reunidos en un catálogo más directo.</p>
+            <p className="eyebrow">ColecciÃ³n</p>
+            <h1>ColecciÃ³n Atelier</h1>
+            <p>Piezas bordadas, accesorios y encargos reunidos en un catÃ¡logo mÃ¡s directo.</p>
             <button type="button" className="button button--primary" onClick={scrollToPieces}>
               Ver piezas disponibles
             </button>
@@ -1116,10 +1116,10 @@ function CollectionPage({ onAddToCart, productsList }) {
         <div className="container">
           <div className="collection-catalog-head">
             <div>
-              <p className="eyebrow">Catálogo</p>
+              <p className="eyebrow">CatÃ¡logo</p>
               <h2>Piezas disponibles</h2>
             </div>
-            <p>{allProducts.length} piezas publicadas en {categories.length - 1} categorías.</p>
+            <p>{allProducts.length} piezas publicadas en {categories.length - 1} categorÃ­as.</p>
           </div>
 
           <div className="pill-list pill-list--shop">
@@ -1205,7 +1205,7 @@ function CollectionPage({ onAddToCart, productsList }) {
                       onClick={() => handleAddProductToCart(product)}
                       disabled={!isProductAvailableForCart(product)}
                     >
-                      {isProductAvailableForCart(product) ? 'Añadir al carrito' : 'No disponible'}
+                      {isProductAvailableForCart(product) ? 'AÃ±adir al carrito' : 'No disponible'}
                     </button>
                     <a className="button button--secondary" href="#/producto">
                       Ver detalle
@@ -1216,8 +1216,8 @@ function CollectionPage({ onAddToCart, productsList }) {
             )) : (
               <article className="quote-panel quote-panel--signature">
                 <p className="eyebrow">Sin resultados</p>
-                <h3>No hay piezas en esta categoría por ahora</h3>
-                <p>Prueba otra selección o vuelve a Todos para ver la colección completa.</p>
+                <h3>No hay piezas en esta categorÃ­a por ahora</h3>
+                <p>Prueba otra selecciÃ³n o vuelve a Todos para ver la colecciÃ³n completa.</p>
                 <a className="button button--secondary" href="#/encargos">
                   Solicitar pieza a medida
                 </a>
@@ -1227,22 +1227,22 @@ function CollectionPage({ onAddToCart, productsList }) {
 
           <article className="collection-service-cta">
             <div>
-              <p className="eyebrow">Asesoría del atelier</p>
-              <h3>¿Buscas algo a medida?</h3>
-              <p>Cuéntame la idea y preparo una recomendación sencilla de formato, color y acabado.</p>
+              <p className="eyebrow">AsesorÃ­a del atelier</p>
+              <h3>Â¿Buscas algo a medida?</h3>
+              <p>CuÃ©ntame la idea y preparo una recomendaciÃ³n sencilla de formato, color y acabado.</p>
             </div>
             <div className="collection-service-cta__actions">
-              <a className="button button--primary" href="#/contacto">Pedir recomendación</a>
+              <a className="button button--primary" href="#/contacto">Pedir recomendaciÃ³n</a>
               <a className="button button--secondary" href="#/encargos">Encargo personalizado</a>
             </div>
           </article>
 
           <article className="quote-panel collection-support-panel">
             <p className="eyebrow">Compra y reserva</p>
-            <h3>La colección ya está preparada para vender dentro de la web</h3>
+            <h3>La colecciÃ³n ya estÃ¡ preparada para vender dentro de la web</h3>
             <p>Las piezas terminadas pueden pedirse desde el carrito. Los encargos y variantes siguen mejor desde la parte de encargos.</p>
             <ul className="note-list">
-              <li>{paymentMethods.length > 0 ? `Métodos disponibles: ${paymentMethods.join(', ')}.` : 'El método de pago se confirmará al revisar el pedido.'}</li>
+              <li>{paymentMethods.length > 0 ? `MÃ©todos disponibles: ${paymentMethods.join(', ')}.` : 'El mÃ©todo de pago se confirmarÃ¡ al revisar el pedido.'}</li>
               {businessSettings.contactEmail ? <li>Correo del atelier: {businessSettings.contactEmail}</li> : null}
               {businessSettings.contactWhatsapp ? <li>WhatsApp del atelier: {businessSettings.contactWhatsapp}</li> : null}
               {businessSettings.shippingNote ? <li>{businessSettings.shippingNote}</li> : null}
@@ -1273,9 +1273,9 @@ function ProductPage({ onAddToCart, productsList }) {
         <div className="container">
           <article className="quote-panel quote-panel--signature">
             <p className="eyebrow">Sin productos</p>
-            <h3>Aún no hay productos configurados</h3>
+            <h3>AÃºn no hay productos configurados</h3>
             <p>
-              Sube productos editando <code>public/data/shop-products.json</code> y sus imágenes/vídeos en <code>public/uploads</code>.
+              Sube productos editando <code>public/data/shop-products.json</code> y sus imÃ¡genes/vÃ­deos en <code>public/uploads</code>.
             </p>
           </article>
         </div>
@@ -1292,8 +1292,8 @@ function ProductPage({ onAddToCart, productsList }) {
         image={featured.image}
         alt={featured.alt}
         actions={[
-          { label: 'Solicitar información', href: '#/contacto' },
-          { label: 'Volver a colección', href: '#/coleccion', kind: 'secondary' }
+          { label: 'Solicitar informaciÃ³n', href: '#/contacto' },
+          { label: 'Volver a colecciÃ³n', href: '#/coleccion', kind: 'secondary' }
         ]}
       />
 
@@ -1321,7 +1321,7 @@ function ProductPage({ onAddToCart, productsList }) {
               <p>{featured.description}</p>
               <div className="contact-list">
                 <div>
-                  <strong>Técnica</strong>
+                  <strong>TÃ©cnica</strong>
                   <span>Bordado floral a mano</span>
                 </div>
                 <div>
@@ -1330,7 +1330,7 @@ function ProductPage({ onAddToCart, productsList }) {
                 </div>
                 <div>
                   <strong>Formato</strong>
-                  <span>Pieza artesanal de edición atelier</span>
+                  <span>Pieza artesanal de ediciÃ³n atelier</span>
                 </div>
               </div>
               <div className="product-card__actions product-card__actions--detail">
@@ -1340,7 +1340,7 @@ function ProductPage({ onAddToCart, productsList }) {
                   onClick={() => onAddToCart(featured)}
                   disabled={!PRODUCT_AVAILABLE_FOR_CART.has(normalizeProductAvailability(featured.availability))}
                 >
-  {PRODUCT_AVAILABLE_FOR_CART.has(normalizeProductAvailability(featured.availability)) ? 'Añadir al carrito' : 'No disponible'}
+  {PRODUCT_AVAILABLE_FOR_CART.has(normalizeProductAvailability(featured.availability)) ? 'AÃ±adir al carrito' : 'No disponible'}
                 </button>
                 <a className="button button--secondary" href="#/encargos">
                   Pedir variante
@@ -1352,16 +1352,16 @@ function ProductPage({ onAddToCart, productsList }) {
               <p className="eyebrow">Detalle artesanal</p>
               <h3>Una ficha clara para elegir con calma</h3>
               <p>
-                Cada descripción está enfocada en mostrar textura, técnica y carácter para facilitar una elección cuidada y personal.
+                Cada descripciÃ³n estÃ¡ enfocada en mostrar textura, tÃ©cnica y carÃ¡cter para facilitar una elecciÃ³n cuidada y personal.
               </p>
             </article>
 
             <article className="quote-panel quote-panel--product">
               <p className="eyebrow">Reserva y pago</p>
-              <h3>Antes de cerrar la compra te enseñamos cómo continuar</h3>
+              <h3>Antes de cerrar la compra te enseÃ±amos cÃ³mo continuar</h3>
               <ul className="note-list">
-                <li>{paymentMethods.length > 0 ? `Métodos disponibles: ${paymentMethods.join(', ')}.` : 'El método de pago se confirmará al revisar el pedido.'}</li>
-                {businessSettings.paymentNote ? <li>{businessSettings.paymentNote}</li> : <li>Cuando completes el pedido, recibirás la referencia para confirmar disponibilidad y pago.</li>}
+                <li>{paymentMethods.length > 0 ? `MÃ©todos disponibles: ${paymentMethods.join(', ')}.` : 'El mÃ©todo de pago se confirmarÃ¡ al revisar el pedido.'}</li>
+                {businessSettings.paymentNote ? <li>{businessSettings.paymentNote}</li> : <li>Cuando completes el pedido, recibirÃ¡s la referencia para confirmar disponibilidad y pago.</li>}
                 {businessSettings.contactEmail ? <li>Correo de apoyo: {businessSettings.contactEmail}</li> : null}
                 {businessSettings.contactWhatsapp ? <li>WhatsApp de apoyo: {businessSettings.contactWhatsapp}</li> : null}
               </ul>
@@ -1379,7 +1379,7 @@ function CartPage({ cartItems, onAddToCart, onSetCartQuantity, onRemoveFromCart,
     email: '',
     whatsapp: '',
     paymentPreference: 'Por confirmar',
-    deliveryPreference: 'Envío',
+    deliveryPreference: 'EnvÃ­o',
     shippingAddress: '',
     notes: '',
     acceptedReview: false
@@ -1423,7 +1423,7 @@ function CartPage({ cartItems, onAddToCart, onSetCartQuantity, onRemoveFromCart,
     const notes = checkoutForm.notes.trim()
 
     if (lines.length === 0) {
-      setCheckoutMessage('Añade alguna pieza antes de finalizar.')
+      setCheckoutMessage('AÃ±ade alguna pieza antes de finalizar.')
       return
     }
 
@@ -1433,17 +1433,17 @@ function CartPage({ cartItems, onAddToCart, onSetCartQuantity, onRemoveFromCart,
     }
 
     if (email && !email.includes('@')) {
-      setCheckoutMessage('Revisa el correo o deja ese campo vacío.')
+      setCheckoutMessage('Revisa el correo o deja ese campo vacÃ­o.')
       return
     }
 
-    if (deliveryPreference === 'Envío' && shippingAddress.length < 8) {
-      setCheckoutMessage('Añade una dirección de entrega o cambia la entrega a recoger/confirmar.')
+    if (deliveryPreference === 'EnvÃ­o' && shippingAddress.length < 8) {
+      setCheckoutMessage('AÃ±ade una direcciÃ³n de entrega o cambia la entrega a recoger/confirmar.')
       return
     }
 
     if (!checkoutForm.acceptedReview) {
-      setCheckoutMessage('Confirma que el pago se revisará antes de enviar datos o reservar la pieza.')
+      setCheckoutMessage('Confirma que el pago se revisarÃ¡ antes de enviar datos o reservar la pieza.')
       return
     }
 
@@ -1456,7 +1456,7 @@ function CartPage({ cartItems, onAddToCart, onSetCartQuantity, onRemoveFromCart,
       shippingAddress,
       finalPrice: hasPriceToConfirm ? 'Pendiente de confirmar' : formatEuroAmount(pricedTotal),
       idea: `Pedido desde carrito:
-${orderSummary}\n\nTotal orientativo: ${orderTotalLabel}\nPago preferido: ${paymentPreference}\nEntrega: ${deliveryPreference}${shippingAddress ? `\nDirección: ${shippingAddress}` : ''}${email ? `\nCorreo: ${email}` : ''}${notes ? `\n\nNotas: ${notes}` : ''}`,
+${orderSummary}\n\nTotal orientativo: ${orderTotalLabel}\nPago preferido: ${paymentPreference}\nEntrega: ${deliveryPreference}${shippingAddress ? `\nDirecciÃ³n: ${shippingAddress}` : ''}${email ? `\nCorreo: ${email}` : ''}${notes ? `\n\nNotas: ${notes}` : ''}`,
       source: 'cart_checkout',
       cartLines: lines.map((line) => ({
         slug: line.slug,
@@ -1473,12 +1473,12 @@ ${orderSummary}\n\nTotal orientativo: ${orderTotalLabel}\nPago preferido: ${paym
       email: '',
       whatsapp: '',
       paymentPreference: 'Por confirmar',
-      deliveryPreference: 'Envío',
+      deliveryPreference: 'EnvÃ­o',
       shippingAddress: '',
       notes: '',
       acceptedReview: false
     })
-    setCheckoutMessage(`Pedido guardado. Referencia: ${createdOrder.reference}. Podrás revisarlo desde tu acceso.`)
+    setCheckoutMessage(`Pedido guardado. Referencia: ${createdOrder.reference}. PodrÃ¡s revisarlo desde tu acceso.`)
     setReceiptMessage('')
   }
 
@@ -1506,7 +1506,7 @@ ${orderSummary}\n\nTotal orientativo: ${orderTotalLabel}\nPago preferido: ${paym
     <>
       <PageHero
         eyebrow="Carrito"
-        title="Tu selección del atelier"
+        title="Tu selecciÃ³n del atelier"
         text="Revisa tus piezas y crea una solicitud con referencia para confirmar disponibilidad, tiempos y entrega."
         image={mediaConfig.visualLead}
         alt="Mesa del atelier con piezas seleccionadas"
@@ -1518,7 +1518,7 @@ ${orderSummary}\n\nTotal orientativo: ${orderTotalLabel}\nPago preferido: ${paym
             <article className="quote-panel quote-panel--signature cart-confirmation-panel">
               <p className="eyebrow">Pedido creado</p>
               <h3>Referencia {lastOrder.reference}</h3>
-              <p>Tu solicitud ha quedado guardada. La pieza no se cobra automáticamente: primero se revisa disponibilidad, pago y entrega.</p>
+              <p>Tu solicitud ha quedado guardada. La pieza no se cobra automÃ¡ticamente: primero se revisa disponibilidad, pago y entrega.</p>
               <ul className="note-list">
                 <li>Estado inicial: {normalizeOrderStatus(lastOrder.status)}</li>
                 <li>Pago elegido: {lastOrder.paymentPreference || 'Por confirmar'}</li>
@@ -1527,7 +1527,7 @@ ${orderSummary}\n\nTotal orientativo: ${orderTotalLabel}\nPago preferido: ${paym
               </ul>
               <div className="cart-receipt-panel">
                 <strong>Resumen para guardar</strong>
-                <p>Conserva esta referencia para consultar el pedido o continuar la conversación con el atelier.</p>
+                <p>Conserva esta referencia para consultar el pedido o continuar la conversaciÃ³n con el atelier.</p>
                 <div className="collection-service-cta__actions">
                   <button type="button" className="button button--secondary" onClick={handleCopyReceipt}>
                     Copiar resumen
@@ -1540,8 +1540,8 @@ ${orderSummary}\n\nTotal orientativo: ${orderTotalLabel}\nPago preferido: ${paym
               </div>
               <ol className="cart-next-steps">
                 <li>El atelier revisa disponibilidad, precio final y plazo.</li>
-                <li>Recibirás confirmación del método de pago antes de reservar o enviar.</li>
-                <li>Podrás seguir el estado desde Acceder usando tu cuenta.</li>
+                <li>RecibirÃ¡s confirmaciÃ³n del mÃ©todo de pago antes de reservar o enviar.</li>
+                <li>PodrÃ¡s seguir el estado desde Acceder usando tu cuenta.</li>
               </ol>
               <div className="collection-service-cta__actions">
                 <a className="button button--primary" href="#/acceder">Ver seguimiento</a>
@@ -1550,11 +1550,11 @@ ${orderSummary}\n\nTotal orientativo: ${orderTotalLabel}\nPago preferido: ${paym
             </article>
           ) : lines.length === 0 ? (
             <article className="quote-panel quote-panel--signature">
-                <p className="eyebrow">Carrito vacío</p>
-                <h3>Aún no has añadido ninguna pieza</h3>
-                <p>Explora la colección y guarda tus favoritas para continuar después.</p>
+                <p className="eyebrow">Carrito vacÃ­o</p>
+                <h3>AÃºn no has aÃ±adido ninguna pieza</h3>
+                <p>Explora la colecciÃ³n y guarda tus favoritas para continuar despuÃ©s.</p>
                 <a className="button button--primary" href="#/coleccion">
-                  Ir a colección
+                  Ir a colecciÃ³n
                 </a>
             </article>
           ) : (
@@ -1585,7 +1585,7 @@ ${orderSummary}\n\nTotal orientativo: ${orderTotalLabel}\nPago preferido: ${paym
                       </div>
                       <div className="product-card__actions product-card__actions--shop">
                         <button type="button" className="button button--secondary" onClick={() => onAddToCart(line.product)}>
-                          Añadir otra
+                          AÃ±adir otra
                         </button>
                       </div>
                     </div>
@@ -1604,8 +1604,8 @@ ${orderSummary}\n\nTotal orientativo: ${orderTotalLabel}\nPago preferido: ${paym
                   <span>{paymentMethods.length > 0 ? paymentMethods.join(' / ') : 'Pago a confirmar'}</span>
                 </div>
                 <div className="cart-payment-panel">
-                  <strong>Pago y confirmación</strong>
-                  <p>{paymentMethods.length > 0 ? 'Métodos activos: ' + paymentMethods.join(', ') + '.' : 'El pago se confirmará contigo al revisar la solicitud.'}</p>
+                  <strong>Pago y confirmaciÃ³n</strong>
+                  <p>{paymentMethods.length > 0 ? 'MÃ©todos activos: ' + paymentMethods.join(', ') + '.' : 'El pago se confirmarÃ¡ contigo al revisar la solicitud.'}</p>
                   {businessSettings.bizum ? <p>Bizum: {businessSettings.bizum}</p> : null}
                   {businessSettings.paypal ? <p>PayPal: {businessSettings.paypal}</p> : null}
                   {businessSettings.contactEmail ? <p>Correo: {businessSettings.contactEmail}</p> : null}
@@ -1657,18 +1657,18 @@ ${orderSummary}\n\nTotal orientativo: ${orderTotalLabel}\nPago preferido: ${paym
                     value={checkoutForm.deliveryPreference}
                     onChange={(event) => setCheckoutForm((current) => ({ ...current, deliveryPreference: event.target.value }))}
                   >
-                    <option value="Envío">Envío</option>
+                    <option value="EnvÃ­o">EnvÃ­o</option>
                     <option value="Recogida">Recogida</option>
                     <option value="Por confirmar">Por confirmar</option>
                   </select>
                 </label>
                 <label>
-                  Dirección de entrega
+                  DirecciÃ³n de entrega
                   <textarea
                     rows={3}
                     value={checkoutForm.shippingAddress}
                     onChange={(event) => setCheckoutForm((current) => ({ ...current, shippingAddress: event.target.value }))}
-                    placeholder="Dirección, código postal y ciudad si quieres envío"
+                    placeholder="DirecciÃ³n, cÃ³digo postal y ciudad si quieres envÃ­o"
                   />
                 </label>
                 <label>
@@ -1686,7 +1686,7 @@ ${orderSummary}\n\nTotal orientativo: ${orderTotalLabel}\nPago preferido: ${paym
                     checked={checkoutForm.acceptedReview}
                     onChange={(event) => setCheckoutForm((current) => ({ ...current, acceptedReview: event.target.checked }))}
                   />
-                  <span>Entiendo que el atelier revisará disponibilidad, entrega y forma de pago antes de confirmar la compra.</span>
+                  <span>Entiendo que el atelier revisarÃ¡ disponibilidad, entrega y forma de pago antes de confirmar la compra.</span>
                 </label>
                 <button type="submit" className="button button--primary">
                   Crear solicitud
@@ -1753,31 +1753,31 @@ function LoginPage({
           {ownerAccessRequired ? (
             <article className="quote-panel quote-panel--signature">
               <p className="eyebrow">Zona privada</p>
-              <h3>Gestión solo para propietaria</h3>
-              <p>Esta sección no está publicada para clientas. Entra con tu cuenta de propietaria para abrir la gestión interna.</p>
+              <h3>GestiÃ³n solo para propietaria</h3>
+              <p>Esta secciÃ³n no estÃ¡ publicada para clientas. Entra con tu cuenta de propietaria para abrir la gestiÃ³n interna.</p>
             </article>
           ) : null}
 
           {!isFirebaseConfigured ? (
             <article className="quote-panel quote-panel--signature">
               <p className="eyebrow">Configurar Firebase</p>
-              <h2>Falta conectar las credenciales de autenticación</h2>
+              <h2>Falta conectar las credenciales de autenticaciÃ³n</h2>
               <p>
-                Añade las variables <code>VITE_FIREBASE_*</code> en tu entorno para habilitar login real de clientes.
+                AÃ±ade las variables <code>VITE_FIREBASE_*</code> en tu entorno para habilitar login real de clientes.
               </p>
               <p>
-                Variables mínimas: <code>VITE_FIREBASE_API_KEY</code>, <code>VITE_FIREBASE_AUTH_DOMAIN</code>, <code>VITE_FIREBASE_PROJECT_ID</code> y <code>VITE_FIREBASE_APP_ID</code>.
+                Variables mÃ­nimas: <code>VITE_FIREBASE_API_KEY</code>, <code>VITE_FIREBASE_AUTH_DOMAIN</code>, <code>VITE_FIREBASE_PROJECT_ID</code> y <code>VITE_FIREBASE_APP_ID</code>.
               </p>
             </article>
           ) : (
             <form className="contact-form" onSubmit={handleLoginSubmit}>
-              <h2>{user ? 'Sesión activa' : 'Iniciar sesión'}</h2>
+              <h2>{user ? 'SesiÃ³n activa' : 'Iniciar sesiÃ³n'}</h2>
               {user ? (
                 <p>Conectada como {user.email}</p>
               ) : (
                 <>
                   <label>
-                    Correo electrónico
+                    Correo electrÃ³nico
                     <input
                       type="email"
                       placeholder="tu@email.com"
@@ -1787,10 +1787,10 @@ function LoginPage({
                     />
                   </label>
                   <label>
-                    Contraseña
+                    ContraseÃ±a
                     <input
                       type="password"
-                      placeholder="Mínimo 6 caracteres"
+                      placeholder="MÃ­nimo 6 caracteres"
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
                       minLength={6}
@@ -1801,14 +1801,14 @@ function LoginPage({
               )}
 
               {!user ? (
-                <p className="management-note">Usa una contraseña de al menos 6 caracteres. No la compartas conmigo.</p>
+                <p className="management-note">Usa una contraseÃ±a de al menos 6 caracteres. No la compartas conmigo.</p>
               ) : null}
               {authError ? <p className="collection-upload-form__error">{authError}</p> : null}
               {authMessage ? <p className="collection-upload-form__message">{authMessage}</p> : null}
 
               {user ? (
                 <button type="button" className="button button--secondary" onClick={onLogout}>
-                  Cerrar sesión</button>
+                  Cerrar sesiÃ³n</button>
               ) : (
                 <div className="product-card__actions product-card__actions--shop">
                   <button type="submit" className="button button--primary" disabled={!canSubmitAccess}>
@@ -1826,30 +1826,30 @@ function LoginPage({
             <article className="quote-panel quote-panel--signature">
               <p className="eyebrow">Propietaria</p>
               <h3>Acceso interno</h3>
-              <p>Tu cuenta ya tiene acceso a la parte privada. Desde aquí puedes entrar a gestión y seguir con pedidos, catálogo y ventas.</p>
+              <p>Tu cuenta ya tiene acceso a la parte privada. Desde aquÃ­ puedes entrar a gestiÃ³n y seguir con pedidos, catÃ¡logo y ventas.</p>
               <a className="button button--primary" href="#/gestion">
-                Abrir gestión
+                Abrir gestiÃ³n
               </a>
             </article>
           ) : user ? (
             <article className="quote-panel quote-panel--signature login-account-panel">
               <p className="eyebrow">Cuenta cliente</p>
-              <h3>Tu cuenta está lista</h3>
-              <p>Desde aquí podrás consultar tus pedidos cuando haya solicitudes asociadas a este correo.</p>
+              <h3>Tu cuenta estÃ¡ lista</h3>
+              <p>Desde aquÃ­ podrÃ¡s consultar tus pedidos cuando haya solicitudes asociadas a este correo.</p>
               <div className="login-account-actions" aria-label="Accesos de cuenta">
-                <a className="button button--primary" href="#/coleccion">Ver colección</a>
+                <a className="button button--primary" href="#/coleccion">Ver colecciÃ³n</a>
                 <a className="button button--secondary" href="#/carrito">Ver carrito</a>
                 <a className="button button--secondary" href="#/encargos">Nuevo encargo</a>
               </div>
-              <p className="management-note">La gestión interna solo aparece en cuentas de propietaria.</p>
+              <p className="management-note">La gestiÃ³n interna solo aparece en cuentas de propietaria.</p>
             </article>
           ) : null}
 
           {user ? (
             <article className="quote-panel quote-panel--signature login-orders-panel">
-            <p className="eyebrow">{isOwnerAccount ? 'Gestión de pedidos' : 'Mis solicitudes'}</p>
+            <p className="eyebrow">{isOwnerAccount ? 'GestiÃ³n de pedidos' : 'Mis solicitudes'}</p>
             <h3>{isOwnerAccount ? 'Resumen de solicitudes' : 'Seguimiento de tus referencias'}</h3>
-            {!user ? <p>Inicia sesión para ver tus pedidos y seguir su estado.</p> : null}
+            {!user ? <p>Inicia sesiÃ³n para ver tus pedidos y seguir su estado.</p> : null}
             {baseOrders.length > 0 ? (
               <label>
                 Filtrar por estado
@@ -1863,7 +1863,7 @@ function LoginPage({
             ) : null}
             {visibleOrders.length === 0 ? (
               <div className="login-empty-state">
-                <p>{isOwnerAccount ? 'Aún no hay solicitudes registradas.' : 'Aún no hay pedidos asociados a tu cuenta.'}</p>
+                <p>{isOwnerAccount ? 'AÃºn no hay solicitudes registradas.' : 'AÃºn no hay pedidos asociados a tu cuenta.'}</p>
                 {!isOwnerAccount ? (
                   <a className="button button--secondary" href="#/encargos">Crear una solicitud</a>
                 ) : null}
@@ -1937,7 +1937,7 @@ function LoginPage({
 function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreateProduct, onDeleteProduct, onUploadProductImage, canUploadCloudImages }) {
   const [draft, setDraft] = useState({
     title: '',
-    category: 'Piezas únicas',
+    category: 'Piezas Ãºnicas',
     price: '',
     availability: 'Disponible',
     stock: '1',
@@ -1977,7 +1977,7 @@ function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreat
         try {
           const imageData = await readImageFileAsOptimizedDataUrl(file)
           updateDraft('image', imageData)
-          setMessage(`${error.message || 'Firebase Storage no respondió.'} La imagen se ha dejado como prueba local para que puedas seguir trabajando.`)
+          setMessage(`${error.message || 'Firebase Storage no respondiÃ³.'} La imagen se ha dejado como prueba local para que puedas seguir trabajando.`)
           return
         } catch {
           setMessage(error.message || 'No se pudo cargar la imagen.')
@@ -2015,7 +2015,7 @@ function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreat
         try {
           const imageData = await readImageFileAsOptimizedDataUrl(file)
           onUpdateProduct(product.slug, { image: imageData, alt: product.alt || product.title })
-          setMessage(`${product.title}: ${error.message || 'Firebase Storage no respondió.'} La imagen se ha dejado como prueba local para que puedas seguir trabajando.`)
+          setMessage(`${product.title}: ${error.message || 'Firebase Storage no respondiÃ³.'} La imagen se ha dejado como prueba local para que puedas seguir trabajando.`)
           return
         } catch {
           setMessage(error.message || 'No se pudo cargar la imagen.')
@@ -2039,7 +2039,7 @@ function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreat
 
     setDraft({
       title: '',
-      category: 'Piezas únicas',
+      category: 'Piezas Ãºnicas',
       price: '',
       availability: 'Disponible',
       stock: '1',
@@ -2051,36 +2051,36 @@ function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreat
 
   return (
     <article id="gestion-catalogo" className="quote-panel management-catalog-panel">
-      <p className="eyebrow">Catálogo</p>
-      <h3>Edición de artículos</h3>
-      <p>La edición del catálogo ya no aparece en la colección pública. Esta parte queda reservada para la gestión interna.</p>
+      <p className="eyebrow">CatÃ¡logo</p>
+      <h3>EdiciÃ³n de artÃ­culos</h3>
+      <p>La ediciÃ³n del catÃ¡logo ya no aparece en la colecciÃ³n pÃºblica. Esta parte queda reservada para la gestiÃ³n interna.</p>
 
       {isVisible ? (
         <>
           <div className="management-catalog-toolbar">
-            <strong>{productsList.length} pieza(s) en catálogo</strong>
-            <span>{canUploadCloudImages ? 'Las fotos se suben a Firebase Storage y el catálogo se actualiza desde aquí.' : 'Cambia precio, categoría y disponibilidad desde aquí. Las fotos se guardan en este navegador hasta activar Firebase Storage.'}</span>
+            <strong>{productsList.length} pieza(s) en catÃ¡logo</strong>
+            <span>{canUploadCloudImages ? 'Las fotos se suben a Firebase Storage y el catÃ¡logo se actualiza desde aquÃ­.' : 'Cambia precio, categorÃ­a y disponibilidad desde aquÃ­. Las fotos se guardan en este navegador hasta activar Firebase Storage.'}</span>
           </div>
 
           <form className="management-create-product-form" onSubmit={handleCreateSubmit}>
             <div className="management-create-product-form__head">
               <div>
                 <p className="eyebrow">Nueva pieza</p>
-                <h4>Crear artículo para la colección</h4>
+                <h4>Crear artÃ­culo para la colecciÃ³n</h4>
               </div>
               <button type="submit" className="button button--primary">Publicar pieza</button>
             </div>
             <div className="management-create-product-form__grid">
               <label>
                 Nombre
-                <input type="text" value={draft.title} onChange={(event) => updateDraft('title', event.target.value)} placeholder="Ej. Bolso Jardín" />
+                <input type="text" value={draft.title} onChange={(event) => updateDraft('title', event.target.value)} placeholder="Ej. Bolso JardÃ­n" />
               </label>
               <label>
                 Precio
-                <input type="text" value={draft.price} onChange={(event) => updateDraft('price', event.target.value)} placeholder="Ej. 120 €" />
+                <input type="text" value={draft.price} onChange={(event) => updateDraft('price', event.target.value)} placeholder="Ej. 120 â‚¬" />
               </label>
               <label>
-                Categoría
+                CategorÃ­a
                 <input type="text" value={draft.category} onChange={(event) => updateDraft('category', event.target.value)} placeholder="Bolsos bordados" />
               </label>
               <label>
@@ -2102,7 +2102,7 @@ function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreat
               <div className="management-image-uploader management-create-product-form__wide">
                 <div>
                   <strong>Subir imagen desde este dispositivo</strong>
-                  <span>{canUploadCloudImages ? 'Se subirá a Firebase Storage para usarla en la web publicada.' : 'Se guarda localmente en este navegador para probar el catálogo.'}</span>
+                  <span>{canUploadCloudImages ? 'Se subirÃ¡ a Firebase Storage para usarla en la web publicada.' : 'Se guarda localmente en este navegador para probar el catÃ¡logo.'}</span>
                 </div>
                 <label className="button button--secondary">
                   {uploadingImageKey === 'draft' ? 'Subiendo...' : 'Elegir imagen'}
@@ -2115,8 +2115,8 @@ function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreat
                 ) : null}
               </div>
               <label className="management-create-product-form__wide">
-                Descripción
-                <textarea rows={3} value={draft.description} onChange={(event) => updateDraft('description', event.target.value)} placeholder="Describe materiales, estilo, medidas o intención de la pieza" />
+                DescripciÃ³n
+                <textarea rows={3} value={draft.description} onChange={(event) => updateDraft('description', event.target.value)} placeholder="Describe materiales, estilo, medidas o intenciÃ³n de la pieza" />
               </label>
             </div>
             {message ? <p className="management-note">{message}</p> : null}
@@ -2152,7 +2152,7 @@ function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreat
                       />
                     </label>
                     <label>
-                      Categoría
+                      CategorÃ­a
                       <input
                         type="text"
                         value={product.category}
@@ -2183,7 +2183,7 @@ function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreat
                     <div className="management-image-uploader management-product-controls__wide">
                       <div>
                         <strong>Imagen del producto</strong>
-                        <span>{canUploadCloudImages ? 'Sube una foto nueva desde PC o móvil y queda en la nube.' : 'Sube una foto nueva desde PC o móvil para probarla aquí.'}</span>
+                        <span>{canUploadCloudImages ? 'Sube una foto nueva desde PC o mÃ³vil y queda en la nube.' : 'Sube una foto nueva desde PC o mÃ³vil para probarla aquÃ­.'}</span>
                       </div>
                       <label className="button button--secondary">
                         {uploadingImageKey === product.slug ? 'Subiendo...' : 'Subir imagen'}
@@ -2204,7 +2204,7 @@ function CatalogManagerPanel({ productsList, isVisible, onUpdateProduct, onCreat
           </div>
         </>
       ) : (
-        <p>Abre el acceso privado para revisar el catálogo.</p>
+        <p>Abre el acceso privado para revisar el catÃ¡logo.</p>
       )}
     </article>
   )
@@ -2283,7 +2283,7 @@ function ManagementPage({
       const missing = [
         !order.finalPrice ? 'precio' : null,
         (order.paymentStatus || 'Pendiente') === 'Pendiente' ? 'pago' : null,
-        order.deliveryPreference === 'Envío' && !order.shippingAddress ? 'dirección' : null,
+        order.deliveryPreference === 'EnvÃ­o' && !order.shippingAddress ? 'direcciÃ³n' : null,
         !order.targetDate && OPEN_ORDER_STATUSES.has(normalizeOrderStatus(order.status)) ? 'fecha' : null
       ].filter(Boolean)
 
@@ -2292,10 +2292,10 @@ function ManagementPage({
     .filter((item) => item.missing.length > 0)
     .slice(0, 8)
   const paidOrders = orders.filter((order) => order.paymentStatus === 'Pagado')
-  const signalOrders = orders.filter((order) => order.paymentStatus === 'Señal recibida')
+  const signalOrders = orders.filter((order) => order.paymentStatus === 'SeÃ±al recibida')
   const pendingPaymentOrders = orders.filter((order) => (order.paymentStatus || 'Pendiente') === 'Pendiente')
   const shippingPendingOrders = orders.filter((order) => (order.shippingStatus || 'Sin preparar') !== 'Entregado')
-  const productionOrders = orders.filter((order) => normalizeOrderStatus(order.status) === 'En producción')
+  const productionOrders = orders.filter((order) => normalizeOrderStatus(order.status) === 'En producciÃ³n')
   const paidTotal = paidOrders.reduce((total, order) => total + parseEuroAmount(order.finalPrice), 0)
   const signalTotal = signalOrders.reduce((total, order) => total + parseEuroAmount(order.depositAmount), 0)
   const pendingTotal = pendingPaymentOrders.reduce((total, order) => total + parseEuroAmount(order.finalPrice), 0)
@@ -2313,10 +2313,10 @@ function ManagementPage({
       const paymentStatus = order.paymentStatus || 'Pendiente'
       const shippingStatus = order.shippingStatus || 'Sin preparar'
       const missingPrice = !order.finalPrice || order.finalPrice === 'Pendiente de confirmar'
-      const missingAddress = order.deliveryPreference === 'Envío' && !order.shippingAddress
+      const missingAddress = order.deliveryPreference === 'EnvÃ­o' && !order.shippingAddress
       const needsPayment = OPEN_ORDER_STATUSES.has(status) && paymentStatus === 'Pendiente'
       const readyToDeliver = status === 'Listo para entregar' && shippingStatus !== 'Entregado'
-      const inProductionWithoutDate = status === 'En producción' && !order.targetDate
+      const inProductionWithoutDate = status === 'En producciÃ³n' && !order.targetDate
       const priorityScore = [
         missingPrice,
         needsPayment,
@@ -2332,7 +2332,7 @@ function ManagementPage({
           missingPrice ? 'cerrar precio' : null,
           needsPayment ? 'confirmar pago' : null,
           readyToDeliver ? 'preparar entrega' : null,
-          missingAddress ? 'pedir dirección' : null,
+          missingAddress ? 'pedir direcciÃ³n' : null,
           inProductionWithoutDate ? 'poner fecha' : null
         ].filter(Boolean)
       }
@@ -2359,6 +2359,36 @@ function ManagementPage({
     }
   })
   const localMemoryActiveCount = localMemoryItems.filter((item) => item.hasData).length
+  const isLocalOwnerOnly = user?.profile?.ownerSource === 'local-config'
+  const firebaseChecklist = [
+    {
+      label: 'Credenciales Firebase',
+      ready: isFirebaseConfigured,
+      detail: isFirebaseConfigured ? 'Configuradas' : 'Faltan variables VITE_FIREBASE_*'
+    },
+    {
+      label: 'Firestore',
+      ready: Boolean(firebaseDb),
+      detail: firebaseDb ? 'Disponible para pedidos y catálogo' : 'No disponible'
+    },
+    {
+      label: 'Storage',
+      ready: Boolean(firebaseStorage),
+      detail: firebaseStorage ? 'Bucket configurado para fotos' : 'Falta activar/configurar Storage'
+    },
+    {
+      label: 'Sesión',
+      ready: Boolean(user),
+      detail: user ? user.email : 'Sin sesión'
+    },
+    {
+      label: 'Rol propietaria real',
+      ready: Boolean(user?.profile?.role === 'owner' && !isLocalOwnerOnly),
+      detail: user?.profile?.role === 'owner' && !isLocalOwnerOnly
+        ? 'Confirmado en Firestore'
+        : 'Falta poner role = owner en Firestore'
+    }
+  ]
 
   useEffect(() => {
     setBusinessSettings(readBusinessSettings())
@@ -2379,9 +2409,9 @@ function ManagementPage({
       window.localStorage.removeItem(JOURNAL_CTA_VARIANT_KEY)
       setJournalMetrics(null)
       setJournalVariant('A')
-      setCopyMessage('Métricas del diario reiniciadas.')
+      setCopyMessage('MÃ©tricas del diario reiniciadas.')
     } catch {
-      setCopyMessage('No se pudieron reiniciar las métricas en este navegador.')
+      setCopyMessage('No se pudieron reiniciar las mÃ©tricas en este navegador.')
     }
   }
 
@@ -2500,7 +2530,7 @@ function ManagementPage({
 
     setCopyMessage(
       missingProducts.length > 0
-        ? `Inventario parcial: no encontré ${missingProducts.join(', ')} en el catálogo.`
+        ? `Inventario parcial: no encontrÃ© ${missingProducts.join(', ')} en el catÃ¡logo.`
         : (mode === 'sold' ? `Piezas de ${order.reference || ''} marcadas como vendidas.` : `Piezas de ${order.reference || ''} reservadas.`)
     )
   }
@@ -2534,7 +2564,7 @@ function ManagementPage({
     const printWindow = window.open('', '_blank', 'width=820,height=900')
 
     if (!printWindow) {
-      setCopyMessage('No se pudo abrir la ventana de impresión. Puedes descargar la ficha.')
+      setCopyMessage('No se pudo abrir la ventana de impresiÃ³n. Puedes descargar la ficha.')
       return
     }
 
@@ -2569,9 +2599,9 @@ function ManagementPage({
   const handleSaveBusinessSettings = () => {
     try {
       window.localStorage.setItem(PAYMENT_SETTINGS_STORAGE_KEY, JSON.stringify(businessSettings))
-      setSettingsMessage('Configuración comercial guardada en este equipo.')
+      setSettingsMessage('ConfiguraciÃ³n comercial guardada en este equipo.')
     } catch {
-      setSettingsMessage('No se pudo guardar la configuración en este navegador.')
+      setSettingsMessage('No se pudo guardar la configuraciÃ³n en este navegador.')
     }
   }
 
@@ -2600,7 +2630,7 @@ function ManagementPage({
   }
 
   const handleClearLocalMemory = (label, keys) => {
-    const confirmed = window.confirm(`Vas a limpiar: ${label}. Esta acción solo afecta a la memoria local de este navegador. Quieres continuar?`)
+    const confirmed = window.confirm(`Vas a limpiar: ${label}. Esta acciÃ³n solo afecta a la memoria local de este navegador. Quieres continuar?`)
     if (!confirmed) return
 
     try {
@@ -2630,7 +2660,7 @@ function ManagementPage({
           return
         }
 
-        const confirmed = window.confirm('Vas a restaurar una copia local. Esto puede sobrescribir carrito, catálogo, pedidos y ajustes guardados en este navegador. Quieres continuar?')
+        const confirmed = window.confirm('Vas a restaurar una copia local. Esto puede sobrescribir carrito, catÃ¡logo, pedidos y ajustes guardados en este navegador. Quieres continuar?')
         if (!confirmed) return
 
         LOCAL_MEMORY_BLOCKS.forEach((item) => {
@@ -2645,7 +2675,7 @@ function ManagementPage({
         })
 
         setMemoryTick((current) => current + 1)
-        setMemoryMessage('Copia restaurada en este navegador. Recarga la página para aplicar todos los cambios.')
+        setMemoryMessage('Copia restaurada en este navegador. Recarga la pÃ¡gina para aplicar todos los cambios.')
       } catch {
         setMemoryMessage('No se pudo leer esa copia. Revisa que sea el JSON descargado desde esta web.')
       }
@@ -2661,7 +2691,7 @@ function ManagementPage({
   return (
     <>
       <PageHero
-        eyebrow="Gestión privada"
+        eyebrow="GestiÃ³n privada"
         title="Ventas, pedidos y tienda"
         text="Un acceso interno para revisar solicitudes, ordenar la tienda y preparar la operativa real."
         image={mediaConfig.visualDetailA}
@@ -2677,19 +2707,44 @@ function ManagementPage({
           <article className="quote-panel management-access-panel">
             <p className="eyebrow">Propietaria</p>
             <h2>Panel abierto</h2>
-            <p>Esta zona queda solo para ti: pedidos, inventario, seguimiento y preparación de la tienda.</p>
+            <p>Esta zona queda solo para ti: pedidos, inventario, seguimiento y preparaciÃ³n de la tienda.</p>
             <div className="management-actions">
-              <button type="button" className="button button--primary" onClick={scrollToCatalogManager}>Revisar catálogo</button>
+              <button type="button" className="button button--primary" onClick={scrollToCatalogManager}>Revisar catÃ¡logo</button>
               <button type="button" className="button button--secondary" onClick={onSyncOrders} disabled={!user || isSyncing}>
                 {isSyncing ? 'Sincronizando...' : 'Sincronizar pedidos'}
               </button>
             </div>
             {!user ? <p className="management-note">Para sincronizar con Firebase, entra con tu cuenta en Acceder.</p> : null}
-            {user?.profile?.ownerSource === 'local-config' ? (
-              <p className="management-note">Modo propietaria local activo. La gestión se abre en este equipo; para sincronizar todos los pedidos en Firebase falta dejar el rol definitivo en la base de datos.</p>
+            {isLocalOwnerOnly ? (
+              <p className="management-note">Modo propietaria local activo. La gestiÃ³n se abre en este equipo; para sincronizar todos los pedidos en Firebase falta dejar el rol definitivo en la base de datos.</p>
             ) : null}
             {syncMessage ? <p className="management-note">{syncMessage}</p> : null}
             {copyMessage ? <p className="management-note">{copyMessage}</p> : null}
+          </article>
+
+          <article className="quote-panel management-firebase-panel">
+            <div className="management-panel-head">
+              <div>
+                <p className="eyebrow">Firebase</p>
+                <h3>Conexión real de tienda</h3>
+              </div>
+              <span>{firebaseChecklist.filter((item) => item.ready).length}/{firebaseChecklist.length}</span>
+            </div>
+            <div className="management-firebase-list">
+              {firebaseChecklist.map((item) => (
+                <div className="management-firebase-item" key={item.label}>
+                  <div>
+                    <strong>{item.label}</strong>
+                    <span>{item.detail}</span>
+                  </div>
+                  <span className={item.ready ? 'is-ready' : ''}>{item.ready ? 'Listo' : 'Pendiente'}</span>
+                </div>
+              ))}
+            </div>
+            {user?.localId ? (
+              <p className="management-note">UID para activar propietaria real: <code>{user.localId}</code>. En Firestore debe existir <code>usuarios/{user.localId}</code> con <code>role</code> = <code>owner</code>.</p>
+            ) : null}
+            <p className="management-note">Hasta que ese rol sea real en Firestore, las fotos y el catálogo pueden quedarse como copia local aunque la pantalla de Gestión se abra.</p>
           </article>
 
           <div className="management-summary">
@@ -2719,7 +2774,7 @@ function ManagementPage({
             </article>
             <article className="mini-stat-card">
               <strong>{productionOrders.length}</strong>
-              <span>En producción</span>
+              <span>En producciÃ³n</span>
             </article>
           </div>
 
@@ -2738,7 +2793,7 @@ function ManagementPage({
               </div>
               <div>
                 <strong>{formatEuroAmount(signalTotal)}</strong>
-                <span>Señales</span>
+                <span>SeÃ±ales</span>
               </div>
               <div>
                 <strong>{formatEuroAmount(pendingTotal)}</strong>
@@ -2760,7 +2815,7 @@ function ManagementPage({
             <div className="management-panel-head">
               <div>
                 <p className="eyebrow">Prioridades</p>
-                <h3>Qué atender primero</h3>
+                <h3>QuÃ© atender primero</h3>
               </div>
               <span>{priorityOrders.length}</span>
             </div>
@@ -2771,17 +2826,17 @@ function ManagementPage({
                 {priorityOrders.map(({ order, reasons }) => (
                   <article className="management-priority-item" key={`priority-${order.id}`}>
                     <div>
-                      <strong>{order.reference || 'Sin referencia'} · {order.name || 'Sin nombre'}</strong>
+                      <strong>{order.reference || 'Sin referencia'} Â· {order.name || 'Sin nombre'}</strong>
                       <span>{reasons.join(', ')}</span>
                     </div>
                     <div className="management-priority-item__actions">
                       <button type="button" onClick={() => handleCopyClientMessage(order)}>Mensaje</button>
                       <button type="button" onClick={() => handleCopyReference(order.reference)}>Copiar ref.</button>
                       {(order.paymentStatus || 'Pendiente') === 'Pendiente' ? (
-                        <button type="button" onClick={() => handleQuickOrderDetails(order, { paymentStatus: 'Señal recibida' }, `Pedido ${order.reference || ''} marcado con señal.`)}>Señal</button>
+                        <button type="button" onClick={() => handleQuickOrderDetails(order, { paymentStatus: 'SeÃ±al recibida' }, `Pedido ${order.reference || ''} marcado con seÃ±al.`)}>SeÃ±al</button>
                       ) : null}
                       {normalizeOrderStatus(order.status) === 'Listo para entregar' ? (
-                        <button type="button" onClick={() => handleQuickOrderDetails(order, { shippingStatus: 'Preparando' }, `Entrega de ${order.reference || ''} en preparación.`)}>Preparar</button>
+                        <button type="button" onClick={() => handleQuickOrderDetails(order, { shippingStatus: 'Preparando' }, `Entrega de ${order.reference || ''} en preparaciÃ³n.`)}>Preparar</button>
                       ) : null}
                     </div>
                   </article>
@@ -2816,16 +2871,16 @@ function ManagementPage({
           </article>
 
           <article className="quote-panel management-metrics-panel">
-            <p className="eyebrow">Métricas del diario</p>
-            <h3>Conversión local</h3>
-            <p>Variante activa para el botón principal: <strong>{journalVariant}</strong>.</p>
+            <p className="eyebrow">MÃ©tricas del diario</p>
+            <h3>ConversiÃ³n local</h3>
+            <p>Variante activa para el botÃ³n principal: <strong>{journalVariant}</strong>.</p>
             <ul className="note-list">
               <li>Clicks CTA encargo: {journalMetrics?.journal_order_cta_A ?? 0} (A) / {journalMetrics?.journal_order_cta_B ?? 0} (B)</li>
-              <li>Clicks CTA colección: {journalMetrics?.journal_collection_cta ?? 0}</li>
-              <li>Solicitudes rápidas enviadas: {journalMetrics?.quick_order_submit ?? 0}</li>
+              <li>Clicks CTA colecciÃ³n: {journalMetrics?.journal_collection_cta ?? 0}</li>
+              <li>Solicitudes rÃ¡pidas enviadas: {journalMetrics?.quick_order_submit ?? 0}</li>
             </ul>
             <button type="button" className="button button--secondary" onClick={resetJournalMetrics}>
-              Reiniciar métricas
+              Reiniciar mÃ©tricas
             </button>
           </article>
 
@@ -2842,7 +2897,7 @@ function ManagementPage({
 
           <article className="quote-panel management-storage-panel">
             <p className="eyebrow">Memoria de la web</p>
-            <h3>Dónde se guarda cada cosa</h3>
+            <h3>DÃ³nde se guarda cada cosa</h3>
             <p>Ahora mismo hay {localMemoryActiveCount} bloques con datos guardados en este navegador.</p>
             <div className="management-memory-list" aria-live="polite">
               {localMemoryItems.map((item) => (
@@ -2852,7 +2907,7 @@ function ManagementPage({
                     <span>{item.description}</span>
                   </div>
                   <span className={`memory-status ${item.hasData ? 'is-filled' : ''}`}>
-                    {item.hasData ? item.size : 'Vacío'}
+                    {item.hasData ? item.size : 'VacÃ­o'}
                   </span>
                 </div>
               ))}
@@ -2875,34 +2930,34 @@ function ManagementPage({
               <button
                 type="button"
                 className="button button--secondary"
-                onClick={() => handleClearLocalMemory('Cambios del catálogo local', [
+                onClick={() => handleClearLocalMemory('Cambios del catÃ¡logo local', [
                   CUSTOM_PRODUCTS_STORAGE_KEY,
                   CATALOG_OVERRIDES_STORAGE_KEY,
                   CATALOG_DELETED_STORAGE_KEY
                 ])}
               >
-                Reiniciar catálogo local
+                Reiniciar catÃ¡logo local
               </button>
             </div>
             {memoryMessage ? <p className="management-note">{memoryMessage}</p> : null}
-            <p className="management-note">Usuarios y acceso ya dependen de Firebase. El siguiente paso grande será mover catálogo y ventas definitivas a Firebase para que no dependan solo de este equipo.</p>
+            <p className="management-note">Usuarios y acceso ya dependen de Firebase. El siguiente paso grande serÃ¡ mover catÃ¡logo y ventas definitivas a Firebase para que no dependan solo de este equipo.</p>
           </article>
 
           <article className="quote-panel management-payment-panel">
             <p className="eyebrow">Pagos</p>
             <h3>Primera fase de cobro</h3>
             <ul className="note-list">
-              <li>Bizum manual para reservas rápidas.</li>
+              <li>Bizum manual para reservas rÃ¡pidas.</li>
               <li>Transferencia para importes altos o encargos.</li>
-              <li>PayPal manual como opción extra para clientas que lo prefieran.</li>
+              <li>PayPal manual como opciÃ³n extra para clientas que lo prefieran.</li>
             </ul>
-            <p className="management-note">Cuando la compra esté más cerrada, el siguiente paso natural es integrar PayPal o Stripe dentro de la web.</p>
+            <p className="management-note">Cuando la compra estÃ© mÃ¡s cerrada, el siguiente paso natural es integrar PayPal o Stripe dentro de la web.</p>
           </article>
 
           <article className="quote-panel management-business-panel">
-            <p className="eyebrow">Configuración comercial</p>
+            <p className="eyebrow">ConfiguraciÃ³n comercial</p>
             <h3>Pagos, contacto y entrega</h3>
-            <div className="management-status-strip" aria-label="Resumen de configuración comercial">
+            <div className="management-status-strip" aria-label="Resumen de configuraciÃ³n comercial">
               <span>Campos activos: {configuredSettingCount}</span>
               <span>Bizum: {businessSettings.bizum ? 'Listo' : 'Pendiente'}</span>
               <span>PayPal: {businessSettings.paypal ? 'Listo' : 'Pendiente'}</span>
@@ -2914,7 +2969,7 @@ function ManagementPage({
                   type="text"
                   value={businessSettings.bizum}
                   onChange={(event) => handleBusinessSettingChange('bizum', event.target.value)}
-                  placeholder="Teléfono o alias de Bizum"
+                  placeholder="TelÃ©fono o alias de Bizum"
                 />
               </label>
               <label>
@@ -2959,11 +3014,11 @@ function ManagementPage({
                   rows={3}
                   value={businessSettings.paymentNote}
                   onChange={(event) => handleBusinessSettingChange('paymentNote', event.target.value)}
-                  placeholder="Reserva, señal o confirmación de pago"
+                  placeholder="Reserva, seÃ±al o confirmaciÃ³n de pago"
                 />
               </label>
               <label className="management-settings-form__wide">
-                Nota de envío
+                Nota de envÃ­o
                 <textarea
                   rows={3}
                   value={businessSettings.shippingNote}
@@ -2972,7 +3027,7 @@ function ManagementPage({
                 />
               </label>
               <button type="button" className="button button--primary" onClick={handleSaveBusinessSettings}>
-                Guardar configuración
+                Guardar configuraciÃ³n
               </button>
             </div>
             {settingsMessage ? <p className="management-note">{settingsMessage}</p> : null}
@@ -2981,7 +3036,7 @@ function ManagementPage({
           <article className="quote-panel management-board-panel">
             <div className="management-panel-head">
               <div>
-                <p className="eyebrow">Fase 4 · Bandeja</p>
+                <p className="eyebrow">Fase 4 Â· Bandeja</p>
                 <h3>Pedidos por estado</h3>
               </div>
               <span>{pendingOrders.length} abiertos</span>
@@ -3042,7 +3097,7 @@ function ManagementPage({
                 {orderAlerts.map(({ order, missing }) => (
                   <div className="management-alert-item" key={`alert-${order.id}`}>
                     <div>
-                      <strong>{order.reference || 'Sin referencia'} · {order.name || 'Sin nombre'}</strong>
+                      <strong>{order.reference || 'Sin referencia'} Â· {order.name || 'Sin nombre'}</strong>
                       <span>Falta: {missing.join(', ')}</span>
                     </div>
                     <button type="button" className="button button--secondary" onClick={() => handleCopyReference(order.reference)}>
@@ -3072,11 +3127,11 @@ function ManagementPage({
                 <div className="management-status-strip" aria-label="Resumen por estado">
                   <span>Recibido: {statusCounts.Recibido ?? 0}</span>
                   <span>Presupuesto: {statusCounts['Presupuesto enviado'] ?? 0}</span>
-                  <span>Producción: {statusCounts['En producción'] ?? 0}</span>
+                  <span>ProducciÃ³n: {statusCounts['En producciÃ³n'] ?? 0}</span>
                   <span>Listo: {statusCounts['Listo para entregar'] ?? 0}</span>
                   <span>Entregado: {statusCounts.Entregado ?? 0}</span>
                   <span>Pagado: {paidOrders.length}</span>
-                  <span>Señal: {signalOrders.length}</span>
+                  <span>SeÃ±al: {signalOrders.length}</span>
                   <span>Pendiente pago: {pendingPaymentOrders.length}</span>
                 </div>
                 <div className="management-money-strip" aria-label="Resumen de importes">
@@ -3086,7 +3141,7 @@ function ManagementPage({
                 </div>
                 <div className="management-export-bar">
                   <div>
-                    <strong>Exportación comercial</strong>
+                    <strong>ExportaciÃ³n comercial</strong>
                     <span>Descarga un CSV para abrirlo en Excel o guardarlo como copia externa.</span>
                   </div>
                   <div className="management-actions">
@@ -3105,7 +3160,7 @@ function ManagementPage({
                       type="search"
                       value={searchTerm}
                       onChange={(event) => setSearchTerm(event.target.value)}
-                      placeholder="Nombre, teléfono o referencia"
+                      placeholder="Nombre, telÃ©fono o referencia"
                     />
                   </label>
                   <label>
@@ -3127,7 +3182,7 @@ function ManagementPage({
                     </select>
                   </label>
                   <label>
-                    Envío
+                    EnvÃ­o
                     <select value={shippingFilter} onChange={(event) => setShippingFilter(event.target.value)}>
                       <option value="Todos">Todos</option>
                       {SHIPPING_STATUS_OPTIONS.map((status) => (
@@ -3139,7 +3194,7 @@ function ManagementPage({
               </>
             ) : null}
             {orders.length === 0 ? (
-              <p>Aún no hay solicitudes registradas.</p>
+              <p>AÃºn no hay solicitudes registradas.</p>
             ) : filteredOrders.length === 0 ? (
               <p>No hay pedidos con ese filtro.</p>
             ) : (
@@ -3152,7 +3207,7 @@ function ManagementPage({
                         {normalizeOrderStatus(order.status)}
                       </span>
                     </div>
-                    <span>{order.name} · {order.whatsapp}</span>
+                    <span>{order.name} Â· {order.whatsapp}</span>
                     <div className="order-summary-chips" aria-label="Resumen del pedido">
                       <span>{getOrderSourceLabel(order.source)}</span>
                       <span>{getOrderItemsLabel(order)}</span>
@@ -3160,9 +3215,9 @@ function ManagementPage({
                       <span>Entrega: {order.deliveryPreference || 'Por confirmar'}</span>
                       <span>Total: {order.finalPrice || 'Pendiente'}</span>
                       {order.inventoryStatus ? <span>Inventario: {order.inventoryStatus === 'sold' ? 'vendido' : 'reservado'}</span> : null}
-                      {order.depositAmount ? <span>Señal: {order.depositAmount}</span> : null}
+                      {order.depositAmount ? <span>SeÃ±al: {order.depositAmount}</span> : null}
                       {order.paymentMethodUsed ? <span>Pago usado: {order.paymentMethodUsed}</span> : null}
-                      {order.shippingCost ? <span>Envío: {order.shippingCost}</span> : null}
+                      {order.shippingCost ? <span>EnvÃ­o: {order.shippingCost}</span> : null}
                       {order.trackingCode ? <span>Seguimiento: {order.trackingCode}</span> : null}
                     </div>
                     <p>{order.idea}</p>
@@ -3185,9 +3240,9 @@ function ManagementPage({
                       <button
                         type="button"
                         className="button button--secondary"
-                        onClick={() => handleQuickOrderDetails(order, { paymentStatus: 'Señal recibida' }, `Pedido ${order.reference || ''} marcado con señal.`)}
+                        onClick={() => handleQuickOrderDetails(order, { paymentStatus: 'SeÃ±al recibida' }, `Pedido ${order.reference || ''} marcado con seÃ±al.`)}
                       >
-                        Señal recibida
+                        SeÃ±al recibida
                       </button>
                       <button
                         type="button"
@@ -3199,9 +3254,9 @@ function ManagementPage({
                       <button
                         type="button"
                         className="button button--secondary"
-                        onClick={() => handleQuickOrderDetails(order, { shippingStatus: 'Preparando' }, `Envío de ${order.reference || ''} marcado como preparando.`)}
+                        onClick={() => handleQuickOrderDetails(order, { shippingStatus: 'Preparando' }, `EnvÃ­o de ${order.reference || ''} marcado como preparando.`)}
                       >
-                        Preparar envío
+                        Preparar envÃ­o
                       </button>
                       <button
                         type="button"
@@ -3261,7 +3316,7 @@ function ManagementPage({
                           />
                         </label>
                         <label>
-                          Señal
+                          SeÃ±al
                           <input
                             type="text"
                             value={getSaleDraft(order).depositAmount}
@@ -3270,7 +3325,7 @@ function ManagementPage({
                           />
                         </label>
                         <label>
-                          Método usado
+                          MÃ©todo usado
                           <input
                             type="text"
                             value={getSaleDraft(order).paymentMethodUsed}
@@ -3290,7 +3345,7 @@ function ManagementPage({
                           </select>
                         </label>
                         <label>
-                          Envío
+                          EnvÃ­o
                           <select
                             value={getSaleDraft(order).shippingStatus}
                             onChange={(event) => handleSaleDraftChange(order, 'shippingStatus', event.target.value)}
@@ -3301,7 +3356,7 @@ function ManagementPage({
                           </select>
                         </label>
                         <label>
-                          Coste de envío
+                          Coste de envÃ­o
                           <input
                             type="text"
                             value={getSaleDraft(order).shippingCost}
@@ -3323,16 +3378,16 @@ function ManagementPage({
                             type="text"
                             value={getSaleDraft(order).trackingCode}
                             onChange={(event) => handleSaleDraftChange(order, 'trackingCode', event.target.value)}
-                            placeholder="Código o enlace de seguimiento"
+                            placeholder="CÃ³digo o enlace de seguimiento"
                           />
                         </label>
                         <label className="management-sale-form__wide">
-                          Dirección de envío
+                          DirecciÃ³n de envÃ­o
                           <textarea
                             rows={2}
                             value={getSaleDraft(order).shippingAddress}
                             onChange={(event) => handleSaleDraftChange(order, 'shippingAddress', event.target.value)}
-                            placeholder="Dirección, código postal, ciudad"
+                            placeholder="DirecciÃ³n, cÃ³digo postal, ciudad"
                           />
                         </label>
                         <label className="management-sale-form__wide">
@@ -3360,7 +3415,7 @@ function ManagementPage({
   )
 }
 
-function QuickOrderForm({ onCreateOrder, source = 'orders_quick_form', title = 'Solicitud rápida', intro = 'Déjame una idea y preparo una referencia para seguir el encargo.' }) {
+function QuickOrderForm({ onCreateOrder, source = 'orders_quick_form', title = 'Solicitud rÃ¡pida', intro = 'DÃ©jame una idea y preparo una referencia para seguir el encargo.' }) {
   const [form, setForm] = useState({ name: '', whatsapp: '', idea: '' })
   const [message, setMessage] = useState('')
 
@@ -3391,7 +3446,7 @@ function QuickOrderForm({ onCreateOrder, source = 'orders_quick_form', title = '
         </label>
         <label>
           Contacto
-          <input type="text" value={form.whatsapp} onChange={(event) => setForm((current) => ({ ...current, whatsapp: event.target.value }))} placeholder="WhatsApp o teléfono" />
+          <input type="text" value={form.whatsapp} onChange={(event) => setForm((current) => ({ ...current, whatsapp: event.target.value }))} placeholder="WhatsApp o telÃ©fono" />
         </label>
       </div>
       <label>
@@ -3417,7 +3472,7 @@ function OrdersPage({ onCreateOrder }) {
         videoLoopEnd={6}
         actions={[
           { label: 'Crear solicitud', href: '#encargo-formulario' },
-          { label: 'Ver colección', href: '#/coleccion', kind: 'secondary' }
+          { label: 'Ver colecciÃ³n', href: '#/coleccion', kind: 'secondary' }
         ]}
       />
 
@@ -3444,9 +3499,9 @@ function OrdersPage({ onCreateOrder }) {
 
           <article className="quote-panel">
             <p className="eyebrow">Para empezar</p>
-            <h3>Cuéntame qué quieres bordar</h3>
+            <h3>CuÃ©ntame quÃ© quieres bordar</h3>
             <ul className="note-list">
-              <li>Tipo de pieza: bolso, cojín, prenda, bastidor o regalo.</li>
+              <li>Tipo de pieza: bolso, cojÃ­n, prenda, bastidor o regalo.</li>
               <li>Motivo principal: iniciales, fecha, flores, frase o recuerdo.</li>
               <li>Plazo ideal y cualquier referencia visual que tengas.</li>
             </ul>
@@ -3459,9 +3514,9 @@ function OrdersPage({ onCreateOrder }) {
           <article className="journal-conversion__card">
             <p className="eyebrow">Solicitud guiada</p>
             <h3>Abre una referencia para tu encargo</h3>
-            <p>La solicitud queda guardada para poder revisarla después desde tu acceso.</p>
+            <p>La solicitud queda guardada para poder revisarla despuÃ©s desde tu acceso.</p>
           </article>
-          <QuickOrderForm onCreateOrder={onCreateOrder} source="orders_quick_form" intro="Déjame una idea y crearé una referencia para seguirla con calma." />
+          <QuickOrderForm onCreateOrder={onCreateOrder} source="orders_quick_form" intro="DÃ©jame una idea y crearÃ© una referencia para seguirla con calma." />
         </div>
       </PageSection>
     </>
@@ -3479,8 +3534,8 @@ function JournalPage({ onCreateOrder }) {
         <div className="container collection-hero__grid">
           <div className="collection-hero__copy">
             <p className="eyebrow">Diario del taller</p>
-            <h2>Proceso, inspiración y piezas en marcha</h2>
-            <p>Un cuaderno visual para ver cómo nacen los bordados antes de llegar a la colección.</p>
+            <h2>Proceso, inspiraciÃ³n y piezas en marcha</h2>
+            <p>Un cuaderno visual para ver cÃ³mo nacen los bordados antes de llegar a la colecciÃ³n.</p>
             <a className="button button--primary" href="#diario-entradas">Ver entradas</a>
           </div>
         </div>
@@ -3515,9 +3570,9 @@ function AboutPage() {
         <div className="collection-hero__veil" />
         <div className="container collection-hero__grid">
           <div className="collection-hero__copy">
-            <p className="eyebrow">Sobre mí</p>
-            <h1>La calma también se borda</h1>
-            <p>Atelier Lumière nace de trabajar despacio, mirar los detalles y crear piezas que acompañan recuerdos reales.</p>
+            <p className="eyebrow">Sobre mÃ­</p>
+            <h1>La calma tambiÃ©n se borda</h1>
+            <p>Atelier LumiÃ¨re nace de trabajar despacio, mirar los detalles y crear piezas que acompaÃ±an recuerdos reales.</p>
             <div className="hero-actions">
               <a className="button button--primary" href="#/encargos">Pedir un encargo</a>
               <a className="button button--secondary" href="#/contacto">Contactar</a>
@@ -3529,8 +3584,8 @@ function AboutPage() {
       <PageSection>
         <div className="container about-brief">
           <div>
-            <p className="eyebrow">Atelier Lumière</p>
-            <h2>Una forma de crear pequeña, cuidada y personal</h2>
+            <p className="eyebrow">Atelier LumiÃ¨re</p>
+            <h2>Una forma de crear pequeÃ±a, cuidada y personal</h2>
           </div>
           <ul className="note-list about-brief__notes">
             {aboutNotes.map((note) => <li key={note}>{note}</li>)}
@@ -3547,7 +3602,7 @@ function ContactPage() {
       <PageHero
         eyebrow="Contacto"
         title="Hablemos de la pieza que quieres crear"
-        text="Escríbenos para resolver dudas, solicitar un encargo o compartir la idea de una pieza bordada a medida."
+        text="EscrÃ­benos para resolver dudas, solicitar un encargo o compartir la idea de una pieza bordada a medida."
         image={mediaConfig.visualLead}
         alt="Atelier luminoso listo para recibir encargos"
       />
@@ -3555,8 +3610,8 @@ function ContactPage() {
       <PageSection className="section-block--soft">
         <div className="container info-form-grid">
           <article className="contact-card">
-            <p className="eyebrow">Información</p>
-            <h3>Escríbeme y cuéntame tu idea</h3>
+            <p className="eyebrow">InformaciÃ³n</p>
+            <h3>EscrÃ­beme y cuÃ©ntame tu idea</h3>
             <div className="contact-list">
               {contactDetails.map((item) => (
                 item.href ? (
@@ -3580,12 +3635,12 @@ function ContactPage() {
               <input type="text" placeholder="Tu nombre" />
             </label>
             <label>
-              Correo electrónico
+              Correo electrÃ³nico
               <input type="email" placeholder="Tu correo" />
             </label>
             <label>
               Mensaje
-              <textarea rows="6" placeholder="Cuéntame qué te gustaría bordar" />
+              <textarea rows="6" placeholder="CuÃ©ntame quÃ© te gustarÃ­a bordar" />
             </label>
             <button type="button" className="button button--primary">Preparar mensaje</button>
           </form>
@@ -3598,58 +3653,58 @@ function ContactPage() {
 const legalPages = {
   '/aviso-legal': {
     eyebrow: 'Aviso legal',
-    title: 'Información del atelier',
-    intro: 'Esta página recoge los datos básicos del proyecto y el uso general de la web.',
+    title: 'InformaciÃ³n del atelier',
+    intro: 'Esta pÃ¡gina recoge los datos bÃ¡sicos del proyecto y el uso general de la web.',
     sections: [
       {
         title: 'Titularidad',
-        text: 'Atelier Lumière es una marca artesanal en preparación. Antes de publicar la tienda definitiva, sustituye este texto por el nombre legal, NIF/CIF, domicilio fiscal y correo de contacto reales.'
+        text: 'Atelier LumiÃ¨re es una marca artesanal en preparaciÃ³n. Antes de publicar la tienda definitiva, sustituye este texto por el nombre legal, NIF/CIF, domicilio fiscal y correo de contacto reales.'
       },
       {
         title: 'Uso de la web',
-        text: 'El contenido de la web presenta piezas bordadas, encargos personalizados, diario del taller y vías de contacto. Las imágenes, textos y diseños no deben reutilizarse sin autorización.'
+        text: 'El contenido de la web presenta piezas bordadas, encargos personalizados, diario del taller y vÃ­as de contacto. Las imÃ¡genes, textos y diseÃ±os no deben reutilizarse sin autorizaciÃ³n.'
       },
       {
         title: 'Contacto',
-        text: 'Para cualquier consulta sobre la web, pedidos o encargos, puedes escribir al correo indicado en la página de contacto.'
+        text: 'Para cualquier consulta sobre la web, pedidos o encargos, puedes escribir al correo indicado en la pÃ¡gina de contacto.'
       }
     ]
   },
   '/privacidad': {
     eyebrow: 'Privacidad',
-    title: 'Cómo cuidamos tus datos',
+    title: 'CÃ³mo cuidamos tus datos',
     intro: 'La web solo debe pedir los datos necesarios para responder consultas, gestionar encargos y hacer seguimiento de pedidos.',
     sections: [
       {
         title: 'Datos que se solicitan',
-        text: 'Nombre, correo, teléfono de contacto, dirección de envío cuando sea necesaria y detalles del encargo. Estos datos se usan para preparar presupuestos, pedidos y comunicaciones relacionadas.'
+        text: 'Nombre, correo, telÃ©fono de contacto, direcciÃ³n de envÃ­o cuando sea necesaria y detalles del encargo. Estos datos se usan para preparar presupuestos, pedidos y comunicaciones relacionadas.'
       },
       {
         title: 'Cuenta de cliente',
-        text: 'Si creas una cuenta, se guarda tu correo y el historial asociado a tus solicitudes. Puedes pedir la revisión o eliminación de tus datos escribiendo al atelier.'
+        text: 'Si creas una cuenta, se guarda tu correo y el historial asociado a tus solicitudes. Puedes pedir la revisiÃ³n o eliminaciÃ³n de tus datos escribiendo al atelier.'
       },
       {
         title: 'Servicios externos',
-        text: 'La web puede apoyarse en Firebase para autenticación y base de datos. Antes de lanzar la tienda, conviene revisar la configuración definitiva y añadir los enlaces legales de esos servicios si procede.'
+        text: 'La web puede apoyarse en Firebase para autenticaciÃ³n y base de datos. Antes de lanzar la tienda, conviene revisar la configuraciÃ³n definitiva y aÃ±adir los enlaces legales de esos servicios si procede.'
       }
     ]
   },
   '/condiciones': {
     eyebrow: 'Condiciones',
-    title: 'Encargos, pagos y envíos',
+    title: 'Encargos, pagos y envÃ­os',
     intro: 'Estas condiciones ayudan a que cada compra o encargo tenga expectativas claras desde el principio.',
     sections: [
       {
         title: 'Encargos personalizados',
-        text: 'Cada encargo se confirma después de revisar idea, materiales, plazo y presupuesto. Las piezas personalizadas pueden requerir una señal antes de empezar el trabajo.'
+        text: 'Cada encargo se confirma despuÃ©s de revisar idea, materiales, plazo y presupuesto. Las piezas personalizadas pueden requerir una seÃ±al antes de empezar el trabajo.'
       },
       {
         title: 'Pagos y disponibilidad',
-        text: 'Los precios mostrados pueden variar en piezas a medida según tamaño, técnica y materiales. Una pieza se considera reservada cuando el atelier confirma el pedido y las condiciones acordadas.'
+        text: 'Los precios mostrados pueden variar en piezas a medida segÃºn tamaÃ±o, tÃ©cnica y materiales. Una pieza se considera reservada cuando el atelier confirma el pedido y las condiciones acordadas.'
       },
       {
-        title: 'Envíos y devoluciones',
-        text: 'Los plazos de envío dependen de la producción artesanal y del destino. En piezas personalizadas, las devoluciones deben tratarse caso por caso, salvo defecto o incidencia durante el envío.'
+        title: 'EnvÃ­os y devoluciones',
+        text: 'Los plazos de envÃ­o dependen de la producciÃ³n artesanal y del destino. En piezas personalizadas, las devoluciones deben tratarse caso por caso, salvo defecto o incidencia durante el envÃ­o.'
       }
     ]
   }
@@ -3690,11 +3745,11 @@ function Footer() {
       <div className="container site-footer__grid">
         <div className="footer-brand">
           <a className="brand-mark brand-mark--footer" href="#/">
-            Atelier Lumière
+            Atelier LumiÃ¨re
             <span>Broderie artisanale</span>
           </a>
           <p>
-            Web editorial inspirada en todo lo trabajado en este chat, ahora organizada para que puedas seguir ampliándola con más producto, artículos e imágenes desde un solo archivo de contenido.
+            Web editorial inspirada en todo lo trabajado en este chat, ahora organizada para que puedas seguir ampliÃ¡ndola con mÃ¡s producto, artÃ­culos e imÃ¡genes desde un solo archivo de contenido.
           </p>
         </div>
 
@@ -3731,7 +3786,7 @@ function Footer() {
           <h2>Newsletter</h2>
           <p>Recibe novedades, historias del taller y nuevas colecciones.</p>
           <div className="footer-form__row">
-            <input type="email" placeholder="Tu correo electrónico" aria-label="Correo electrónico" />
+            <input type="email" placeholder="Tu correo electrÃ³nico" aria-label="Correo electrÃ³nico" />
             <button type="button">Suscribirme</button>
           </div>
         </form>
@@ -3793,13 +3848,13 @@ export default function App() {
     setCartItems((items) => items.filter((item) => item.slug !== slug))
   }
 
-  const canWriteCatalogToFirebase = Boolean(firebaseDb && authUser?.profile?.role === 'owner')
+  const canWriteCatalogToFirebase = Boolean(firebaseDb && authUser?.profile?.role === 'owner' && authUser?.profile?.ownerSource !== 'local-config')
 
   const handleUploadCatalogImage = async (file, slug) => {
     const validationError = validateImageFile(file)
     if (validationError) throw new Error(validationError)
-    if (!firebaseStorage) throw new Error('Firebase Storage no está configurado todavía.')
-    if (authUser?.profile?.role !== 'owner') throw new Error('Solo la propietaria puede subir imágenes del catálogo.')
+    if (!firebaseStorage) throw new Error('Firebase Storage no estÃ¡ configurado todavÃ­a.')
+    if (authUser?.profile?.role !== 'owner') throw new Error('Solo la propietaria puede subir imÃ¡genes del catÃ¡logo.')
 
     const imagePath = buildStorageImagePath(slug, file)
     const reference = storageRef(firebaseStorage, imagePath)
@@ -3812,12 +3867,12 @@ export default function App() {
         }
       }),
       15000,
-      'Firebase Storage está tardando demasiado. Revisa reglas, conexión o configuración del bucket.'
+      'Firebase Storage estÃ¡ tardando demasiado. Revisa reglas, conexiÃ³n o configuraciÃ³n del bucket.'
     )
     const url = await withTimeout(
       getDownloadURL(reference),
       8000,
-      'La imagen subió, pero no se pudo obtener el enlace público.'
+      'La imagen subiÃ³, pero no se pudo obtener el enlace pÃºblico.'
     )
 
     return {
@@ -3841,7 +3896,7 @@ export default function App() {
           return true
         }
       } catch {
-        // Si Firebase no permite leer catálogo, seguimos con el JSON y la memoria local.
+        // Si Firebase no permite leer catÃ¡logo, seguimos con el JSON y la memoria local.
       }
     }
 
@@ -3858,7 +3913,7 @@ export default function App() {
       }
       return false
     } catch {
-      // Si falla la carga remota, usamos el catálogo local por defecto.
+      // Si falla la carga remota, usamos el catÃ¡logo local por defecto.
       return false
     }
   }
@@ -3903,7 +3958,7 @@ export default function App() {
           JSON.stringify({ ...overrides, [slug]: { ...currentOverride, ...normalizedChanges } })
         )
       } catch {
-        // Si falla el guardado, al menos se ve actualizado durante la sesión.
+        // Si falla el guardado, al menos se ve actualizado durante la sesiÃ³n.
       }
 
       return nextItems
@@ -3911,7 +3966,7 @@ export default function App() {
 
     if (nextProduct) {
       saveCatalogProductToFirestore(nextProduct).catch(() => {
-        // La copia local ya está guardada; la nube se reintentará cuando Firebase quede listo.
+        // La copia local ya estÃ¡ guardada; la nube se reintentarÃ¡ cuando Firebase quede listo.
       })
     }
   }
@@ -3929,7 +3984,7 @@ export default function App() {
     }
 
     if (category.length < 2) {
-      return { ok: false, message: 'Indica una categoría.' }
+      return { ok: false, message: 'Indica una categorÃ­a.' }
     }
 
     if (!price) {
@@ -3954,7 +4009,7 @@ export default function App() {
       badge: 'Nuevo',
       featuredRank: 0,
       price,
-      description: description || 'Pieza creada desde el panel de gestión.',
+      description: description || 'Pieza creada desde el panel de gestiÃ³n.',
       image,
       alt: title,
       availability: normalizeProductAvailability(draft.availability),
@@ -3983,8 +4038,8 @@ export default function App() {
       return {
         ok: true,
         message: savedInCloud
-          ? 'Pieza añadida al catálogo y guardada en Firebase.'
-          : 'Pieza añadida como copia local. Firebase no ha confirmado el guardado del catálogo.'
+          ? 'Pieza aÃ±adida al catÃ¡logo y guardada en Firebase.'
+          : 'Pieza aÃ±adida como copia local. Firebase no ha confirmado el guardado del catÃ¡logo.'
       }
     } catch (error) {
       const isQuotaError = error?.name === 'QuotaExceededError'
@@ -3992,7 +4047,7 @@ export default function App() {
       return {
         ok: false,
         message: isQuotaError
-          ? 'No se pudo guardar porque la memoria local está llena. Prueba con una imagen más ligera o descarga/limpia la memoria local.'
+          ? 'No se pudo guardar porque la memoria local estÃ¡ llena. Prueba con una imagen mÃ¡s ligera o descarga/limpia la memoria local.'
           : 'No se pudo guardar la pieza en este navegador.'
       }
     }
@@ -4000,7 +4055,7 @@ export default function App() {
 
   const handleDeleteCatalogProduct = (slug) => {
     const product = shopProducts.find((item) => item.slug === slug)
-    const confirmed = window.confirm(`¿Retirar "${product?.title || 'esta pieza'}" de la tienda?`)
+    const confirmed = window.confirm(`Â¿Retirar "${product?.title || 'esta pieza'}" de la tienda?`)
 
     if (!confirmed) return
 
@@ -4019,7 +4074,7 @@ export default function App() {
       deletedSlugs.add(slug)
       writeDeletedProductSlugs(Array.from(deletedSlugs))
     } catch {
-      // Si falla el guardado, al menos retiramos la pieza durante esta sesión.
+      // Si falla el guardado, al menos retiramos la pieza durante esta sesiÃ³n.
     }
   }
 
@@ -4162,7 +4217,7 @@ export default function App() {
       const credential = await signInWithEmailAndPassword(firebaseAuth, email.trim(), password)
       const profile = await loadUserProfile(credential.user, true)
       setAuthUser(buildAuthUserState(credential.user, profile))
-      setAuthMessage('Sesión iniciada correctamente.')
+      setAuthMessage('SesiÃ³n iniciada correctamente.')
     } catch (error) {
       setAuthError(normalizeFirebaseErrorMessage(error?.code || error?.message))
     } finally {
@@ -4200,7 +4255,7 @@ export default function App() {
       return
     }
     setAuthUser(null)
-    setAuthMessage('Sesión cerrada.')
+    setAuthMessage('SesiÃ³n cerrada.')
   }
 
   const handleCreateOrder = (orderDraft) => {
@@ -4246,11 +4301,11 @@ export default function App() {
 
   const handleSyncOrders = async () => {
     if (!authUser) {
-      setSyncMessage('Inicia sesión para sincronizar pedidos.')
+      setSyncMessage('Inicia sesiÃ³n para sincronizar pedidos.')
       return
     }
     if (!firebaseDb) {
-      setSyncMessage('Firebase no está disponible para sincronizar pedidos.')
+      setSyncMessage('Firebase no estÃ¡ disponible para sincronizar pedidos.')
       return
     }
     setIsSyncing(true)
@@ -4327,7 +4382,7 @@ export default function App() {
       if (!Array.isArray(parsed)) return
       setSyncQueue(parsed)
     } catch {
-      // Si falla lectura, seguimos sin cola de sincronización.
+      // Si falla lectura, seguimos sin cola de sincronizaciÃ³n.
     }
   }, [])
 
@@ -4441,7 +4496,7 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    document.title = routeTitles[route] || 'Atelier Lumière'
+    document.title = routeTitles[route] || 'Atelier LumiÃ¨re'
   }, [route])
 
   const canAccessManagement = Boolean(authUser?.profile?.role === 'owner')
@@ -4501,7 +4556,7 @@ export default function App() {
         onCreateProduct={handleCreateCatalogProduct}
         onDeleteProduct={handleDeleteCatalogProduct}
         onUploadProductImage={handleUploadCatalogImage}
-        canUploadCloudImages={Boolean(firebaseStorage && authUser?.profile?.role === 'owner')}
+        canUploadCloudImages={Boolean(firebaseStorage && authUser?.profile?.role === 'owner' && authUser?.profile?.ownerSource !== 'local-config')}
       />
     ) : (
       <LoginPage
@@ -4542,3 +4597,4 @@ export default function App() {
     </div>
   )
 }
+

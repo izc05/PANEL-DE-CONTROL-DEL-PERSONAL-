@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   color-scheme: light;
   --cream: #f8f2ea;
   --paper: #fffaf5;
@@ -1326,6 +1326,54 @@ h3,
   color: #6f5340;
 }
 
+.management-firebase-panel {
+  grid-column: 1 / -1;
+}
+
+.management-firebase-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.management-firebase-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid rgba(142, 107, 69, 0.16);
+  border-radius: 0.95rem;
+  background: rgba(255, 252, 248, 0.78);
+}
+
+.management-firebase-item div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.management-firebase-item strong {
+  color: var(--ink);
+}
+
+.management-firebase-item span {
+  color: #6f5340;
+}
+
+.management-firebase-item > span:last-child {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(189, 143, 86, 0.14);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.management-firebase-item > span:last-child.is-ready {
+  background: rgba(58, 142, 104, 0.14);
+  color: #2f6f52;
+}
 .management-priority-list,
 .management-stock-watch-list {
   display: grid;
@@ -3183,3 +3231,4 @@ h3,
   color: #2f7a57;
   font-weight: 800;
 }
+
